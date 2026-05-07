@@ -25,6 +25,7 @@ export interface Database {
           created_by?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       family_members: {
         Row: {
@@ -57,6 +58,7 @@ export interface Database {
           role?: "admin" | "member";
           joined_at?: string;
         };
+        Relationships: [];
       };
       recipes: {
         Row: {
@@ -101,6 +103,7 @@ export interface Database {
           created_by?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       recipe_ingredients: {
         Row: {
@@ -124,6 +127,7 @@ export interface Database {
           quantity?: number | null;
           unit?: string | null;
         };
+        Relationships: [];
       };
       meal_plans: {
         Row: {
@@ -144,6 +148,7 @@ export interface Database {
           week_start_date?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       meal_plan_slots: {
         Row: {
@@ -167,6 +172,7 @@ export interface Database {
           recipe_id?: string | null;
           status?: "suggested" | "voted" | "confirmed";
         };
+        Relationships: [];
       };
       votes: {
         Row: {
@@ -190,6 +196,7 @@ export interface Database {
           value?: "up" | "down" | "love";
           created_at?: string;
         };
+        Relationships: [];
       };
       shopping_lists: {
         Row: {
@@ -207,6 +214,7 @@ export interface Database {
           meal_plan_id?: string;
           generated_at?: string;
         };
+        Relationships: [];
       };
       shopping_list_items: {
         Row: {
@@ -233,6 +241,7 @@ export interface Database {
           unit?: string | null;
           checked?: boolean;
         };
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
