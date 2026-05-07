@@ -1,0 +1,22 @@
+{
+  "name": "nomnate",
+  "version": "0.0.1",
+  "private": true,
+  "packageManager": "pnpm@11.0.8",
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "dev:web": "turbo dev --filter=@nomnate/web",
+    "dev:mobile": "turbo dev --filter=@nomnate/mobile",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "clean": "turbo clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "turbo": "^2.9.9",
+    "typescript": "^5.8.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["sharp", "unrs-resolver", "esbuild", "@expo/fingerprint"]
+  }
+}
