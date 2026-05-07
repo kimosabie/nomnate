@@ -7,20 +7,23 @@ export interface Database {
         Row: {
           id: string;
           name: string;
-          created_at: string;
+          invite_code: string;
           created_by: string;
+          created_at: string;
         };
         Insert: {
           id?: string;
           name: string;
-          created_at?: string;
+          invite_code?: string;
           created_by: string;
+          created_at?: string;
         };
         Update: {
           id?: string;
           name?: string;
-          created_at?: string;
+          invite_code?: string;
           created_by?: string;
+          created_at?: string;
         };
       };
       family_members: {
@@ -28,6 +31,9 @@ export interface Database {
           id: string;
           family_id: string;
           user_id: string;
+          name: string | null;
+          avatar_url: string | null;
+          dietary_restrictions: string[];
           role: "admin" | "member";
           joined_at: string;
         };
@@ -35,6 +41,9 @@ export interface Database {
           id?: string;
           family_id: string;
           user_id: string;
+          name?: string | null;
+          avatar_url?: string | null;
+          dietary_restrictions?: string[];
           role?: "admin" | "member";
           joined_at?: string;
         };
@@ -42,99 +51,196 @@ export interface Database {
           id?: string;
           family_id?: string;
           user_id?: string;
+          name?: string | null;
+          avatar_url?: string | null;
+          dietary_restrictions?: string[];
           role?: "admin" | "member";
           joined_at?: string;
         };
       };
-      restaurants: {
+      recipes: {
         Row: {
           id: string;
-          name: string;
+          family_id: string | null;
+          title: string;
+          source: "ai" | "spoonacular" | "manual";
+          instructions: string | null;
+          image_url: string | null;
+          prep_time: number | null;
           cuisine: string | null;
-          address: string | null;
-          google_place_id: string | null;
-          family_id: string;
+          is_favourite: boolean;
+          spoonacular_id: number | null;
+          created_by: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
-          name: string;
+          family_id?: string | null;
+          title: string;
+          source?: "ai" | "spoonacular" | "manual";
+          instructions?: string | null;
+          image_url?: string | null;
+          prep_time?: number | null;
           cuisine?: string | null;
-          address?: string | null;
-          google_place_id?: string | null;
-          family_id: string;
+          is_favourite?: boolean;
+          spoonacular_id?: number | null;
+          created_by?: string | null;
           created_at?: string;
         };
         Update: {
           id?: string;
-          name?: string;
+          family_id?: string | null;
+          title?: string;
+          source?: "ai" | "spoonacular" | "manual";
+          instructions?: string | null;
+          image_url?: string | null;
+          prep_time?: number | null;
           cuisine?: string | null;
-          address?: string | null;
-          google_place_id?: string | null;
-          family_id?: string;
+          is_favourite?: boolean;
+          spoonacular_id?: number | null;
+          created_by?: string | null;
           created_at?: string;
         };
       };
-      sessions: {
+      recipe_ingredients: {
+        Row: {
+          id: string;
+          recipe_id: string;
+          name: string;
+          quantity: number | null;
+          unit: string | null;
+        };
+        Insert: {
+          id?: string;
+          recipe_id: string;
+          name: string;
+          quantity?: number | null;
+          unit?: string | null;
+        };
+        Update: {
+          id?: string;
+          recipe_id?: string;
+          name?: string;
+          quantity?: number | null;
+          unit?: string | null;
+        };
+      };
+      meal_plans: {
         Row: {
           id: string;
           family_id: string;
-          status: "open" | "voting" | "decided" | "closed";
-          winner_restaurant_id: string | null;
-          created_by: string;
+          week_start_date: string;
           created_at: string;
-          decided_at: string | null;
         };
         Insert: {
           id?: string;
           family_id: string;
-          status?: "open" | "voting" | "decided" | "closed";
-          winner_restaurant_id?: string | null;
-          created_by: string;
+          week_start_date: string;
           created_at?: string;
-          decided_at?: string | null;
         };
         Update: {
           id?: string;
           family_id?: string;
-          status?: "open" | "voting" | "decided" | "closed";
-          winner_restaurant_id?: string | null;
-          created_by?: string;
+          week_start_date?: string;
           created_at?: string;
-          decided_at?: string | null;
+        };
+      };
+      meal_plan_slots: {
+        Row: {
+          id: string;
+          meal_plan_id: string;
+          day_of_week: number;
+          recipe_id: string | null;
+          status: "suggested" | "voted" | "confirmed";
+        };
+        Insert: {
+          id?: string;
+          meal_plan_id: string;
+          day_of_week: number;
+          recipe_id?: string | null;
+          status?: "suggested" | "voted" | "confirmed";
+        };
+        Update: {
+          id?: string;
+          meal_plan_id?: string;
+          day_of_week?: number;
+          recipe_id?: string | null;
+          status?: "suggested" | "voted" | "confirmed";
         };
       };
       votes: {
         Row: {
           id: string;
-          session_id: string;
-          user_id: string;
-          restaurant_id: string;
-          value: number;
+          meal_plan_slot_id: string;
+          member_id: string;
+          value: "up" | "down" | "love";
           created_at: string;
         };
         Insert: {
           id?: string;
-          session_id: string;
-          user_id: string;
-          restaurant_id: string;
-          value: number;
+          meal_plan_slot_id: string;
+          member_id: string;
+          value: "up" | "down" | "love";
           created_at?: string;
         };
         Update: {
           id?: string;
-          session_id?: string;
-          user_id?: string;
-          restaurant_id?: string;
-          value?: number;
+          meal_plan_slot_id?: string;
+          member_id?: string;
+          value?: "up" | "down" | "love";
           created_at?: string;
+        };
+      };
+      shopping_lists: {
+        Row: {
+          id: string;
+          meal_plan_id: string;
+          generated_at: string;
+        };
+        Insert: {
+          id?: string;
+          meal_plan_id: string;
+          generated_at?: string;
+        };
+        Update: {
+          id?: string;
+          meal_plan_id?: string;
+          generated_at?: string;
+        };
+      };
+      shopping_list_items: {
+        Row: {
+          id: string;
+          list_id: string;
+          ingredient_name: string;
+          quantity: number | null;
+          unit: string | null;
+          checked: boolean;
+        };
+        Insert: {
+          id?: string;
+          list_id: string;
+          ingredient_name: string;
+          quantity?: number | null;
+          unit?: string | null;
+          checked?: boolean;
+        };
+        Update: {
+          id?: string;
+          list_id?: string;
+          ingredient_name?: string;
+          quantity?: number | null;
+          unit?: string | null;
+          checked?: boolean;
         };
       };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
     Enums: {
-      session_status: "open" | "voting" | "decided" | "closed";
+      recipe_source: "ai" | "spoonacular" | "manual";
+      slot_status: "suggested" | "voted" | "confirmed";
+      vote_value: "up" | "down" | "love";
       member_role: "admin" | "member";
     };
   };
