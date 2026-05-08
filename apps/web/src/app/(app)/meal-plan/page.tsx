@@ -5,6 +5,9 @@ import { WeeklyCalendar } from "./WeeklyCalendar";
 import type { SlotData, VoteData } from "./WeeklyCalendar";
 import { GeneratePlanButton } from "./GeneratePlanButton";
 import { GenerateShoppingListButton } from "./GenerateShoppingListButton";
+import { AISuggestButton } from "./AISuggestButton";
+import { getAIUsageThisWeek } from "./actions";
+import { FREE_AI_LIMIT } from "./constants";
 import { currentWeekStart } from "./utils";
 
 export default async function MealPlanPage() {
@@ -41,45 +44,66 @@ export default async function MealPlanPage() {
     .maybeSingle();
 
   if (!plan) {
-    const { count: savedCount } = await supabase
-      .from("recipes")
-      .select("id", { count: "exact", head: true })
-      .eq("family_id", membership.family_id);
+    const [{ count: savedCount }, aiUsed] = await Promise.all([
+      supabase
+        .from("recipes")
+        .select("id", { count: "exact", head: true })
+        .eq("family_id", membership.family_id),
+      getAIUsageThisWeek(membership.family_id),
+    ]);
 
     const count = savedCount ?? 0;
+    const aiRemaining = FREE_AI_LIMIT - aiUsed;
 
     return (
       <main className="min-h-screen bg-gray-50">
         <PageHeader weekRange={fmtWeekRange(weekStart)} />
-        <div className="max-w-3xl mx-auto px-6 py-16 flex flex-col items-center text-center gap-6">
-          <div className="w-16 h-16 rounded-2xl bg-orange-50 flex items-center justify-center text-3xl">
-            &#128197;
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
-              No plan for this week yet
-            </h2>
-            {count === 0 ? (
+        <div className="max-w-3xl mx-auto px-6 py-12 space-y-6">
+          <div className="flex flex-col items-center text-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-orange-50 flex items-center justify-center text-3xl">
+              &#128197;
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">
+                No plan for this week yet
+              </h2>
               <p className="text-sm text-gray-500">
-                You need at least one saved recipe before generating a plan.{" "}
-                <Link href="/recipes" className="text-orange-500 hover:underline">
-                  Add some recipes first.
-                </Link>
+                {count > 0
+                  ? `${count} recipe${count !== 1 ? "s" : ""} in your library — or let Claude suggest meals for you.`
+                  : "Let Claude suggest meals, or add your own recipes first."}
               </p>
-            ) : (
-              <p className="text-sm text-gray-500">
-                {count} recipe{count !== 1 ? "s" : ""} saved —{" "}
-                {count < 7
-                  ? `${7 - count} day${7 - count !== 1 ? "s" : ""} will have no recipe assigned`
-                  : "enough to fill the whole week"}.
+            </div>
+          </div>
+
+          <div className="max-w-sm mx-auto w-full space-y-3">
+            <AISuggestButton remaining={aiRemaining} variant="primary" />
+            {count > 0 && (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-gray-200" />
+                  <span className="text-xs text-gray-400">or</span>
+                  <div className="flex-1 h-px bg-gray-200" />
+                </div>
+                <GeneratePlanButton />
+              </>
+            )}
+            {count === 0 && (
+              <p className="text-xs text-center text-gray-400">
+                Or{" "}
+                <Link href="/recipes" className="text-orange-500 hover:underline">
+                  add your own recipes
+                </Link>{" "}
+                first.
               </p>
             )}
           </div>
-          {count > 0 && <GeneratePlanButton />}
         </div>
       </main>
     );
   }
+
+  const aiUsed = await getAIUsageThisWeek(membership.family_id);
+  const aiRemaining = FREE_AI_LIMIT - aiUsed;
 
   // Check if a shopping list exists for this plan
   const { data: existingList } = await supabase
@@ -142,6 +166,17 @@ export default async function MealPlanPage() {
           memberId={membership.id}
           weekStart={weekStart}
         />
+
+        {/* AI suggestions */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="mb-4">
+            <p className="text-sm font-semibold text-gray-900">Suggest with AI</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Claude will generate new recipes and fill any empty days
+            </p>
+          </div>
+          <AISuggestButton remaining={aiRemaining} variant="secondary" />
+        </div>
 
         {/* Shopping list */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">

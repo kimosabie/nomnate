@@ -3,7 +3,163 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { suggestMeals } from "@nomnate/lib/claude";
+import type { SuggestedRecipe } from "@nomnate/types";
 import { currentWeekStart } from "./utils";
+import { FREE_AI_LIMIT } from "./constants";
+
+export async function getAIUsageThisWeek(familyId: string): Promise<number> {
+  const supabase = await createClient();
+  const weekStart = currentWeekStart();
+  const { count } = await supabase
+    .from("recipes")
+    .select("id", { count: "exact", head: true })
+    .eq("family_id", familyId)
+    .eq("source", "ai")
+    .gte("created_at", weekStart + "T00:00:00.000Z");
+  return count ?? 0;
+}
+
+export async function suggestWithAI(
+  _prev: string | null,
+  _formData: FormData
+): Promise<string | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return "Not authenticated";
+
+  const { data: membership } = await supabase
+    .from("family_members")
+    .select("family_id")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (!membership) return "No family found";
+
+  const weekStart = currentWeekStart();
+  const usedThisWeek = await getAIUsageThisWeek(membership.family_id);
+  const remaining = FREE_AI_LIMIT - usedThisWeek;
+
+  if (remaining <= 0) {
+    return "You've used all 5 AI suggestions for this week. Upgrade to Premium for unlimited.";
+  }
+
+  // Gather family context — dietary restrictions only, never PII
+  const { data: members } = await supabase
+    .from("family_members")
+    .select("dietary_restrictions")
+    .eq("family_id", membership.family_id);
+
+  const allRestrictions = [
+    ...new Set(
+      (members ?? []).flatMap((m) => (m.dietary_restrictions as string[]) ?? [])
+    ),
+  ];
+  const familySize = members?.length ?? 1;
+
+  const { data: existingRecipes } = await supabase
+    .from("recipes")
+    .select("title")
+    .eq("family_id", membership.family_id);
+
+  const excludeTitles = (existingRecipes ?? []).map((r) => r.title);
+  const count = Math.min(remaining, 7);
+
+  let suggestions: SuggestedRecipe[];
+  try {
+    suggestions = await suggestMeals({
+      familySize,
+      dietaryRestrictions: allRestrictions,
+      excludeTitles,
+      count,
+    });
+  } catch (err) {
+    return err instanceof Error ? err.message : "AI suggestion failed — try again";
+  }
+
+  // Save generated recipes to the family library
+  const savedIds: string[] = [];
+  for (const s of suggestions) {
+    const { data: saved, error } = await supabase
+      .from("recipes")
+      .insert({
+        family_id: membership.family_id,
+        title: s.title,
+        source: "ai" as const,
+        instructions: s.instructions,
+        prep_time: s.prep_time,
+        cuisine: s.cuisine,
+        created_by: user.id,
+      })
+      .select("id")
+      .single();
+    if (error || !saved) continue;
+
+    if (s.ingredients.length > 0) {
+      await supabase.from("recipe_ingredients").insert(
+        s.ingredients.map((ing) => ({
+          recipe_id: saved.id,
+          name: ing.name,
+          quantity: ing.quantity ?? null,
+          unit: ing.unit || null,
+        }))
+      );
+    }
+    savedIds.push(saved.id);
+  }
+
+  if (savedIds.length === 0) return "Failed to save AI recipes — try again";
+
+  // Create or update the meal plan
+  const { data: existingPlan } = await supabase
+    .from("meal_plans")
+    .select("id")
+    .eq("family_id", membership.family_id)
+    .eq("week_start_date", weekStart)
+    .maybeSingle();
+
+  if (existingPlan) {
+    // Fill empty slots first, then overwrite from the start if all full
+    const { data: emptySlots } = await supabase
+      .from("meal_plan_slots")
+      .select("id")
+      .eq("meal_plan_id", existingPlan.id)
+      .is("recipe_id", null);
+
+    const targets = emptySlots ?? [];
+    for (let i = 0; i < Math.min(targets.length, savedIds.length); i++) {
+      await supabase
+        .from("meal_plan_slots")
+        .update({ recipe_id: savedIds[i] })
+        .eq("id", targets[i].id);
+    }
+  } else {
+    const { data: plan, error: planError } = await supabase
+      .from("meal_plans")
+      .insert({ family_id: membership.family_id, week_start_date: weekStart })
+      .select("id")
+      .single();
+    if (planError) {
+      if (planError.code === "23505") redirect("/meal-plan");
+      return planError.message;
+    }
+
+    const slots = Array.from({ length: 7 }, (_, i) => ({
+      meal_plan_id: plan.id,
+      day_of_week: i,
+      recipe_id: savedIds[i] ?? null,
+      status: "suggested" as const,
+    }));
+    const { error: slotsError } = await supabase
+      .from("meal_plan_slots")
+      .insert(slots);
+    if (slotsError) return slotsError.message;
+  }
+
+  redirect("/meal-plan");
+}
 
 export async function generatePlan(
   _prev: string | null,
