@@ -129,12 +129,14 @@ export async function suggestWithAI(
       .is("recipe_id", null);
 
     const targets = emptySlots ?? [];
-    for (let i = 0; i < Math.min(targets.length, savedIds.length); i++) {
-      await supabase
-        .from("meal_plan_slots")
-        .update({ recipe_id: savedIds[i] })
-        .eq("id", targets[i].id);
-    }
+    await Promise.all(
+      targets.slice(0, savedIds.length).map((target, i) =>
+        supabase
+          .from("meal_plan_slots")
+          .update({ recipe_id: savedIds[i] })
+          .eq("id", target.id)
+      )
+    );
   } else {
     const { data: plan, error: planError } = await supabase
       .from("meal_plans")

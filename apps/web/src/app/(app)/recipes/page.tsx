@@ -53,7 +53,7 @@ export default async function RecipesPage() {
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
             Find &amp; add recipes
           </h2>
-          <RecipeSearch familyId={membership.family_id} />
+          <RecipeSearch />
         </div>
 
         {/* Saved recipes */}

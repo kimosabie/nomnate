@@ -30,14 +30,24 @@ export async function searchSpoonacular(
 }
 
 export async function saveRecipe(
-  recipe: SpoonacularRecipe,
-  familyId: string
+  recipe: SpoonacularRecipe
 ): Promise<string | null> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return "Not authenticated";
+
+  // Always derive familyId server-side — never trust the client
+  const { data: membership } = await supabase
+    .from("family_members")
+    .select("family_id")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (!membership) return "No family found";
+
+  const familyId = membership.family_id;
 
   // Idempotent — if already saved for this family, treat as success
   const { data: existing } = await supabase

@@ -7,7 +7,7 @@ import type { SpoonacularRecipe } from "@nomnate/types";
 
 const initial: SearchState = { results: [], error: null };
 
-export function RecipeSearch({ familyId }: { familyId: string }) {
+export function RecipeSearch() {
   const [state, searchAction, searchPending] = useActionState(
     searchSpoonacular,
     initial
@@ -17,7 +17,7 @@ export function RecipeSearch({ familyId }: { familyId: string }) {
 
   async function handleSave(recipe: SpoonacularRecipe) {
     setSavingId(recipe.id);
-    const error = await saveRecipe(recipe, familyId);
+    const error = await saveRecipe(recipe);
     setSavingId(null);
     if (!error) setSavedIds((prev) => new Set([...prev, recipe.id]));
   }

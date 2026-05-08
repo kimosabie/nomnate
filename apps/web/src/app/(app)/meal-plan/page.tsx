@@ -102,23 +102,23 @@ export default async function MealPlanPage() {
     );
   }
 
-  const aiUsed = await getAIUsageThisWeek(membership.family_id);
+  // Parallel: AI usage, shopping list check, and slots are all independent
+  const [aiUsed, { data: existingList }, { data: rawSlots }] = await Promise.all([
+    getAIUsageThisWeek(membership.family_id),
+    supabase
+      .from("shopping_lists")
+      .select("id")
+      .eq("meal_plan_id", plan.id)
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("meal_plan_slots")
+      .select("id, day_of_week, status, recipe_id")
+      .eq("meal_plan_id", plan.id)
+      .order("day_of_week"),
+  ]);
+
   const aiRemaining = FREE_AI_LIMIT - aiUsed;
-
-  // Check if a shopping list exists for this plan
-  const { data: existingList } = await supabase
-    .from("shopping_lists")
-    .select("id")
-    .eq("meal_plan_id", plan.id)
-    .limit(1)
-    .maybeSingle();
-
-  // Load slots
-  const { data: rawSlots } = await supabase
-    .from("meal_plan_slots")
-    .select("id, day_of_week, status, recipe_id")
-    .eq("meal_plan_id", plan.id)
-    .order("day_of_week");
 
   const slots = rawSlots ?? [];
   const slotIds = slots.map((s) => s.id);

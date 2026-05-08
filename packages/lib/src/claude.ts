@@ -54,7 +54,7 @@ Rules:
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 4096,
+    max_tokens: 8192,
     messages: [{ role: "user", content: prompt }],
   });
 
@@ -62,7 +62,17 @@ Rules:
     message.content[0].type === "text" ? message.content[0].text : "";
 
   const jsonMatch = text.match(/\[[\s\S]*\]/);
-  if (!jsonMatch) throw new Error("Claude returned no JSON array");
+  if (!jsonMatch) throw new Error("AI returned an unexpected response — try again");
 
-  return JSON.parse(jsonMatch[0]) as SuggestedRecipe[];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonMatch[0]);
+  } catch {
+    throw new Error("AI returned malformed JSON — try again");
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error("AI returned no recipes — try again");
+  }
+
+  return parsed as SuggestedRecipe[];
 }

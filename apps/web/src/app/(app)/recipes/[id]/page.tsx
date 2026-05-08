@@ -26,7 +26,7 @@ export default async function RecipeDetailPage({
 
   const { data: recipe } = await supabase
     .from("recipes")
-    .select("*")
+    .select("id, title, image_url, prep_time, cuisine, source, instructions")
     .eq("id", id)
     .eq("family_id", membership.family_id)
     .maybeSingle();
