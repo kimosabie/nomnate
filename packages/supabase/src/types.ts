@@ -245,7 +245,20 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      get_family_by_invite_code: {
+        Args: { code: string };
+        Returns: Array<{ id: string; name: string }>;
+      };
+      is_family_member: {
+        Args: { check_family_id: string };
+        Returns: boolean;
+      };
+      is_family_admin: {
+        Args: { check_family_id: string };
+        Returns: boolean;
+      };
+    };
     Enums: {
       recipe_source: "ai" | "spoonacular" | "manual";
       slot_status: "suggested" | "voted" | "confirmed";

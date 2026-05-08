@@ -11,8 +11,8 @@ export async function signIn(
   const supabase = await createClient();
 
   const { error } = await supabase.auth.signInWithPassword({
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
+    email: String(formData.get("email") ?? "").trim(),
+    password: String(formData.get("password") ?? ""),
   });
 
   if (error) return error.message;
@@ -26,16 +26,25 @@ export async function signUp(
   formData: FormData
 ): Promise<string | null> {
   const supabase = await createClient();
+  const email = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
 
-  const { error } = await supabase.auth.signUp({
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
-  });
+  const { data, error } = await supabase.auth.signUp({ email, password });
 
   if (error) return error.message;
 
+  // If email confirmation is required, session won't exist yet
+  if (!data.session) {
+    // Sign in immediately so the user lands with a valid session
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (signInError) return signInError.message;
+  }
+
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect("/onboarding");
 }
 
 export async function signOut() {

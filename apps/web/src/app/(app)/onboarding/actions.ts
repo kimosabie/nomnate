@@ -14,20 +14,21 @@ export async function createFamily(
   } = await supabase.auth.getUser();
   if (!user) return "Not authenticated";
 
-  const familyName = (formData.get("familyName") as string).trim();
-  const displayName = (formData.get("displayName") as string).trim();
+  const familyName = String(formData.get("familyName") ?? "").trim();
+  const displayName = String(formData.get("displayName") ?? "").trim();
   if (!familyName) return "Family name is required";
   if (!displayName) return "Your name is required";
 
+  // SELECT policy includes created_by = auth.uid(), so RETURNING is safe here
   const { data: family, error } = await supabase
     .from("families")
     .insert({ name: familyName, created_by: user.id })
-    .select()
+    .select("id")
     .single();
 
   if (error) return error.message;
 
-  // The trigger adds the creator as admin; patch their display name
+  // Trigger has added creator as admin — patch their display name
   await supabase
     .from("family_members")
     .update({ name: displayName })
@@ -48,19 +49,17 @@ export async function joinFamily(
   } = await supabase.auth.getUser();
   if (!user) return "Not authenticated";
 
-  const inviteCode = (formData.get("inviteCode") as string)
+  const inviteCode = String(formData.get("inviteCode") ?? "")
     .trim()
     .toUpperCase();
-  const displayName = (formData.get("displayName") as string).trim();
+  const displayName = String(formData.get("displayName") ?? "").trim();
   if (!inviteCode) return "Invite code is required";
   if (!displayName) return "Your name is required";
 
-  const { data: family, error: lookupError } = await supabase
-    .from("families")
-    .select("id, name")
-    .eq("invite_code", inviteCode)
-    .single();
+  const { data: families, error: lookupError } = await supabase
+    .rpc("get_family_by_invite_code", { code: inviteCode });
 
+  const family = families?.[0];
   if (lookupError || !family)
     return "Invalid invite code — double-check and try again";
 
@@ -76,7 +75,11 @@ export async function joinFamily(
     const { error: joinError } = await supabase
       .from("family_members")
       .insert({ family_id: family.id, user_id: user.id, name: displayName });
-    if (joinError) return joinError.message;
+
+    if (joinError) {
+      // 23505 = unique_violation: another request beat us here — already a member, safe to continue
+      if (joinError.code !== "23505") return joinError.message;
+    }
   }
 
   revalidatePath("/", "layout");
