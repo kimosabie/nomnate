@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "../../(auth)/actions";
@@ -99,16 +100,32 @@ export default async function DashboardPage() {
           </ul>
         </div>
 
-        {/* Meal plan CTA */}
-        <div className="bg-orange-500 rounded-2xl p-6 text-white">
-          <p className="text-sm font-medium opacity-80 mb-1">This week</p>
-          <h2 className="text-xl font-bold mb-4">Ready to plan your meals?</h2>
-          <button
-            disabled
-            className="bg-white text-orange-500 font-semibold text-sm px-5 py-2.5 rounded-lg opacity-70 cursor-not-allowed"
+        {/* Quick links */}
+        <div className="grid grid-cols-2 gap-3">
+          <Link
+            href="/recipes"
+            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:border-orange-200 transition-colors"
           >
-            Coming soon — meal planning
-          </button>
+            <p className="text-2xl mb-2">&#127859;</p>
+            <p className="text-sm font-semibold text-gray-900">Recipes</p>
+            <p className="text-xs text-gray-400 mt-0.5">Browse &amp; save recipes</p>
+          </Link>
+          <Link
+            href="/meal-plan"
+            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:border-orange-200 transition-colors"
+          >
+            <p className="text-2xl mb-2">&#128197;</p>
+            <p className="text-sm font-semibold text-gray-900">Meal plan</p>
+            <p className="text-xs text-gray-400 mt-0.5">Vote on this week</p>
+          </Link>
+          <Link
+            href="/shopping-list"
+            className="col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:border-orange-200 transition-colors"
+          >
+            <p className="text-2xl mb-2">&#128722;</p>
+            <p className="text-sm font-semibold text-gray-900">Shopping list</p>
+            <p className="text-xs text-gray-400 mt-0.5">Ingredients with SA store links</p>
+          </Link>
         </div>
       </div>
     </main>
