@@ -1,37 +1,42 @@
-export type StoreKey = "woolworths" | "sixty60" | "pnp";
+export type StoreKey = "woolworths" | "checkers" | "pnp";
 
-export const STORES = [
+export const STORES: {
+  key: StoreKey;
+  label: string;
+  shopUrl: string;
+  searchUrl: (q: string) => string;
+  badgeBg: string;
+  badgeText: string;
+  selectBg: string;
+}[] = [
   {
-    key: "woolworths" as StoreKey,
+    key: "woolworths",
     label: "Woolworths",
     shopUrl: "https://www.woolworths.co.za/cat/_/N-lllp31",
-    searchUrl: (q: string) =>
-      `https://www.woolworths.co.za/cat?Ntt=${encodeURIComponent(q)}`,
-    headerBg: "bg-[#f5f0eb]",
-    headerText: "text-[#4a3728]",
-    countBg: "bg-[#e8ddd4] text-[#4a3728]",
+    searchUrl: (q) => `https://www.woolworths.co.za/cat?Ntt=${encodeURIComponent(q)}`,
+    badgeBg: "bg-[#f5f0eb]",
+    badgeText: "text-[#4a3728]",
+    selectBg: "#f5f0eb",
   },
   {
-    key: "sixty60" as StoreKey,
-    label: "Sixty60",
+    key: "checkers",
+    label: "Checkers / Sixty60",
     shopUrl: "https://www.sixty60.co.za/",
-    searchUrl: (q: string) =>
-      `https://www.sixty60.co.za/search?q=${encodeURIComponent(q)}`,
-    headerBg: "bg-[#ffe600]",
-    headerText: "text-[#1a1a1a]",
-    countBg: "bg-[#e5cf00] text-[#1a1a1a]",
+    searchUrl: (q) => `https://www.sixty60.co.za/search?q=${encodeURIComponent(q)}`,
+    badgeBg: "bg-[#fff9db]",
+    badgeText: "text-[#6b5a00]",
+    selectBg: "#fff9db",
   },
   {
-    key: "pnp" as StoreKey,
+    key: "pnp",
     label: "Pick n Pay",
     shopUrl: "https://www.pnp.co.za/",
-    searchUrl: (q: string) =>
-      `https://www.pnp.co.za/pnpstorefront/search?q=${encodeURIComponent(q)}`,
-    headerBg: "bg-[#e2001a]",
-    headerText: "text-white",
-    countBg: "bg-[#bf0016] text-white",
+    searchUrl: (q) => `https://www.pnp.co.za/pnpstorefront/search?q=${encodeURIComponent(q)}`,
+    badgeBg: "bg-red-50",
+    badgeText: "text-red-700",
+    selectBg: "#fef2f2",
   },
-] as const;
+];
 
 // Woolworths: specialty, premium, or hard-to-find items
 const WOOLWORTHS_TERMS = [
@@ -85,10 +90,10 @@ const PNP_TERMS = [
   "oats", "oatmeal", "granola", "muesli",
 ];
 
-// Default to Sixty60 — fresh produce, meat, dairy, general grocery
+// Default to Checkers/Sixty60 — fresh produce, meat, dairy, general grocery
 export function assignStore(ingredientName: string): StoreKey {
   const name = ingredientName.toLowerCase();
   if (WOOLWORTHS_TERMS.some((t) => name.includes(t))) return "woolworths";
   if (PNP_TERMS.some((t) => name.includes(t))) return "pnp";
-  return "sixty60";
+  return "checkers";
 }

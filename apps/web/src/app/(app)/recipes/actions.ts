@@ -97,6 +97,26 @@ export async function saveRecipe(
   return null;
 }
 
+export async function deleteRecipe(recipeId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return "Not authenticated";
+
+  const { error } = await supabase
+    .from("recipes")
+    .delete()
+    .eq("id", recipeId)
+    .eq("created_by", user.id);
+
+  if (error) return error.message;
+
+  revalidatePath("/recipes");
+  revalidatePath("/meal-plan");
+  return null;
+}
+
 export async function toggleFavourite(formData: FormData): Promise<void> {
   const supabase = await createClient();
   const {

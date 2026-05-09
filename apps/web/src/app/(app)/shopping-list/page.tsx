@@ -42,7 +42,7 @@ export default async function ShoppingListPage() {
   const items = shoppingList
     ? await supabase
         .from("shopping_list_items")
-        .select("id, ingredient_name, quantity, unit, checked")
+        .select("id, ingredient_name, quantity, unit, checked, store")
         .eq("list_id", shoppingList.id)
         .order("ingredient_name")
         .then((r) => r.data ?? [])

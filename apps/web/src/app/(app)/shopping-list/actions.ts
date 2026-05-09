@@ -3,6 +3,22 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
+export async function setItemStore(itemId: string, store: string | null): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const valid = ["woolworths", "pnp", "checkers", null];
+  if (!valid.includes(store)) return;
+
+  await supabase
+    .from("shopping_list_items")
+    .update({ store })
+    .eq("id", itemId);
+}
+
 export async function toggleItem(itemId: string, checked: boolean): Promise<string | null> {
   const supabase = await createClient();
   const {

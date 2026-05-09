@@ -13,7 +13,7 @@ export default async function ProfilePage() {
   const { data: member } = await supabase
     .from("family_members")
     .select(
-      "name, dietary_restrictions, cuisine_preferences, ingredient_dislikes"
+      "name, dietary_restrictions, cuisine_preferences, ingredient_dislikes, allergies, liked_ingredients"
     )
     .eq("user_id", user.id)
     .limit(1)
@@ -44,6 +44,8 @@ export default async function ProfilePage() {
           dietaryRestrictions={(member.dietary_restrictions as string[]) ?? []}
           cuisinePreferences={(member.cuisine_preferences as string[]) ?? []}
           ingredientDislikes={(member.ingredient_dislikes as string[]) ?? []}
+          allergies={(member.allergies as string[]) ?? []}
+          likedIngredients={(member.liked_ingredients as string[]) ?? []}
         />
       </div>
     </main>

@@ -3,6 +3,25 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { RecipeSearch } from "./RecipeSearch";
 import { toggleFavourite } from "./actions";
+import { DeleteRecipeButton } from "./DeleteRecipeButton";
+import { RecipeListClient } from "./RecipeListClient";
+
+function cuisineEmoji(cuisine: string | null): string {
+  if (!cuisine) return "🍽️";
+  const c = cuisine.toLowerCase();
+  if (c.includes("italian")) return "🍝";
+  if (c.includes("south african") || c.includes("braai")) return "🍖";
+  if (c.includes("indian")) return "🍛";
+  if (c.includes("asian") || c.includes("chinese") || c.includes("japanese") || c.includes("korean")) return "🍜";
+  if (c.includes("mexican") || c.includes("tex-mex")) return "🌮";
+  if (c.includes("mediterranean") || c.includes("greek")) return "🥗";
+  if (c.includes("middle eastern") || c.includes("turkish")) return "🫒";
+  if (c.includes("american")) return "🍔";
+  if (c.includes("french")) return "🥐";
+  if (c.includes("thai")) return "🥢";
+  if (c.includes("portuguese")) return "🥩";
+  return "🍽️";
+}
 
 export default async function RecipesPage() {
   const supabase = await createClient();
@@ -20,17 +39,55 @@ export default async function RecipesPage() {
 
   if (!membership) redirect("/onboarding");
 
-  const { data: recipes } = await supabase
-    .from("recipes")
-    .select(
-      "id, title, image_url, prep_time, cuisine, is_favourite, source, created_by"
-    )
-    .eq("family_id", membership.family_id)
-    .order("is_favourite", { ascending: false })
-    .order("created_at", { ascending: false });
+  const [{ data: recipes }, { data: members }] = await Promise.all([
+    supabase
+      .from("recipes")
+      .select("id, title, image_url, prep_time, cuisine, is_favourite, source, created_by")
+      .eq("family_id", membership.family_id)
+      .order("is_favourite", { ascending: false })
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("family_members")
+      .select("name, dietary_restrictions, ingredient_dislikes, allergies")
+      .eq("family_id", membership.family_id),
+  ]);
 
-  const favourites = recipes?.filter((r) => r.is_favourite) ?? [];
-  const rest = recipes?.filter((r) => !r.is_favourite) ?? [];
+  // Build conflict map: recipe id → member names with conflicts
+  const conflictMap = new Map<string, string[]>();
+  const recipeIds = recipes?.map((r) => r.id) ?? [];
+
+  if (recipeIds.length > 0 && members && members.length > 0) {
+    const { data: ingredients } = await supabase
+      .from("recipe_ingredients")
+      .select("recipe_id, name")
+      .in("recipe_id", recipeIds);
+
+    if (ingredients) {
+      for (const row of ingredients) {
+        const ingName = row.name.toLowerCase();
+        for (const member of members) {
+          const terms = [
+            ...((member.allergies as string[]) ?? []),
+            ...((member.ingredient_dislikes as string[]) ?? []),
+          ];
+          if (terms.some((t) => ingName.includes(t.toLowerCase()))) {
+            const existing = conflictMap.get(row.recipe_id) ?? [];
+            const mName = member.name ?? "A member";
+            if (!existing.includes(mName)) {
+              conflictMap.set(row.recipe_id, [...existing, mName]);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  const annotated = (recipes ?? []).map((r) => ({
+    ...r,
+    emoji: cuisineEmoji(r.cuisine),
+    conflicts: conflictMap.get(r.id) ?? [],
+    isOwner: r.created_by === user.id,
+  }));
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -58,79 +115,10 @@ export default async function RecipesPage() {
 
         {/* Saved recipes */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
-            Family recipes ({recipes?.length ?? 0})
-          </h2>
-
-          {!recipes?.length ? (
-            <p className="text-sm text-gray-400 text-center py-8">
-              No recipes saved yet — search above to add some
-            </p>
-          ) : (
-            <ul className="divide-y divide-gray-50">
-              {[...favourites, ...rest].map((r) => (
-                <li key={r.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                  <Link href={`/recipes/${r.id}`} className="flex items-center gap-3 flex-1 min-w-0">
-                    {r.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={r.image_url}
-                        alt=""
-                        className="w-12 h-12 rounded-lg object-cover shrink-0"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 rounded-lg bg-orange-50 shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {r.title}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {[
-                          r.prep_time ? `${r.prep_time} min` : null,
-                          r.cuisine,
-                          !r.prep_time && !r.cuisine ? "Spoonacular" : null,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </p>
-                    </div>
-                  </Link>
-                  {r.created_by === user.id ? (
-                    <form action={toggleFavourite} className="shrink-0 flex items-center">
-                      <input type="hidden" name="recipeId" value={r.id} />
-                      <input
-                        type="hidden"
-                        name="isFavourite"
-                        value={String(r.is_favourite)}
-                      />
-                      <button
-                        type="submit"
-                        title={
-                          r.is_favourite
-                            ? "Remove from favourites"
-                            : "Add to favourites"
-                        }
-                        className={`text-xl shrink-0 transition-transform hover:scale-110 leading-none ${
-                          r.is_favourite ? "text-orange-400" : "text-gray-300"
-                        }`}
-                      >
-                        &#9733;
-                      </button>
-                    </form>
-                  ) : (
-                    <span
-                      className={`text-xl shrink-0 leading-none ${
-                        r.is_favourite ? "text-orange-400" : "text-gray-200"
-                      }`}
-                    >
-                      &#9733;
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+          <RecipeListClient
+            recipes={annotated}
+            toggleFavourite={toggleFavourite}
+          />
         </div>
       </div>
     </main>

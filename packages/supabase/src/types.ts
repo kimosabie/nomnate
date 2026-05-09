@@ -21,6 +21,7 @@ export type Database = {
           id: string
           invite_code: string
           name: string
+          preferred_stores: string[]
         }
         Insert: {
           created_at?: string
@@ -28,6 +29,7 @@ export type Database = {
           id?: string
           invite_code?: string
           name: string
+          preferred_stores?: string[]
         }
         Update: {
           created_at?: string
@@ -35,11 +37,13 @@ export type Database = {
           id?: string
           invite_code?: string
           name?: string
+          preferred_stores?: string[]
         }
         Relationships: []
       }
       family_members: {
         Row: {
+          allergies: string[]
           avatar_url: string | null
           cuisine_preferences: string[]
           dietary_restrictions: string[]
@@ -47,11 +51,13 @@ export type Database = {
           id: string
           ingredient_dislikes: string[]
           joined_at: string
+          liked_ingredients: string[]
           name: string | null
           role: string
           user_id: string
         }
         Insert: {
+          allergies?: string[]
           avatar_url?: string | null
           cuisine_preferences?: string[]
           dietary_restrictions?: string[]
@@ -59,11 +65,13 @@ export type Database = {
           id?: string
           ingredient_dislikes?: string[]
           joined_at?: string
+          liked_ingredients?: string[]
           name?: string | null
           role?: string
           user_id: string
         }
         Update: {
+          allergies?: string[]
           avatar_url?: string | null
           cuisine_preferences?: string[]
           dietary_restrictions?: string[]
@@ -71,6 +79,7 @@ export type Database = {
           id?: string
           ingredient_dislikes?: string[]
           joined_at?: string
+          liked_ingredients?: string[]
           name?: string | null
           role?: string
           user_id?: string
@@ -245,6 +254,7 @@ export type Database = {
           ingredient_name: string
           list_id: string
           quantity: number | null
+          store: string | null
           unit: string | null
         }
         Insert: {
@@ -253,6 +263,7 @@ export type Database = {
           ingredient_name: string
           list_id: string
           quantity?: number | null
+          store?: string | null
           unit?: string | null
         }
         Update: {
@@ -261,6 +272,7 @@ export type Database = {
           ingredient_name?: string
           list_id?: string
           quantity?: number | null
+          store?: string | null
           unit?: string | null
         }
         Relationships: [

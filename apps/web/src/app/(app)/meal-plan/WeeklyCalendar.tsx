@@ -55,6 +55,22 @@ function dayDate(weekStart: string, dow: number): string {
   return d.toLocaleDateString("en-ZA", { day: "numeric", month: "short" });
 }
 
+function cuisineEmoji(cuisine: string | null): string {
+  if (!cuisine) return "🍽️";
+  const c = cuisine.toLowerCase();
+  if (c.includes("italian")) return "🍝";
+  if (c.includes("south african") || c.includes("braai")) return "🍖";
+  if (c.includes("indian")) return "🍛";
+  if (c.includes("asian") || c.includes("chinese") || c.includes("japanese") || c.includes("korean")) return "🍜";
+  if (c.includes("mexican")) return "🌮";
+  if (c.includes("mediterranean") || c.includes("greek")) return "🥗";
+  if (c.includes("middle eastern")) return "🫒";
+  if (c.includes("american")) return "🍔";
+  if (c.includes("french")) return "🥐";
+  if (c.includes("thai")) return "🥢";
+  return "🍽️";
+}
+
 export function WeeklyCalendar({
   slots,
   initialVotes,
@@ -72,25 +88,21 @@ export function WeeklyCalendar({
 }) {
   const supabase = useMemo(() => createClient(), []);
 
-  // Votes state
   const [votes, setVotes] = useState<VoteData[]>(initialVotes);
   const [voteError, setVoteError] = useState<string | null>(null);
 
-  // Slot recipes (optimistic map)
   const [slotRecipes, setSlotRecipes] = useState<Map<string, RecipeData | null>>(
     () => new Map(slots.map((s) => [s.id, s.recipe]))
   );
 
-  // Recipe library (grows when per-slot AI adds new ones)
   const [allRecipes, setAllRecipes] = useState<RecipeData[]>(initialRecipes);
   const [aiRemaining, setAiRemaining] = useState(initialAiRemaining);
 
-  // Picker state
-  const [pickerSlotId, setPickerSlotId] = useState<string | null>(null);
+  // Inline picker state — which slot has its picker open
+  const [openSlotId, setOpenSlotId] = useState<string | null>(null);
   const [pickerSearch, setPickerSearch] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
 
-  // Per-slot loading & error
   const [loadingSlot, setLoadingSlot] = useState<string | null>(null);
   const [slotError, setSlotError] = useState<string | null>(null);
 
@@ -110,9 +122,7 @@ export function WeeklyCalendar({
           const deleted = (payload.old ?? {}) as Partial<VoteData>;
 
           if (payload.eventType === "DELETE") {
-            if (deleted.id) {
-              setVotes((prev) => prev.filter((v) => v.id !== deleted.id));
-            }
+            if (deleted.id) setVotes((prev) => prev.filter((v) => v.id !== deleted.id));
             return;
           }
 
@@ -121,11 +131,7 @@ export function WeeklyCalendar({
           const vote = incoming as VoteData;
           setVotes((prev) => {
             const without = prev.filter(
-              (v) =>
-                !(
-                  v.meal_plan_slot_id === vote.meal_plan_slot_id &&
-                  v.member_id === vote.member_id
-                )
+              (v) => !(v.meal_plan_slot_id === vote.meal_plan_slot_id && v.member_id === vote.member_id)
             );
             return [...without, vote];
           });
@@ -137,10 +143,19 @@ export function WeeklyCalendar({
         }
       });
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [supabase, slots]);
+
+  function openPicker(slotId: string) {
+    setSlotError(null);
+    setPickerSearch("");
+    setOpenSlotId((prev) => (prev === slotId ? null : slotId));
+  }
+
+  function closePicker() {
+    setOpenSlotId(null);
+    setPickerSearch("");
+  }
 
   function handleVote(slotId: string, value: VoteValue) {
     setVoteError(null);
@@ -161,17 +176,6 @@ export function WeeklyCalendar({
         setVoteError(error);
       }
     });
-  }
-
-  function openPicker(slotId: string) {
-    setSlotError(null);
-    setPickerSearch("");
-    setPickerSlotId(slotId);
-  }
-
-  function closePicker() {
-    setPickerSlotId(null);
-    setPickerSearch("");
   }
 
   async function handleRemove(slotId: string) {
@@ -224,192 +228,165 @@ export function WeeklyCalendar({
   }
 
   const sorted = [...slots].sort((a, b) => a.day_of_week - b.day_of_week);
-  const pickerSlot = sorted.find((s) => s.id === pickerSlotId);
 
   const filteredRecipes = allRecipes.filter((r) =>
     r.title.toLowerCase().includes(pickerSearch.toLowerCase())
   );
 
   return (
-    <>
-      <div className="space-y-3">
-        {(voteError || slotError) && (
-          <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-lg">
-            {voteError || slotError}
-          </p>
-        )}
+    <div className="space-y-3">
+      {(voteError || slotError) && (
+        <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-lg">
+          {voteError || slotError}
+        </p>
+      )}
 
-        {aiLoading && (
-          <p className="text-sm text-orange-600 bg-orange-50 px-4 py-3 rounded-lg">
-            Claude is suggesting a meal&hellip;
-          </p>
-        )}
+      {aiLoading && (
+        <p className="text-sm text-orange-600 bg-orange-50 px-4 py-3 rounded-lg">
+          Claude is suggesting a meal&hellip;
+        </p>
+      )}
 
-        {sorted.map((slot) => {
-          const recipe = slotRecipes.get(slot.id) ?? null;
-          const slotVotes = votes.filter((v) => v.meal_plan_slot_id === slot.id);
-          const myVote = slotVotes.find((v) => v.member_id === memberId)?.value ?? null;
-          const counts = { love: 0, up: 0, down: 0 };
-          slotVotes.forEach((v) => counts[v.value]++);
-          const isLoading = loadingSlot === slot.id;
+      {sorted.map((slot) => {
+        const recipe = slotRecipes.get(slot.id) ?? null;
+        const slotVotes = votes.filter((v) => v.meal_plan_slot_id === slot.id);
+        const myVote = slotVotes.find((v) => v.member_id === memberId)?.value ?? null;
+        const counts = { love: 0, up: 0, down: 0 };
+        slotVotes.forEach((v) => counts[v.value]++);
+        const isLoading = loadingSlot === slot.id;
+        const isOpen = openSlotId === slot.id;
 
-          return (
-            <div
-              key={slot.id}
-              className={`bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-opacity ${
-                isLoading ? "opacity-60 pointer-events-none" : ""
-              }`}
-            >
-              {/* Day header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
-                <span className="text-sm font-semibold text-gray-900">
-                  {DAY_NAMES[slot.day_of_week]}
-                </span>
-                <span className="text-xs text-gray-400">
-                  {dayDate(weekStart, slot.day_of_week)}
-                </span>
-              </div>
+        return (
+          <div
+            key={slot.id}
+            className={`bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-opacity ${
+              isLoading ? "opacity-60 pointer-events-none" : ""
+            }`}
+          >
+            {/* Day header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+              <span className="text-sm font-semibold text-gray-900">
+                {DAY_NAMES[slot.day_of_week]}
+              </span>
+              <span className="text-xs text-gray-400">
+                {dayDate(weekStart, slot.day_of_week)}
+              </span>
+            </div>
 
-              {/* Recipe or empty state */}
-              {recipe ? (
-                <div className="flex items-center gap-3 px-4 py-3">
-                  {recipe.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={recipe.image_url}
-                      alt=""
-                      className="w-14 h-14 rounded-xl object-cover shrink-0"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-xl bg-orange-50 shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {recipe.title}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {[
-                        recipe.prep_time ? `${recipe.prep_time} min` : null,
-                        recipe.cuisine,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
+            {/* Recipe or add button */}
+            {recipe ? (
+              <div className="flex items-center gap-3 px-4 py-3">
+                {recipe.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={recipe.image_url}
+                    alt=""
+                    className="w-14 h-14 rounded-xl object-cover shrink-0"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-xl bg-orange-50 shrink-0 flex items-center justify-center text-2xl">
+                    {cuisineEmoji(recipe.cuisine)}
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => openPicker(slot.id)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
-                      aria-label="Change meal"
-                      title="Change meal"
-                    >
-                      ⇄
-                    </button>
-                    <button
-                      onClick={() => handleRemove(slot.id)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                      aria-label="Remove meal"
-                      title="Remove meal"
-                    >
-                      ✕
-                    </button>
-                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {recipe.title}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {[
+                      recipe.prep_time ? `${recipe.prep_time} min` : null,
+                      recipe.cuisine,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
                 </div>
-              ) : (
-                <div className="px-4 py-3">
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => openPicker(slot.id)}
-                    className="w-full flex items-center gap-2 text-sm text-gray-400 hover:text-orange-500 transition-colors"
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      isOpen
+                        ? "bg-orange-100 text-orange-600"
+                        : "text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+                    }`}
+                    aria-label="Change meal"
+                    title="Change meal"
                   >
-                    <span className="text-xl leading-none font-light">+</span>
-                    <span>Add a meal</span>
+                    ⇄
+                  </button>
+                  <button
+                    onClick={() => handleRemove(slot.id)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    aria-label="Remove meal"
+                    title="Remove meal"
+                  >
+                    ✕
                   </button>
                 </div>
-              )}
-
-              {/* Vote buttons */}
-              {recipe && (
-                <div className="flex gap-2 px-4 pb-4">
-                  {(["love", "up", "down"] as VoteValue[]).map((val) => {
-                    const { label, symbol, active, inactive } = VOTE_CONFIG[val];
-                    const isActive = myVote === val;
-                    return (
-                      <button
-                        key={val}
-                        onClick={() => handleVote(slot.id, val)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                          isActive ? active : inactive
-                        }`}
-                      >
-                        <span>{symbol}</span>
-                        <span>{label}</span>
-                        {counts[val] > 0 && (
-                          <span className={`${isActive ? "opacity-80" : "opacity-60"}`}>
-                            {counts[val]}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Recipe picker modal */}
-      {pickerSlotId && (
-        <div
-          className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) closePicker();
-          }}
-        >
-          <div className="bg-white rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col shadow-xl">
-            {/* Picker header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Pick a meal</p>
-                {pickerSlot && (
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {DAY_NAMES[pickerSlot.day_of_week]},{" "}
-                    {dayDate(weekStart, pickerSlot.day_of_week)}
-                  </p>
-                )}
               </div>
-              <button
-                onClick={closePicker}
-                className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                aria-label="Close"
-              >
-                ✕
-              </button>
-            </div>
+            ) : (
+              <div className="px-4 py-3">
+                <button
+                  onClick={() => openPicker(slot.id)}
+                  className={`w-full flex items-center gap-2 text-sm transition-colors ${
+                    isOpen ? "text-orange-500" : "text-gray-400 hover:text-orange-500"
+                  }`}
+                >
+                  <span className="text-xl leading-none font-light">+</span>
+                  <span>Add a meal</span>
+                </button>
+              </div>
+            )}
 
-            <div className="flex-1 overflow-y-auto">
-              {/* AI suggest for this slot */}
-              {aiRemaining > 0 && (
-                <div className="px-5 pt-4 pb-2">
+            {/* Vote buttons */}
+            {recipe && !isOpen && (
+              <div className="flex gap-2 px-4 pb-4">
+                {(["love", "up", "down"] as VoteValue[]).map((val) => {
+                  const { label, symbol, active, inactive } = VOTE_CONFIG[val];
+                  const isActive = myVote === val;
+                  return (
+                    <button
+                      key={val}
+                      onClick={() => handleVote(slot.id, val)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                        isActive ? active : inactive
+                      }`}
+                    >
+                      <span>{symbol}</span>
+                      <span>{label}</span>
+                      {counts[val] > 0 && (
+                        <span className={isActive ? "opacity-80" : "opacity-60"}>
+                          {counts[val]}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Inline recipe picker */}
+            {isOpen && (
+              <div className="border-t border-gray-100 px-3 pb-3 pt-2 space-y-2">
+                {/* AI suggest */}
+                {aiRemaining > 0 && (
                   <button
-                    onClick={() => handleAISuggest(pickerSlotId)}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-orange-50 hover:bg-orange-100 transition-colors text-left"
+                    onClick={() => handleAISuggest(slot.id)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-orange-50 hover:bg-orange-100 transition-colors text-left"
                   >
-                    <span className="text-lg shrink-0">✨</span>
+                    <span className="text-base shrink-0">✨</span>
                     <div>
-                      <p className="text-sm font-semibold text-orange-700">
+                      <p className="text-xs font-semibold text-orange-700">
                         AI suggest for this day
                       </p>
-                      <p className="text-xs text-orange-500">
+                      <p className="text-xs text-orange-400">
                         {aiRemaining} of 5 remaining this week
                       </p>
                     </div>
                   </button>
-                </div>
-              )}
+                )}
 
-              {/* Search */}
-              <div className="px-5 pt-3 pb-2">
+                {/* Search */}
                 <input
                   type="text"
                   placeholder="Search your recipes…"
@@ -419,53 +396,54 @@ export function WeeklyCalendar({
                   // eslint-disable-next-line jsx-a11y/no-autofocus
                   autoFocus
                 />
-              </div>
 
-              {/* Recipe list */}
-              <div className="px-5 pb-5 space-y-1">
-                {filteredRecipes.length === 0 ? (
-                  <p className="text-sm text-gray-400 text-center py-6">No recipes found</p>
-                ) : (
-                  filteredRecipes.map((recipe) => (
-                    <button
-                      key={recipe.id}
-                      onClick={() => handleAssign(pickerSlotId, recipe)}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors text-left"
-                    >
-                      {recipe.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={recipe.image_url}
-                          alt=""
-                          className="w-10 h-10 rounded-lg object-cover shrink-0"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-lg bg-orange-50 shrink-0" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {recipe.title}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {[
-                            recipe.prep_time ? `${recipe.prep_time} min` : null,
-                            recipe.cuisine,
-                          ]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </p>
-                      </div>
-                      <span className="text-xs font-semibold text-orange-500 shrink-0">
-                        Pick
-                      </span>
-                    </button>
-                  ))
-                )}
+                {/* Recipe list */}
+                <div className="max-h-52 overflow-y-auto space-y-0.5">
+                  {filteredRecipes.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center py-4">
+                      No recipes found
+                    </p>
+                  ) : (
+                    filteredRecipes.map((r) => (
+                      <button
+                        key={r.id}
+                        onClick={() => handleAssign(slot.id, r)}
+                        className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors text-left"
+                      >
+                        {r.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={r.image_url}
+                            alt=""
+                            className="w-8 h-8 rounded-md object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-md bg-orange-50 shrink-0 flex items-center justify-center text-sm">
+                            {cuisineEmoji(r.cuisine)}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {r.title}
+                          </p>
+                          <p className="text-xs text-gray-400 truncate">
+                            {[r.prep_time ? `${r.prep_time} min` : null, r.cuisine]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </p>
+                        </div>
+                        <span className="text-xs font-semibold text-orange-500 shrink-0">
+                          Pick
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
-        </div>
-      )}
-    </>
+        );
+      })}
+    </div>
   );
 }
