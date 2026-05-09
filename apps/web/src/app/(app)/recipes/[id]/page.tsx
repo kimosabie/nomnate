@@ -2,6 +2,60 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
+// Parses raw instructions (HTML from Spoonacular or plain text from Claude)
+// into an ordered array of step strings.
+function parseInstructions(raw: string): string[] {
+  const s = raw.trim();
+  if (!s) return [];
+
+  // HTML path — extract text from <li> elements (Spoonacular format)
+  if (/<li/i.test(s)) {
+    const steps: string[] = [];
+    const re = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+    let m;
+    while ((m = re.exec(s)) !== null) {
+      const text = m[1]
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&#?\w+;/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (text) steps.push(text);
+    }
+    if (steps.length > 0) return steps;
+    // Fallback: strip all tags and return as single paragraph
+    const stripped = s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    return stripped ? [stripped] : [];
+  }
+
+  // Plain text path — numbered list on separate lines: "1. ...\n2. ..."
+  const lines = s.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length > 1 && lines.every((l) => /^\d+[.)]\s/.test(l))) {
+    return lines.map((l) => l.replace(/^\d+[.)]\s+/, "").trim());
+  }
+
+  // Numbered steps mixed with continuation lines — split on line-initial numbers
+  const byNumber = s
+    .split(/\n(?=\d+[.)]\s)/)
+    .map((chunk) => chunk.replace(/^\d+[.)]\s+/, "").trim())
+    .filter(Boolean);
+  if (byNumber.length > 1) return byNumber;
+
+  // Double-newline separated paragraphs
+  if (s.includes("\n\n")) {
+    return s.split(/\n\n+/).map((p) => p.replace(/\n/g, " ").trim()).filter(Boolean);
+  }
+
+  // Single-newline separated lines
+  if (lines.length > 1) return lines;
+
+  // Single block of text
+  return [s];
+}
+
 export default async function RecipeDetailPage({
   params,
 }: {
@@ -21,7 +75,6 @@ export default async function RecipeDetailPage({
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
-
   if (!membership) redirect("/onboarding");
 
   const { data: recipe } = await supabase
@@ -37,6 +90,8 @@ export default async function RecipeDetailPage({
     .from("recipe_ingredients")
     .select("id, name, quantity, unit")
     .eq("recipe_id", id);
+
+  const steps = recipe.instructions ? parseInstructions(recipe.instructions) : [];
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -67,13 +122,30 @@ export default async function RecipeDetailPage({
 
         {/* Meta */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <h1 className="text-xl font-bold text-gray-900 mb-3">{recipe.title}</h1>
-          <div className="flex flex-wrap gap-2">
-            {recipe.prep_time && (
-              <span className="text-xs bg-orange-50 text-orange-700 font-medium px-3 py-1 rounded-full">
-                {recipe.prep_time} min
-              </span>
-            )}
+          <h1 className="text-xl font-bold text-gray-900">{recipe.title}</h1>
+
+          {/* Stats row */}
+          {(recipe.prep_time || steps.length > 0) && (
+            <div className="flex gap-6 mt-4">
+              {recipe.prep_time && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Total time</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {recipe.prep_time} min
+                  </p>
+                </div>
+              )}
+              {steps.length > 1 && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Steps</p>
+                  <p className="text-sm font-semibold text-gray-900">{steps.length}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tags */}
+          <div className="flex flex-wrap gap-2 mt-4">
             {recipe.cuisine && (
               <span className="text-xs bg-gray-100 text-gray-600 font-medium px-3 py-1 rounded-full">
                 {recipe.cuisine}
@@ -93,7 +165,10 @@ export default async function RecipeDetailPage({
             </h2>
             <ul className="space-y-2">
               {ingredients.map((ing) => (
-                <li key={ing.id} className="flex items-start gap-2.5 text-sm text-gray-700">
+                <li
+                  key={ing.id}
+                  className="flex items-start gap-2.5 text-sm text-gray-700"
+                >
                   <span className="mt-2 w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
                   <span>
                     {ing.quantity != null
@@ -107,15 +182,28 @@ export default async function RecipeDetailPage({
         )}
 
         {/* Instructions */}
-        {recipe.instructions && (
+        {steps.length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
-              Instructions
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-5">
+              Method
             </h2>
-            <div
-              className="text-sm text-gray-700 leading-relaxed [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-2 [&_li]:leading-relaxed [&_p]:mb-3 [&_p:last-child]:mb-0"
-              dangerouslySetInnerHTML={{ __html: recipe.instructions }}
-            />
+
+            {steps.length === 1 ? (
+              <p className="text-sm text-gray-700 leading-relaxed">{steps[0]}</p>
+            ) : (
+              <ol className="space-y-5">
+                {steps.map((step, i) => (
+                  <li key={i} className="flex gap-4">
+                    <div className="shrink-0 w-6 h-6 rounded-full bg-orange-100 text-orange-600 text-xs font-bold flex items-center justify-center mt-0.5">
+                      {i + 1}
+                    </div>
+                    <p className="flex-1 text-sm text-gray-700 leading-relaxed">
+                      {step}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            )}
           </div>
         )}
       </div>
