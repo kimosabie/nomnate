@@ -49,7 +49,7 @@ export async function suggestWithAI(
   // Gather family context — preferences only, never PII
   const { data: members } = await supabase
     .from("family_members")
-    .select("dietary_restrictions, cuisine_preferences, ingredient_dislikes")
+    .select("dietary_restrictions, cuisine_preferences, ingredient_dislikes, liked_ingredients, diet_types, daily_calorie_target")
     .eq("family_id", membership.family_id);
 
   const allRestrictions = [
@@ -67,6 +67,19 @@ export async function suggestWithAI(
       (members ?? []).flatMap((m) => (m.ingredient_dislikes as string[]) ?? [])
     ),
   ];
+  const allLiked = [
+    ...new Set(
+      (members ?? []).flatMap((m) => (m.liked_ingredients as string[]) ?? [])
+    ),
+  ];
+  const allDietTypes = [
+    ...new Set(
+      (members ?? []).flatMap((m) => (m.diet_types as string[]) ?? [])
+    ),
+  ];
+  const calorieTarget =
+    (members ?? []).find((m) => m.daily_calorie_target != null)
+      ?.daily_calorie_target ?? null;
   const familySize = members?.length ?? 1;
 
   const { data: existingRecipes } = await supabase
@@ -84,6 +97,9 @@ export async function suggestWithAI(
       dietaryRestrictions: allRestrictions,
       cuisinePreferences: allCuisinePrefs,
       ingredientDislikes: allDislikes,
+      likedIngredients: allLiked,
+      dietTypes: allDietTypes,
+      calorieTarget,
       excludeTitles,
       count,
     });
@@ -103,6 +119,10 @@ export async function suggestWithAI(
         instructions: s.instructions,
         prep_time: s.prep_time,
         cuisine: s.cuisine,
+        calories_per_serving: s.calories_per_serving ?? null,
+        protein_g: s.protein_g ?? null,
+        carbs_g: s.carbs_g ?? null,
+        fat_g: s.fat_g ?? null,
         created_by: user.id,
       })
       .select("id")
@@ -425,7 +445,7 @@ export async function suggestForSlot(
 
   const { data: members } = await supabase
     .from("family_members")
-    .select("dietary_restrictions, cuisine_preferences, ingredient_dislikes")
+    .select("dietary_restrictions, cuisine_preferences, ingredient_dislikes, liked_ingredients, diet_types, daily_calorie_target")
     .eq("family_id", membership.family_id);
 
   const allRestrictions = [
@@ -443,6 +463,19 @@ export async function suggestForSlot(
       (members ?? []).flatMap((m) => (m.ingredient_dislikes as string[]) ?? [])
     ),
   ];
+  const allLikedSlot = [
+    ...new Set(
+      (members ?? []).flatMap((m) => (m.liked_ingredients as string[]) ?? [])
+    ),
+  ];
+  const allDietTypesSlot = [
+    ...new Set(
+      (members ?? []).flatMap((m) => (m.diet_types as string[]) ?? [])
+    ),
+  ];
+  const calorieTargetSlot =
+    (members ?? []).find((m) => m.daily_calorie_target != null)
+      ?.daily_calorie_target ?? null;
   const familySize = members?.length ?? 1;
 
   const { data: existingRecipes } = await supabase
@@ -459,6 +492,9 @@ export async function suggestForSlot(
       dietaryRestrictions: allRestrictions,
       cuisinePreferences: allCuisinePrefs,
       ingredientDislikes: allDislikes,
+      likedIngredients: allLikedSlot,
+      dietTypes: allDietTypesSlot,
+      calorieTarget: calorieTargetSlot,
       excludeTitles,
       count: 1,
     });
@@ -478,6 +514,10 @@ export async function suggestForSlot(
       instructions: s.instructions,
       prep_time: s.prep_time,
       cuisine: s.cuisine,
+      calories_per_serving: s.calories_per_serving ?? null,
+      protein_g: s.protein_g ?? null,
+      carbs_g: s.carbs_g ?? null,
+      fat_g: s.fat_g ?? null,
       created_by: user.id,
     })
     .select("id, title, image_url, prep_time, cuisine")

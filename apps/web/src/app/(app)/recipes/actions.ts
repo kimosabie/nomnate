@@ -3,11 +3,26 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { searchRecipes } from "@nomnate/lib/spoonacular";
+import { mapSpoonacularDiets, getNutrient } from "@nomnate/types";
 import type { SpoonacularRecipe } from "@nomnate/types";
+
+// Spoonacular diet key → their API diet param
+const DIET_FILTER_MAP: Record<string, string> = {
+  vegetarian: "vegetarian",
+  vegan: "vegan",
+  "gluten-free": "gluten free",
+  keto: "ketogenic",
+  paleo: "paleo",
+  whole30: "whole30",
+  mediterranean: "mediterranean",
+  "low-carb": "low calorie",
+  "dairy-free": "lacto vegetarian", // closest available
+};
 
 export type SearchState = {
   results: SpoonacularRecipe[];
   error: string | null;
+  dietFilter: string;
 };
 
 export async function searchSpoonacular(
@@ -15,17 +30,19 @@ export async function searchSpoonacular(
   formData: FormData
 ): Promise<SearchState> {
   const query = String(formData.get("query") ?? "").trim();
-  if (!query) return { results: [], error: null };
+  const dietFilter = String(formData.get("diet_filter") ?? "");
+  if (!query) return { results: [], error: null, dietFilter };
 
   try {
+    const spoonacularDiet = DIET_FILTER_MAP[dietFilter] ?? undefined;
     const results = await searchRecipes(
       query,
       process.env.SPOONACULAR_API_KEY!,
-      { number: 12 }
+      { number: 12, diet: spoonacularDiet }
     );
-    return { results, error: null };
+    return { results, error: null, dietFilter };
   } catch {
-    return { results: [], error: "Search failed — try again" };
+    return { results: [], error: "Search failed — try again", dietFilter };
   }
 }
 
@@ -38,7 +55,6 @@ export async function saveRecipe(
   } = await supabase.auth.getUser();
   if (!user) return "Not authenticated";
 
-  // Always derive familyId server-side — never trust the client
   const { data: membership } = await supabase
     .from("family_members")
     .select("family_id")
@@ -49,7 +65,6 @@ export async function saveRecipe(
 
   const familyId = membership.family_id;
 
-  // Idempotent — if already saved for this family, treat as success
   const { data: existing } = await supabase
     .from("recipes")
     .select("id")
@@ -58,6 +73,13 @@ export async function saveRecipe(
     .maybeSingle();
 
   if (existing) return null;
+
+  const dietTypes = mapSpoonacularDiets(recipe.diets ?? []);
+  const nutrients = recipe.nutrition?.nutrients ?? [];
+  const calories = getNutrient(nutrients, "Calories");
+  const protein = getNutrient(nutrients, "Protein");
+  const carbs = getNutrient(nutrients, "Carbohydrates");
+  const fat = getNutrient(nutrients, "Fat");
 
   const { data: saved, error } = await supabase
     .from("recipes")
@@ -68,7 +90,13 @@ export async function saveRecipe(
       instructions: recipe.instructions ?? null,
       image_url: recipe.image ?? null,
       prep_time: recipe.readyInMinutes ?? null,
+      servings: recipe.servings ?? null,
       cuisine: recipe.cuisines?.[0] ?? null,
+      diet_types: dietTypes,
+      calories_per_serving: calories,
+      protein_g: protein,
+      carbs_g: carbs,
+      fat_g: fat,
       spoonacular_id: recipe.id,
       created_by: user.id,
     })
@@ -89,7 +117,6 @@ export async function saveRecipe(
           unit: ing.unit || null,
         }))
       );
-    // Ingredient failure is non-fatal — recipe is saved, just without breakdown
     if (ingError) console.error("Failed to save ingredients:", ingError.message);
   }
 
@@ -127,7 +154,6 @@ export async function toggleFavourite(formData: FormData): Promise<void> {
   const recipeId = String(formData.get("recipeId") ?? "");
   const isFavourite = formData.get("isFavourite") === "true";
 
-  // RLS enforces created_by = auth.uid(); this is belt-and-suspenders
   await supabase
     .from("recipes")
     .update({ is_favourite: !isFavourite })

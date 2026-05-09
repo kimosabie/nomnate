@@ -1,6 +1,6 @@
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
-export type RecipeSource = "ai" | "spoonacular" | "manual";
+export type RecipeSource = "ai" | "spoonacular" | "manual" | "prescribed";
 
 export type SlotStatus = "suggested" | "voted" | "confirmed";
 
@@ -39,6 +39,76 @@ export const DIETARY_RESTRICTIONS: DietaryRestriction[] = [
   "kosher",
 ];
 
+export type DietType =
+  | "balanced"
+  | "keto"
+  | "paleo"
+  | "vegetarian"
+  | "vegan"
+  | "mediterranean"
+  | "intermittent"
+  | "low-carb"
+  | "dash"
+  | "gluten-free"
+  | "raw-food"
+  | "carnivore"
+  | "flexitarian"
+  | "whole30"
+  | "zone";
+
+export const DIET_TYPES: DietType[] = [
+  "balanced",
+  "keto",
+  "paleo",
+  "vegetarian",
+  "vegan",
+  "mediterranean",
+  "intermittent",
+  "low-carb",
+  "dash",
+  "gluten-free",
+  "raw-food",
+  "carnivore",
+  "flexitarian",
+  "whole30",
+  "zone",
+];
+
+export const DIET_TYPE_LABELS: Record<DietType, string> = {
+  balanced: "Balanced",
+  keto: "Keto",
+  paleo: "Paleo",
+  vegetarian: "Vegetarian",
+  vegan: "Vegan",
+  mediterranean: "Mediterranean",
+  intermittent: "Intermittent Fasting",
+  "low-carb": "Low-Carb",
+  dash: "DASH",
+  "gluten-free": "Gluten-Free",
+  "raw-food": "Raw Food",
+  carnivore: "Carnivore",
+  flexitarian: "Flexitarian",
+  whole30: "Whole30",
+  zone: "Zone",
+};
+
+export const CUISINES = [
+  "South African",
+  "Italian",
+  "Indian",
+  "Asian",
+  "Mexican",
+  "Mediterranean",
+  "Middle Eastern",
+  "American",
+  "French",
+  "Thai",
+  "Japanese",
+  "Greek",
+  "Portuguese",
+  "Chinese",
+] as const;
+
 // ─── Domain types (app-level, not raw DB rows) ────────────────────────────────
 
 export interface Family {
@@ -56,6 +126,9 @@ export interface FamilyMember {
   name: string | null;
   avatar_url: string | null;
   dietary_restrictions: string[];
+  diet_types: string[];
+  daily_calorie_target: number | null;
+  track_calories: boolean;
   role: MemberRole;
   joined_at: string;
 }
@@ -72,11 +145,19 @@ export interface Recipe {
   id: string;
   family_id: string | null;
   title: string;
+  description: string | null;
   source: RecipeSource;
   instructions: string | null;
   image_url: string | null;
   prep_time: number | null;
+  cook_time: number | null;
+  servings: number | null;
   cuisine: string | null;
+  diet_types: string[];
+  calories_per_serving: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
   is_favourite: boolean;
   spoonacular_id: number | null;
   created_by: string | null;
@@ -140,6 +221,9 @@ export interface MealSuggestionParams {
   dietaryRestrictions: string[];
   cuisinePreferences?: string[];
   ingredientDislikes?: string[];
+  likedIngredients?: string[];
+  dietTypes?: string[];
+  calorieTarget?: number | null;
   cuisine?: string;
   excludeTitles?: string[];
   count?: number;
@@ -150,6 +234,10 @@ export interface SuggestedRecipe {
   cuisine: string;
   prep_time: number;
   instructions: string;
+  calories_per_serving?: number;
+  protein_g?: number;
+  carbs_g?: number;
+  fat_g?: number;
   ingredients: Array<{
     name: string;
     quantity: number | null;
@@ -164,12 +252,55 @@ export interface SpoonacularRecipe {
   title: string;
   image: string;
   readyInMinutes: number;
+  servings: number;
   cuisines: string[];
+  diets: string[];
   instructions: string;
+  summary?: string;
   extendedIngredients: Array<{
     id: number;
     name: string;
     amount: number;
     unit: string;
   }>;
+  nutrition?: {
+    nutrients: Array<{
+      name: string;
+      amount: number;
+      unit: string;
+    }>;
+  };
+}
+
+// ─── Spoonacular diet mapping ─────────────────────────────────────────────────
+
+export function mapSpoonacularDiets(diets: string[]): string[] {
+  const map: Record<string, string> = {
+    vegetarian: "vegetarian",
+    "lacto ovo vegetarian": "vegetarian",
+    vegan: "vegan",
+    "gluten free": "gluten-free",
+    "dairy free": "dairy-free",
+    ketogenic: "keto",
+    paleo: "paleo",
+    paleolithic: "paleo",
+    primal: "paleo",
+    whole30: "whole30",
+    "whole 30": "whole30",
+    mediterranean: "mediterranean",
+  };
+  const result = new Set<string>();
+  for (const d of diets) {
+    const mapped = map[d.toLowerCase()];
+    if (mapped) result.add(mapped);
+  }
+  return [...result];
+}
+
+export function getNutrient(
+  nutrients: Array<{ name: string; amount: number }>,
+  name: string
+): number | null {
+  const n = nutrients.find((x) => x.name.toLowerCase() === name.toLowerCase());
+  return n != null ? Math.round(n.amount) : null;
 }

@@ -46,6 +46,8 @@ export type Database = {
           allergies: string[]
           avatar_url: string | null
           cuisine_preferences: string[]
+          daily_calorie_target: number | null
+          diet_types: string[]
           dietary_restrictions: string[]
           family_id: string
           id: string
@@ -54,12 +56,15 @@ export type Database = {
           liked_ingredients: string[]
           name: string | null
           role: string
+          track_calories: boolean
           user_id: string
         }
         Insert: {
           allergies?: string[]
           avatar_url?: string | null
           cuisine_preferences?: string[]
+          daily_calorie_target?: number | null
+          diet_types?: string[]
           dietary_restrictions?: string[]
           family_id: string
           id?: string
@@ -68,12 +73,15 @@ export type Database = {
           liked_ingredients?: string[]
           name?: string | null
           role?: string
+          track_calories?: boolean
           user_id: string
         }
         Update: {
           allergies?: string[]
           avatar_url?: string | null
           cuisine_preferences?: string[]
+          daily_calorie_target?: number | null
+          diet_types?: string[]
           dietary_restrictions?: string[]
           family_id?: string
           id?: string
@@ -82,6 +90,7 @@ export type Database = {
           liked_ingredients?: string[]
           name?: string | null
           role?: string
+          track_calories?: boolean
           user_id?: string
         }
         Relationships: [
@@ -162,6 +171,63 @@ export type Database = {
           },
         ]
       }
+      prescribed_plans: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          daily_calories: number | null
+          diet_type: string | null
+          duration_weeks: number | null
+          family_id: string
+          id: string
+          member_id: string
+          parsed_data: Json | null
+          plan_name: string
+          raw_file_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          daily_calories?: number | null
+          diet_type?: string | null
+          duration_weeks?: number | null
+          family_id: string
+          id?: string
+          member_id: string
+          parsed_data?: Json | null
+          plan_name: string
+          raw_file_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          daily_calories?: number | null
+          diet_type?: string | null
+          duration_weeks?: number | null
+          family_id?: string
+          id?: string
+          member_id?: string
+          parsed_data?: Json | null
+          plan_name?: string
+          raw_file_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescribed_plans_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescribed_plans_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "family_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipe_ingredients: {
         Row: {
           id: string
@@ -196,43 +262,67 @@ export type Database = {
       }
       recipes: {
         Row: {
+          calories_per_serving: number | null
+          carbs_g: number | null
+          cook_time: number | null
           created_at: string
           created_by: string | null
           cuisine: string | null
+          description: string | null
+          diet_types: string[]
           family_id: string | null
+          fat_g: number | null
           id: string
           image_url: string | null
           instructions: string | null
           is_favourite: boolean
           prep_time: number | null
+          protein_g: number | null
+          servings: number | null
           source: string
           spoonacular_id: number | null
           title: string
         }
         Insert: {
+          calories_per_serving?: number | null
+          carbs_g?: number | null
+          cook_time?: number | null
           created_at?: string
           created_by?: string | null
           cuisine?: string | null
+          description?: string | null
+          diet_types?: string[]
           family_id?: string | null
+          fat_g?: number | null
           id?: string
           image_url?: string | null
           instructions?: string | null
           is_favourite?: boolean
           prep_time?: number | null
+          protein_g?: number | null
+          servings?: number | null
           source?: string
           spoonacular_id?: number | null
           title: string
         }
         Update: {
+          calories_per_serving?: number | null
+          carbs_g?: number | null
+          cook_time?: number | null
           created_at?: string
           created_by?: string | null
           cuisine?: string | null
+          description?: string | null
+          diet_types?: string[]
           family_id?: string | null
+          fat_g?: number | null
           id?: string
           image_url?: string | null
           instructions?: string | null
           is_favourite?: boolean
           prep_time?: number | null
+          protein_g?: number | null
+          servings?: number | null
           source?: string
           spoonacular_id?: number | null
           title?: string
@@ -399,13 +489,13 @@ export type Tables<
     : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
         DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
+  ? (DefaultSchema["Tables"] &
+      DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+      Row: infer R
+    }
+    ? R
     : never
+  : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
@@ -425,12 +515,12 @@ export type TablesInsert<
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+      Insert: infer I
+    }
+    ? I
     : never
+  : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
@@ -450,12 +540,12 @@ export type TablesUpdate<
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+      Update: infer U
+    }
+    ? U
     : never
+  : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
@@ -471,8 +561,8 @@ export type Enums<
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
+  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+  : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
@@ -488,8 +578,8 @@ export type CompositeTypes<
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  : never
 
 export const Constants = {
   public: {

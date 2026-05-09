@@ -20,6 +20,7 @@ export async function searchRecipes(
     query,
     number: String(options.number ?? 10),
     addRecipeInformation: "true",
+    addRecipeNutrition: "true",
     fillIngredients: "true",
   };
   if (options.diet) params.diet = options.diet;
@@ -36,7 +37,9 @@ export async function getRecipeById(
   apiKey: string
 ): Promise<SpoonacularRecipe> {
   const res = await fetch(
-    url(`/recipes/${id}/information`, apiKey, { includeNutrition: "false" })
+    url(`/recipes/${id}/information`, apiKey, {
+      includeNutrition: "true",
+    })
   );
   if (!res.ok) throw new Error(`Spoonacular error: ${res.status}`);
   return res.json() as Promise<SpoonacularRecipe>;

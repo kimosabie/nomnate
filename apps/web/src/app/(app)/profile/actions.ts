@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { DIETARY_RESTRICTIONS } from "@nomnate/types";
+import { DIETARY_RESTRICTIONS, DIET_TYPES } from "@nomnate/types";
 
 function parseJsonStringArray(raw: FormDataEntryValue | null, maxCount: number, maxLen = 100): string[] | string {
   try {
@@ -48,6 +48,22 @@ export async function updatePreferences(
   const likedIngredients = parseJsonStringArray(formData.get("liked_ingredients"), 50);
   if (typeof likedIngredients === "string") return likedIngredients;
 
+  // Diet types — validated against known values
+  const rawDietTypes = parseJsonStringArray(formData.get("diet_types"), 15);
+  if (typeof rawDietTypes === "string") return rawDietTypes;
+  const dietTypes = rawDietTypes.filter((d) =>
+    (DIET_TYPES as readonly string[]).includes(d)
+  );
+
+  // Calorie tracking
+  const trackCalories = formData.get("track_calories") === "true";
+  const rawCalorieTarget = formData.get("daily_calorie_target");
+  let dailyCalorieTarget: number | null = null;
+  if (trackCalories && rawCalorieTarget) {
+    const n = Number(rawCalorieTarget);
+    if (!isNaN(n) && n >= 500 && n <= 10000) dailyCalorieTarget = n;
+  }
+
   const { error } = await supabase
     .from("family_members")
     .update({
@@ -57,6 +73,9 @@ export async function updatePreferences(
       ingredient_dislikes: ingredientDislikes,
       allergies,
       liked_ingredients: likedIngredients,
+      diet_types: dietTypes,
+      track_calories: trackCalories,
+      daily_calorie_target: dailyCalorieTarget,
     })
     .eq("user_id", user.id);
 
