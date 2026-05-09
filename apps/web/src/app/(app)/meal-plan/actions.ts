@@ -4,8 +4,18 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { suggestMeals } from "@nomnate/lib/claude";
+import { searchRecipes } from "@nomnate/lib/spoonacular";
 import type { SuggestedRecipe } from "@nomnate/types";
 import { currentWeekStart } from "./utils";
+
+async function fetchImageByTitle(title: string): Promise<string | null> {
+  try {
+    const results = await searchRecipes(title, process.env.SPOONACULAR_API_KEY!, { number: 1 });
+    return results[0]?.image ?? null;
+  } catch {
+    return null;
+  }
+}
 import { FREE_AI_LIMIT } from "./constants";
 
 export async function getAIUsageThisWeek(familyId: string): Promise<number> {
@@ -107,9 +117,13 @@ export async function suggestWithAI(
     return err instanceof Error ? err.message : "AI suggestion failed — try again";
   }
 
+  // Fetch food photos in parallel before saving
+  const imageUrls = await Promise.all(suggestions.map((s) => fetchImageByTitle(s.title)));
+
   // Save generated recipes to the family library
   const savedIds: string[] = [];
-  for (const s of suggestions) {
+  for (let i = 0; i < suggestions.length; i++) {
+    const s = suggestions[i];
     const { data: saved, error } = await supabase
       .from("recipes")
       .insert({
@@ -119,6 +133,7 @@ export async function suggestWithAI(
         instructions: s.instructions,
         prep_time: s.prep_time,
         cuisine: s.cuisine,
+        image_url: imageUrls[i] ?? null,
         calories_per_serving: s.calories_per_serving ?? null,
         protein_g: s.protein_g ?? null,
         carbs_g: s.carbs_g ?? null,
@@ -505,6 +520,8 @@ export async function suggestForSlot(
   if (!suggestions.length) return { error: "No suggestion returned" };
   const s = suggestions[0];
 
+  const slotImageUrl = await fetchImageByTitle(s.title);
+
   const { data: saved, error: saveError } = await supabase
     .from("recipes")
     .insert({
@@ -514,6 +531,7 @@ export async function suggestForSlot(
       instructions: s.instructions,
       prep_time: s.prep_time,
       cuisine: s.cuisine,
+      image_url: slotImageUrl,
       calories_per_serving: s.calories_per_serving ?? null,
       protein_g: s.protein_g ?? null,
       carbs_g: s.carbs_g ?? null,

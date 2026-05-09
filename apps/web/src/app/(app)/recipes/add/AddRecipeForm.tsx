@@ -177,41 +177,46 @@ export function AddRecipeForm() {
       <div className="bg-white rounded-[14px] border border-gray-200 p-6 space-y-4">
         <h2 className="text-sm font-semibold text-slate uppercase tracking-wide">Ingredients</h2>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {ingredients.map((ing, idx) => (
-            <div key={ing.id} className="flex gap-2 items-center">
-              <span className="text-xs text-slate w-5 shrink-0 text-right">{idx + 1}.</span>
+            <div key={ing.id} className="bg-cream rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate">Ingredient {idx + 1}</span>
+                {ingredients.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeIngredient(ing.id)}
+                    className="text-xs text-slate hover:text-red-500 transition-colors"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+
               <input
                 type="text"
-                placeholder="Ingredient"
+                placeholder="Ingredient name (e.g. chicken thighs)"
                 value={ing.name}
                 onChange={(e) => updateIngredient(ing.id, "name", e.target.value)}
-                className={inputClass + " flex-1"}
+                className={inputClass}
               />
-              <input
-                type="text"
-                placeholder="Qty"
-                value={ing.quantity}
-                onChange={(e) => updateIngredient(ing.id, "quantity", e.target.value)}
-                className={inputClass + " w-16 shrink-0"}
-              />
-              <input
-                type="text"
-                placeholder="Unit"
-                value={ing.unit}
-                onChange={(e) => updateIngredient(ing.id, "unit", e.target.value)}
-                className={inputClass + " w-20 shrink-0"}
-              />
-              {ingredients.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeIngredient(ing.id)}
-                  className="shrink-0 text-slate hover:text-red-400 transition-colors text-lg leading-none"
-                  aria-label="Remove ingredient"
-                >
-                  ×
-                </button>
-              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder="Quantity (e.g. 500)"
+                  value={ing.quantity}
+                  onChange={(e) => updateIngredient(ing.id, "quantity", e.target.value)}
+                  className={inputClass}
+                />
+                <input
+                  type="text"
+                  placeholder="Unit (e.g. g, cups, tbsp)"
+                  value={ing.unit}
+                  onChange={(e) => updateIngredient(ing.id, "unit", e.target.value)}
+                  className={inputClass}
+                />
+              </div>
             </div>
           ))}
         </div>

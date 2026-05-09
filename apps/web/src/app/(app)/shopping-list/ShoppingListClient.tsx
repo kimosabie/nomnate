@@ -22,8 +22,20 @@ function resolveStore(item: Item): StoreKey {
   return assignStore(item.ingredient_name);
 }
 
+function itemLabel(item: Item): string {
+  return [
+    item.quantity != null ? item.quantity : null,
+    item.unit,
+    item.ingredient_name,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 export function ShoppingListClient({ initialItems }: { initialItems: Item[] }) {
   const [, startTransition] = useTransition();
+  const [activeStore, setActiveStore] = useState<StoreKey | "all">("all");
+  const [copyFeedback, setCopyFeedback] = useState(false);
 
   const [items, setOptimistic] = useOptimistic(
     initialItems,
@@ -41,8 +53,6 @@ export function ShoppingListClient({ initialItems }: { initialItems: Item[] }) {
       })
   );
 
-  const [copyFeedback, setCopyFeedback] = useState<StoreKey | null>(null);
-
   function handleToggle(id: string, checked: boolean) {
     startTransition(async () => {
       setOptimistic({ type: "toggle", id, checked });
@@ -57,89 +67,143 @@ export function ShoppingListClient({ initialItems }: { initialItems: Item[] }) {
     });
   }
 
-  const copyStoreList = useCallback(
-    (storeKey: StoreKey) => {
-      const storeItems = items
-        .filter((i) => !i.checked && resolveStore(i) === storeKey)
-        .map((i) => {
-          const parts = [
-            i.quantity != null ? String(i.quantity) : null,
-            i.unit,
-            i.ingredient_name,
-          ].filter(Boolean);
-          return `• ${parts.join(" ")}`;
-        });
-
-      if (!storeItems.length) return;
-
-      const store = STORES.find((s) => s.key === storeKey);
-      const text = `${store?.label ?? storeKey} shopping list:\n${storeItems.join("\n")}`;
-      navigator.clipboard.writeText(text).then(() => {
-        setCopyFeedback(storeKey);
-        setTimeout(() => setCopyFeedback(null), 2000);
-      });
-    },
-    [items]
-  );
-
   const withStore: ItemWithStore[] = items.map((i) => ({
     ...i,
     resolvedStore: resolveStore(i),
   }));
 
+  // Count unchecked items per store
+  const storeCounts = STORES.reduce<Record<StoreKey, number>>(
+    (acc, s) => {
+      acc[s.key] = withStore.filter((i) => !i.checked && i.resolvedStore === s.key).length;
+      return acc;
+    },
+    { woolworths: 0, pnp: 0, checkers: 0 }
+  );
   const totalRemaining = withStore.filter((i) => !i.checked).length;
+
+  const displayed =
+    activeStore === "all"
+      ? withStore
+      : withStore.filter((i) => i.resolvedStore === activeStore);
+
+  const copyList = useCallback(() => {
+    const storeLabel =
+      activeStore === "all"
+        ? "Shopping List"
+        : `${STORES.find((s) => s.key === activeStore)?.label ?? activeStore} Shopping List`;
+
+    const unchecked = displayed.filter((i) => !i.checked);
+    if (!unchecked.length) return;
+
+    const lines = unchecked.map((i) => `□ ${itemLabel(i)}`);
+    const text = `${storeLabel}\n${"─".repeat(storeLabel.length)}\n${lines.join("\n")}`;
+
+    navigator.clipboard.writeText(text).then(() => {
+      setCopyFeedback(true);
+      setTimeout(() => setCopyFeedback(false), 2000);
+    });
+  }, [displayed, activeStore]);
+
+  function shareWhatsApp() {
+    const storeLabel =
+      activeStore === "all"
+        ? "Shopping List"
+        : `${STORES.find((s) => s.key === activeStore)?.label ?? activeStore} Shopping List`;
+
+    const unchecked = displayed.filter((i) => !i.checked);
+    if (!unchecked.length) return;
+
+    const lines = unchecked.map((i) => `□ ${itemLabel(i)}`);
+    const text = `*${storeLabel}*\n${lines.join("\n")}`;
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(text)}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {totalRemaining === 0 && (
+      {/* Store filter tabs */}
+      <div className="bg-white rounded-[14px] border border-gray-200 p-4 space-y-3">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setActiveStore("all")}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+              activeStore === "all"
+                ? "bg-charcoal text-white"
+                : "bg-cream text-slate hover:bg-cream-dark"
+            }`}
+          >
+            All ({totalRemaining})
+          </button>
+          {STORES.map((store) => (
+            <button
+              key={store.key}
+              onClick={() => setActiveStore(store.key)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                activeStore === store.key
+                  ? "bg-charcoal text-white"
+                  : "bg-cream text-slate hover:bg-cream-dark"
+              }`}
+            >
+              {store.label} ({storeCounts[store.key]})
+            </button>
+          ))}
+        </div>
+
+        {/* Copy + WhatsApp actions */}
+        {totalRemaining > 0 && (
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={copyList}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                copyFeedback
+                  ? "bg-herb-light border-herb text-herb"
+                  : "bg-white border-gray-200 text-slate hover:border-flame hover:text-flame"
+              }`}
+            >
+              {copyFeedback
+                ? "✓ Copied"
+                : activeStore === "all"
+                ? "Copy full list"
+                : `Copy ${STORES.find((s) => s.key === activeStore)?.label ?? ""} list`}
+            </button>
+            <button
+              onClick={shareWhatsApp}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-gray-200 bg-white text-slate hover:border-[#25D366] hover:text-[#25D366] transition-colors"
+            >
+              Share on WhatsApp
+            </button>
+          </div>
+        )}
+      </div>
+
+      {totalRemaining === 0 ? (
         <div className="bg-white rounded-[14px] border border-gray-200 px-6 py-10 text-center">
           <p className="text-2xl mb-2">&#127881;</p>
           <p className="text-sm font-semibold text-charcoal mb-1">All done!</p>
-          <p className="text-xs text-slate">
-            Everything is in the trolley. Enjoy cooking!
-          </p>
+          <p className="text-xs text-slate">Everything is in the trolley. Enjoy cooking!</p>
+        </div>
+      ) : displayed.length === 0 ? (
+        <div className="bg-white rounded-[14px] border border-gray-200 px-6 py-8 text-center">
+          <p className="text-sm text-slate">No items assigned to this store yet.</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-[14px] border border-gray-200 overflow-hidden">
+          <div className="divide-y divide-gray-100">
+            {displayed.map((item) => (
+              <ItemRow
+                key={item.id}
+                item={item}
+                onToggle={handleToggle}
+                onStoreChange={handleStoreChange}
+              />
+            ))}
+          </div>
         </div>
       )}
-
-      {/* Store copy buttons */}
-      {totalRemaining > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {STORES.map((store) => {
-            const count = withStore.filter(
-              (i) => !i.checked && i.resolvedStore === store.key
-            ).length;
-            if (count === 0) return null;
-            const copied = copyFeedback === store.key;
-            return (
-              <button
-                key={store.key}
-                onClick={() => copyStoreList(store.key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border ${
-                  copied
-                    ? "bg-herb-light border-herb text-herb"
-                    : "bg-white border-gray-200 text-slate hover:bg-cream hover:border-flame hover:text-flame"
-                }`}
-              >
-                {copied ? "✓ Copied" : `Copy ${store.label} list (${count})`}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Flat ingredient list */}
-      <div className="bg-white rounded-[14px] border border-gray-200 overflow-hidden">
-        <div className="divide-y divide-gray-100">
-          {withStore.map((item) => (
-            <ItemRow
-              key={item.id}
-              item={item}
-              onToggle={handleToggle}
-              onStoreChange={handleStoreChange}
-            />
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
@@ -153,14 +217,7 @@ function ItemRow({
   onToggle: (id: string, checked: boolean) => void;
   onStoreChange: (id: string, store: StoreKey) => void;
 }) {
-  const label = [
-    item.quantity != null ? item.quantity : null,
-    item.unit,
-    item.ingredient_name,
-  ]
-    .filter(Boolean)
-    .join(" ");
-
+  const label = itemLabel(item);
   const store = STORES.find((s) => s.key === item.resolvedStore)!;
   const searchUrl = store.searchUrl(item.ingredient_name);
 
@@ -170,7 +227,6 @@ function ItemRow({
         item.checked ? "opacity-40" : ""
       }`}
     >
-      {/* Checkbox */}
       <button
         onClick={() => onToggle(item.id, !item.checked)}
         className={`w-5 h-5 rounded shrink-0 border-2 flex items-center justify-center transition-colors ${
@@ -193,7 +249,6 @@ function ItemRow({
         )}
       </button>
 
-      {/* Label */}
       <p
         className={`flex-1 text-sm font-medium text-charcoal min-w-0 truncate ${
           item.checked ? "line-through" : ""
@@ -202,7 +257,6 @@ function ItemRow({
         {label}
       </p>
 
-      {/* Store picker */}
       <select
         value={item.resolvedStore}
         onChange={(e) => onStoreChange(item.id, e.target.value as StoreKey)}
@@ -217,7 +271,6 @@ function ItemRow({
         ))}
       </select>
 
-      {/* Search link */}
       <a
         href={searchUrl}
         target="_blank"
