@@ -104,7 +104,9 @@ export default async function ShoppingListPage() {
           <>
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500">
-                {items.length} ingredient{items.length !== 1 ? "s" : ""} across this week&apos;s recipes
+                {items.filter((i) => !i.checked).length} item
+                {items.filter((i) => !i.checked).length !== 1 ? "s" : ""} to buy
+                {items.some((i) => i.checked) && ` · ${items.filter((i) => i.checked).length} done`}
               </p>
               <Link
                 href="/meal-plan"
