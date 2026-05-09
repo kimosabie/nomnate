@@ -22,17 +22,17 @@ export default async function ProfilePage() {
   if (!member) redirect("/onboarding");
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-100">
+    <main className="min-h-screen bg-cream">
+      <header className="bg-white border-b border-gray-200">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center gap-3">
           <Link
             href="/dashboard"
-            className="text-gray-400 hover:text-gray-700 text-lg leading-none transition-colors"
+            className="text-slate hover:text-charcoal text-lg leading-none transition-colors"
             aria-label="Back to dashboard"
           >
             &#8592;
           </Link>
-          <span className="text-xl font-bold text-orange-500">
+          <span className="text-xl font-semibold text-flame">
             Your preferences
           </span>
         </div>

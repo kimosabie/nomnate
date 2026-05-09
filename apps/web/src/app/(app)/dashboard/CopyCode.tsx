@@ -14,7 +14,7 @@ export function CopyCode({ code }: { code: string }) {
   return (
     <button
       onClick={copy}
-      className="font-mono text-lg font-bold text-gray-900 tracking-widest hover:text-orange-500 transition-colors"
+      className="font-mono text-lg font-bold text-charcoal tracking-widest hover:text-flame transition-colors"
       title="Click to copy"
     >
       {code}

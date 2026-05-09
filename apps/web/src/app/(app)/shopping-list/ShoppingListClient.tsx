@@ -92,10 +92,10 @@ export function ShoppingListClient({ initialItems }: { initialItems: Item[] }) {
   return (
     <div className="space-y-4">
       {totalRemaining === 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-10 text-center">
-          <p className="text-2xl mb-2">🎉</p>
-          <p className="text-sm font-semibold text-gray-900 mb-1">All done!</p>
-          <p className="text-xs text-gray-400">
+        <div className="bg-white rounded-[14px] border border-gray-200 px-6 py-10 text-center">
+          <p className="text-2xl mb-2">&#127881;</p>
+          <p className="text-sm font-semibold text-charcoal mb-1">All done!</p>
+          <p className="text-xs text-slate">
             Everything is in the trolley. Enjoy cooking!
           </p>
         </div>
@@ -116,8 +116,8 @@ export function ShoppingListClient({ initialItems }: { initialItems: Item[] }) {
                 onClick={() => copyStoreList(store.key)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border ${
                   copied
-                    ? "bg-green-50 border-green-200 text-green-700"
-                    : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                    ? "bg-herb-light border-herb text-herb"
+                    : "bg-white border-gray-200 text-slate hover:bg-cream hover:border-flame hover:text-flame"
                 }`}
               >
                 {copied ? "✓ Copied" : `Copy ${store.label} list (${count})`}
@@ -128,8 +128,8 @@ export function ShoppingListClient({ initialItems }: { initialItems: Item[] }) {
       )}
 
       {/* Flat ingredient list */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="divide-y divide-gray-50">
+      <div className="bg-white rounded-[14px] border border-gray-200 overflow-hidden">
+        <div className="divide-y divide-gray-100">
           {withStore.map((item) => (
             <ItemRow
               key={item.id}
@@ -175,8 +175,8 @@ function ItemRow({
         onClick={() => onToggle(item.id, !item.checked)}
         className={`w-5 h-5 rounded shrink-0 border-2 flex items-center justify-center transition-colors ${
           item.checked
-            ? "bg-orange-400 border-orange-400 text-white"
-            : "border-gray-300 hover:border-orange-400"
+            ? "bg-flame border-flame text-white"
+            : "border-gray-300 hover:border-flame"
         }`}
         aria-label={item.checked ? "Uncheck item" : "Check item"}
       >
@@ -195,7 +195,7 @@ function ItemRow({
 
       {/* Label */}
       <p
-        className={`flex-1 text-sm font-medium text-gray-900 min-w-0 truncate ${
+        className={`flex-1 text-sm font-medium text-charcoal min-w-0 truncate ${
           item.checked ? "line-through" : ""
         }`}
       >
@@ -206,7 +206,7 @@ function ItemRow({
       <select
         value={item.resolvedStore}
         onChange={(e) => onStoreChange(item.id, e.target.value as StoreKey)}
-        className={`shrink-0 text-xs font-semibold px-2 py-1 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-200 ${store.badgeBg} ${store.badgeText}`}
+        className={`shrink-0 text-xs font-semibold px-2 py-1 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-flame-light ${store.badgeBg} ${store.badgeText}`}
         aria-label="Select store"
         disabled={item.checked}
       >
@@ -222,7 +222,7 @@ function ItemRow({
         href={searchUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="shrink-0 text-gray-300 hover:text-gray-500 transition-colors"
+        className="shrink-0 text-gray-300 hover:text-slate transition-colors"
         aria-label={`Search for ${item.ingredient_name}`}
       >
         <svg
