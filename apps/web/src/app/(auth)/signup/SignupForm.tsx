@@ -7,21 +7,21 @@ import { signUp } from "../actions";
 export function SignupForm() {
   const [error, formAction, pending] = useActionState(signUp, null);
 
+  const inputClass =
+    "w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-flame focus:border-transparent placeholder:text-slate";
+
   return (
     <form action={formAction} className="space-y-4">
-      <h2 className="text-xl font-semibold text-gray-900">Create account</h2>
+      <h2 className="text-xl font-semibold text-charcoal">Create account</h2>
 
       {error && (
-        <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-lg">
+        <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">
           {error}
         </p>
       )}
 
       <div>
-        <label
-          htmlFor="email"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
+        <label htmlFor="email" className="block text-sm font-medium text-charcoal mb-1">
           Email
         </label>
         <input
@@ -31,15 +31,12 @@ export function SignupForm() {
           required
           autoComplete="email"
           placeholder="you@family.com"
-          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+          className={inputClass}
         />
       </div>
 
       <div>
-        <label
-          htmlFor="password"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
+        <label htmlFor="password" className="block text-sm font-medium text-charcoal mb-1">
           Password
         </label>
         <input
@@ -50,24 +47,21 @@ export function SignupForm() {
           autoComplete="new-password"
           minLength={8}
           placeholder="At least 8 characters"
-          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+          className={inputClass}
         />
       </div>
 
       <button
         type="submit"
         disabled={pending}
-        className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
+        className="w-full bg-flame hover:bg-flame-dark disabled:opacity-60 text-white font-semibold py-2.5 rounded-full text-sm transition-colors"
       >
         {pending ? "Creating account…" : "Create account"}
       </button>
 
-      <p className="text-center text-sm text-gray-500">
+      <p className="text-center text-sm text-slate">
         Already have an account?{" "}
-        <Link
-          href="/login"
-          className="text-orange-500 hover:underline font-medium"
-        >
+        <Link href="/login" className="text-flame hover:underline font-medium">
           Sign in
         </Link>
       </p>

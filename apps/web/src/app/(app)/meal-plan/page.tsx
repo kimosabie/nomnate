@@ -27,7 +27,6 @@ export default async function MealPlanPage() {
 
   const weekStart = currentWeekStart();
 
-  // Format "Mon 4 May – Sun 10 May" for the header
   function fmtWeekRange(ws: string): string {
     const mon = new Date(ws + "T00:00:00");
     const sun = new Date(ws + "T00:00:00");
@@ -56,18 +55,18 @@ export default async function MealPlanPage() {
     const aiRemaining = FREE_AI_LIMIT - aiUsed;
 
     return (
-      <main className="min-h-screen bg-gray-50">
+      <main className="min-h-screen bg-cream">
         <PageHeader weekRange={fmtWeekRange(weekStart)} />
         <div className="max-w-3xl mx-auto px-6 py-12 space-y-6">
           <div className="flex flex-col items-center text-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-orange-50 flex items-center justify-center text-3xl">
+            <div className="w-16 h-16 rounded-[14px] bg-flame-light flex items-center justify-center text-3xl">
               &#128197;
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">
+              <h2 className="text-xl font-semibold text-charcoal mb-2">
                 No plan for this week yet
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-slate">
                 {count > 0
                   ? `${count} recipe${count !== 1 ? "s" : ""} in your library — or let Claude suggest meals for you.`
                   : "Let Claude suggest meals, or add your own recipes first."}
@@ -81,16 +80,16 @@ export default async function MealPlanPage() {
               <>
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-px bg-gray-200" />
-                  <span className="text-xs text-gray-400">or</span>
+                  <span className="text-xs text-slate">or</span>
                   <div className="flex-1 h-px bg-gray-200" />
                 </div>
                 <GeneratePlanButton />
               </>
             )}
             {count === 0 && (
-              <p className="text-xs text-center text-gray-400">
+              <p className="text-xs text-center text-slate">
                 Or{" "}
-                <Link href="/recipes" className="text-orange-500 hover:underline">
+                <Link href="/recipes" className="text-flame hover:underline">
                   add your own recipes
                 </Link>{" "}
                 first.
@@ -102,7 +101,6 @@ export default async function MealPlanPage() {
     );
   }
 
-  // Parallel: AI usage, shopping list check, slots, and recipe library
   const [aiUsed, { data: existingList }, { data: rawSlots }, { data: familyRecipes }] =
     await Promise.all([
       getAIUsageThisWeek(membership.family_id),
@@ -131,7 +129,6 @@ export default async function MealPlanPage() {
   const slotIds = slots.map((s) => s.id);
   const recipeIds = [...new Set(slots.map((s) => s.recipe_id).filter(Boolean))] as string[];
 
-  // Parallel fetch recipes + votes
   const [{ data: recipes }, { data: rawVotes }] = await Promise.all([
     recipeIds.length > 0
       ? supabase
@@ -164,7 +161,7 @@ export default async function MealPlanPage() {
   }));
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-cream">
       <PageHeader weekRange={fmtWeekRange(weekStart)} />
       <div className="max-w-3xl mx-auto px-6 py-6 space-y-4">
         <WeeklyCalendar
@@ -177,10 +174,10 @@ export default async function MealPlanPage() {
         />
 
         {/* AI suggestions */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="bg-white rounded-[14px] border border-gray-200 p-5">
           <div className="mb-4">
-            <p className="text-sm font-semibold text-gray-900">Suggest with AI</p>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-sm font-semibold text-charcoal">Suggest with AI</p>
+            <p className="text-xs text-slate mt-0.5">
               Claude will generate new recipes and fill any empty days
             </p>
           </div>
@@ -188,11 +185,11 @@ export default async function MealPlanPage() {
         </div>
 
         {/* Shopping list */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="bg-white rounded-[14px] border border-gray-200 p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold text-gray-900">Shopping list</p>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <p className="text-sm font-semibold text-charcoal">Shopping list</p>
+              <p className="text-xs text-slate mt-0.5">
                 {existingList
                   ? "Last generated — tap to regenerate or view"
                   : "Generate a list from this week's recipes"}
@@ -201,7 +198,7 @@ export default async function MealPlanPage() {
             {existingList && (
               <Link
                 href="/shopping-list"
-                className="text-sm font-semibold text-orange-500 hover:text-orange-600 shrink-0"
+                className="text-sm font-semibold text-flame hover:text-flame-dark shrink-0"
               >
                 View list &#8594;
               </Link>
@@ -218,18 +215,18 @@ export default async function MealPlanPage() {
 
 function PageHeader({ weekRange }: { weekRange: string }) {
   return (
-    <header className="bg-white border-b border-gray-100">
+    <header className="bg-white border-b border-gray-200">
       <div className="max-w-3xl mx-auto px-6 py-4 flex items-center gap-3">
         <Link
           href="/dashboard"
-          className="text-gray-400 hover:text-gray-700 text-lg leading-none transition-colors"
+          className="text-slate hover:text-charcoal text-lg leading-none transition-colors"
           aria-label="Back to dashboard"
         >
           &#8592;
         </Link>
         <div>
-          <span className="text-xl font-bold text-orange-500">Meal plan</span>
-          <span className="ml-2 text-sm text-gray-400">{weekRange}</span>
+          <span className="text-xl font-semibold text-flame">Meal plan</span>
+          <span className="ml-2 text-sm text-slate">{weekRange}</span>
         </div>
       </div>
     </header>

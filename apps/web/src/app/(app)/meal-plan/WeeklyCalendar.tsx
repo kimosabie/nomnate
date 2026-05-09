@@ -10,19 +10,25 @@ import {
 } from "./actions";
 
 const DAY_NAMES = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
+  "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
 ];
 
 const VOTE_CONFIG = {
-  love: { label: "Love", symbol: "♥", active: "bg-orange-500 text-white", inactive: "bg-gray-100 text-gray-500 hover:bg-orange-50 hover:text-orange-500" },
-  up:   { label: "Yes",  symbol: "✓", active: "bg-green-500 text-white",  inactive: "bg-gray-100 text-gray-500 hover:bg-green-50  hover:text-green-600"  },
-  down: { label: "No",   symbol: "✕", active: "bg-red-400 text-white",    inactive: "bg-gray-100 text-gray-500 hover:bg-red-50    hover:text-red-500"    },
+  love: {
+    label: "Love", symbol: "♥",
+    active:   "bg-flame-light text-flame-dark",
+    inactive: "bg-gray-100 text-slate hover:bg-flame-light hover:text-flame-dark",
+  },
+  up: {
+    label: "Yes", symbol: "✓",
+    active:   "bg-herb-light text-herb",
+    inactive: "bg-gray-100 text-slate hover:bg-herb-light hover:text-herb",
+  },
+  down: {
+    label: "No", symbol: "✕",
+    active:   "bg-gray-200 text-slate",
+    inactive: "bg-gray-100 text-slate hover:bg-gray-200",
+  },
 } as const;
 
 type VoteValue = "up" | "down" | "love";
@@ -98,7 +104,6 @@ export function WeeklyCalendar({
   const [allRecipes, setAllRecipes] = useState<RecipeData[]>(initialRecipes);
   const [aiRemaining, setAiRemaining] = useState(initialAiRemaining);
 
-  // Inline picker state — which slot has its picker open
   const [openSlotId, setOpenSlotId] = useState<string | null>(null);
   const [pickerSearch, setPickerSearch] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
@@ -108,7 +113,6 @@ export function WeeklyCalendar({
 
   const [, startTransition] = useTransition();
 
-  // Realtime — votes
   useEffect(() => {
     const slotIds = new Set(slots.map((s) => s.id));
 
@@ -183,7 +187,6 @@ export function WeeklyCalendar({
     const prev = slotRecipes.get(slotId) ?? null;
     setSlotRecipes((m) => new Map(m).set(slotId, null));
     setLoadingSlot(slotId);
-
     const error = await removeFromSlot(slotId);
     setLoadingSlot(null);
     if (error) {
@@ -198,7 +201,6 @@ export function WeeklyCalendar({
     const prev = slotRecipes.get(slotId) ?? null;
     setSlotRecipes((m) => new Map(m).set(slotId, recipe));
     setLoadingSlot(slotId);
-
     const error = await assignRecipeToSlot(slotId, recipe.id);
     setLoadingSlot(null);
     if (error) {
@@ -212,7 +214,6 @@ export function WeeklyCalendar({
     setSlotError(null);
     setAiLoading(true);
     setLoadingSlot(slotId);
-
     const result = await suggestForSlot(slotId);
     setAiLoading(false);
     setLoadingSlot(null);
@@ -236,13 +237,13 @@ export function WeeklyCalendar({
   return (
     <div className="space-y-3">
       {(voteError || slotError) && (
-        <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-lg">
+        <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">
           {voteError || slotError}
         </p>
       )}
 
       {aiLoading && (
-        <p className="text-sm text-orange-600 bg-orange-50 px-4 py-3 rounded-lg">
+        <p className="text-sm text-flame bg-flame-light px-4 py-3 rounded-xl">
           Claude is suggesting a meal&hellip;
         </p>
       )}
@@ -259,16 +260,16 @@ export function WeeklyCalendar({
         return (
           <div
             key={slot.id}
-            className={`bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-opacity ${
+            className={`bg-[#FFF9F6] rounded-[14px] border border-[#F5D5C0] overflow-hidden transition-opacity ${
               isLoading ? "opacity-60 pointer-events-none" : ""
             }`}
           >
             {/* Day header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
-              <span className="text-sm font-semibold text-gray-900">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#F5D5C0]">
+              <span className="text-sm font-semibold text-charcoal">
                 {DAY_NAMES[slot.day_of_week]}
               </span>
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-slate">
                 {dayDate(weekStart, slot.day_of_week)}
               </span>
             </div>
@@ -284,15 +285,15 @@ export function WeeklyCalendar({
                     className="w-14 h-14 rounded-xl object-cover shrink-0"
                   />
                 ) : (
-                  <div className="w-14 h-14 rounded-xl bg-orange-50 shrink-0 flex items-center justify-center text-2xl">
+                  <div className="w-14 h-14 rounded-xl bg-flame-light shrink-0 flex items-center justify-center text-2xl">
                     {cuisineEmoji(recipe.cuisine)}
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                  <p className="text-sm font-medium text-charcoal truncate">
                     {recipe.title}
                   </p>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-slate mt-0.5">
                     {[
                       recipe.prep_time ? `${recipe.prep_time} min` : null,
                       recipe.cuisine,
@@ -306,8 +307,8 @@ export function WeeklyCalendar({
                     onClick={() => openPicker(slot.id)}
                     className={`p-1.5 rounded-lg transition-colors ${
                       isOpen
-                        ? "bg-orange-100 text-orange-600"
-                        : "text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+                        ? "bg-flame-light text-flame"
+                        : "text-slate hover:text-charcoal hover:bg-cream"
                     }`}
                     aria-label="Change meal"
                     title="Change meal"
@@ -316,7 +317,7 @@ export function WeeklyCalendar({
                   </button>
                   <button
                     onClick={() => handleRemove(slot.id)}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    className="p-1.5 rounded-lg text-slate hover:text-red-500 hover:bg-red-50 transition-colors"
                     aria-label="Remove meal"
                     title="Remove meal"
                   >
@@ -329,7 +330,7 @@ export function WeeklyCalendar({
                 <button
                   onClick={() => openPicker(slot.id)}
                   className={`w-full flex items-center gap-2 text-sm transition-colors ${
-                    isOpen ? "text-orange-500" : "text-gray-400 hover:text-orange-500"
+                    isOpen ? "text-flame" : "text-slate hover:text-flame"
                   }`}
                 >
                   <span className="text-xl leading-none font-light">+</span>
@@ -367,48 +368,43 @@ export function WeeklyCalendar({
 
             {/* Inline recipe picker */}
             {isOpen && (
-              <div className="border-t border-gray-100 px-3 pb-3 pt-2 space-y-2">
-                {/* AI suggest */}
+              <div className="border-t border-[#F5D5C0] px-3 pb-3 pt-2 space-y-2">
                 {aiRemaining > 0 && (
                   <button
                     onClick={() => handleAISuggest(slot.id)}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-orange-50 hover:bg-orange-100 transition-colors text-left"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-turmeric-light hover:bg-[#FFF0C0] transition-colors text-left"
                   >
                     <span className="text-base shrink-0">✨</span>
                     <div>
-                      <p className="text-xs font-semibold text-orange-700">
+                      <p className="text-xs font-semibold text-turmeric-dark">
                         AI suggest for this day
                       </p>
-                      <p className="text-xs text-orange-400">
+                      <p className="text-xs text-slate">
                         {aiRemaining} of 5 remaining this week
                       </p>
                     </div>
                   </button>
                 )}
 
-                {/* Search */}
                 <input
                   type="text"
                   placeholder="Search your recipes…"
                   value={pickerSearch}
                   onChange={(e) => setPickerSearch(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white text-charcoal placeholder:text-slate focus:outline-none focus:ring-2 focus:ring-flame focus:border-transparent"
                   // eslint-disable-next-line jsx-a11y/no-autofocus
                   autoFocus
                 />
 
-                {/* Recipe list */}
                 <div className="max-h-52 overflow-y-auto space-y-0.5">
                   {filteredRecipes.length === 0 ? (
-                    <p className="text-xs text-gray-400 text-center py-4">
-                      No recipes found
-                    </p>
+                    <p className="text-xs text-slate text-center py-4">No recipes found</p>
                   ) : (
                     filteredRecipes.map((r) => (
                       <button
                         key={r.id}
                         onClick={() => handleAssign(slot.id, r)}
-                        className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors text-left"
+                        className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-cream transition-colors text-left"
                       >
                         {r.image_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -418,23 +414,17 @@ export function WeeklyCalendar({
                             className="w-8 h-8 rounded-md object-cover shrink-0"
                           />
                         ) : (
-                          <div className="w-8 h-8 rounded-md bg-orange-50 shrink-0 flex items-center justify-center text-sm">
+                          <div className="w-8 h-8 rounded-md bg-flame-light shrink-0 flex items-center justify-center text-sm">
                             {cuisineEmoji(r.cuisine)}
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {r.title}
-                          </p>
-                          <p className="text-xs text-gray-400 truncate">
-                            {[r.prep_time ? `${r.prep_time} min` : null, r.cuisine]
-                              .filter(Boolean)
-                              .join(" · ")}
+                          <p className="text-sm font-medium text-charcoal truncate">{r.title}</p>
+                          <p className="text-xs text-slate truncate">
+                            {[r.prep_time ? `${r.prep_time} min` : null, r.cuisine].filter(Boolean).join(" · ")}
                           </p>
                         </div>
-                        <span className="text-xs font-semibold text-orange-500 shrink-0">
-                          Pick
-                        </span>
+                        <span className="text-xs font-semibold text-flame shrink-0">Pick</span>
                       </button>
                     ))
                   )}

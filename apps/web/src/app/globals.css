@@ -1,26 +1,37 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Brand colour tokens */
+  --color-flame:          #E8621A;
+  --color-flame-light:    #FDE8E0;
+  --color-flame-dark:     #C0430E;
+  --color-turmeric:       #F9A825;
+  --color-turmeric-light: #FFF8E1;
+  --color-turmeric-dark:  #E65100;
+  --color-herb:           #2E7D32;
+  --color-herb-light:     #E8F5E9;
+  --color-herb-dark:      #1B5E20;
+  --color-cream:          #FFF3EE;
+  --color-cream-dark:     #FDE8E0;
+  --color-charcoal:       #1A1A1A;
+  --color-slate:          #666666;
+
+  /* Font families */
+  --font-sans:    var(--font-plus-jakarta), 'Plus Jakarta Sans', sans-serif;
+  --font-display: var(--font-fredoka), 'Fredoka', sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  --background: #FFF3EE;
+  --foreground: #1A1A1A;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #FFF3EE;
+  color: #1A1A1A;
+}
+
+/* Fredoka for all headings */
+h1, h2, h3, h4 {
+  font-family: var(--font-fredoka), 'Fredoka', sans-serif;
 }

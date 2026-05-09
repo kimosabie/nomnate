@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { RecipeSearch } from "./RecipeSearch";
 import { toggleFavourite } from "./actions";
-import { DeleteRecipeButton } from "./DeleteRecipeButton";
 import { RecipeListClient } from "./RecipeListClient";
 
 function cuisineEmoji(cuisine: string | null): string {
@@ -42,7 +41,7 @@ export default async function RecipesPage() {
   const [{ data: recipes }, { data: members }] = await Promise.all([
     supabase
       .from("recipes")
-      .select("id, title, image_url, prep_time, cuisine, is_favourite, source, created_by")
+      .select("id, title, image_url, prep_time, cuisine, is_favourite, source, created_by, diet_types, calories_per_serving")
       .eq("family_id", membership.family_id)
       .order("is_favourite", { ascending: false })
       .order("created_at", { ascending: false }),
@@ -52,7 +51,6 @@ export default async function RecipesPage() {
       .eq("family_id", membership.family_id),
   ]);
 
-  // Build conflict map: recipe id → member names with conflicts
   const conflictMap = new Map<string, string[]>();
   const recipeIds = recipes?.map((r) => r.id) ?? [];
 
@@ -87,38 +85,43 @@ export default async function RecipesPage() {
     emoji: cuisineEmoji(r.cuisine),
     conflicts: conflictMap.get(r.id) ?? [],
     isOwner: r.created_by === user.id,
+    diet_types: (r.diet_types as string[]) ?? [],
+    calories_per_serving: r.calories_per_serving ?? null,
   }));
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-100">
+    <main className="min-h-screen bg-cream">
+      <header className="bg-white border-b border-gray-200">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center gap-3">
           <Link
             href="/dashboard"
-            className="text-gray-400 hover:text-gray-700 text-lg leading-none transition-colors"
+            className="text-slate hover:text-charcoal text-lg leading-none transition-colors"
             aria-label="Back to dashboard"
           >
             &#8592;
           </Link>
-          <span className="text-xl font-bold text-orange-500">Recipes</span>
+          <span className="text-xl font-semibold text-flame">Recipes</span>
         </div>
       </header>
 
       <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
-        {/* Search */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
-            Find &amp; add recipes
-          </h2>
+        <div className="bg-white rounded-[14px] border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-slate uppercase tracking-wide">
+              Find &amp; add recipes
+            </h2>
+            <Link
+              href="/recipes/add"
+              className="text-xs font-semibold px-4 py-1.5 rounded-full bg-flame-light text-flame hover:bg-cream-dark transition-colors"
+            >
+              + Your own
+            </Link>
+          </div>
           <RecipeSearch />
         </div>
 
-        {/* Saved recipes */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <RecipeListClient
-            recipes={annotated}
-            toggleFavourite={toggleFavourite}
-          />
+        <div className="bg-white rounded-[14px] border border-gray-200 p-6">
+          <RecipeListClient recipes={annotated} toggleFavourite={toggleFavourite} />
         </div>
       </div>
     </main>

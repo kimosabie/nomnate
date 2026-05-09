@@ -58,36 +58,36 @@ export default async function ShoppingListPage() {
     : null;
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-100">
+    <main className="min-h-screen bg-cream">
+      <header className="bg-white border-b border-gray-200">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link
               href="/meal-plan"
-              className="text-gray-400 hover:text-gray-700 text-lg leading-none transition-colors"
+              className="text-slate hover:text-charcoal text-lg leading-none transition-colors"
               aria-label="Back to meal plan"
             >
               &#8592;
             </Link>
-            <span className="text-xl font-bold text-orange-500">Shopping list</span>
+            <span className="text-xl font-semibold text-flame">Shopping list</span>
           </div>
           {generatedAt && (
-            <span className="text-xs text-gray-400">Updated {generatedAt}</span>
+            <span className="text-xs text-slate">Updated {generatedAt}</span>
           )}
         </div>
       </header>
 
       <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
         {!shoppingList ? (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex flex-col items-center text-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center text-3xl">
+          <div className="bg-white rounded-[14px] border border-gray-200 p-8 flex flex-col items-center text-center gap-4">
+            <div className="w-14 h-14 rounded-[14px] bg-flame-light flex items-center justify-center text-3xl">
               &#128722;
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-1">No shopping list yet</h2>
-              <p className="text-sm text-gray-500">
+              <h2 className="text-lg font-semibold text-charcoal mb-1">No shopping list yet</h2>
+              <p className="text-sm text-slate">
                 Generate one from your{" "}
-                <Link href="/meal-plan" className="text-orange-500 hover:underline">
+                <Link href="/meal-plan" className="text-flame hover:underline">
                   meal plan
                 </Link>
                 .
@@ -95,22 +95,22 @@ export default async function ShoppingListPage() {
             </div>
           </div>
         ) : items.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex flex-col items-center text-center gap-4">
-            <p className="text-sm text-gray-400">
+          <div className="bg-white rounded-[14px] border border-gray-200 p-8 flex flex-col items-center text-center gap-4">
+            <p className="text-sm text-slate">
               No ingredients found — your recipes may not have ingredients saved yet.
             </p>
           </div>
         ) : (
           <>
             <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-slate">
                 {items.filter((i) => !i.checked).length} item
                 {items.filter((i) => !i.checked).length !== 1 ? "s" : ""} to buy
                 {items.some((i) => i.checked) && ` · ${items.filter((i) => i.checked).length} done`}
               </p>
               <Link
                 href="/meal-plan"
-                className="text-xs text-orange-500 hover:underline font-medium"
+                className="text-xs text-flame hover:underline font-medium"
               >
                 Regenerate ↗
               </Link>

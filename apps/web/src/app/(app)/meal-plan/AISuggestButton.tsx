@@ -14,25 +14,20 @@ export function AISuggestButton({
   const [error, formAction, pending] = useActionState(suggestWithAI, null);
   const exhausted = remaining <= 0;
 
-  const baseClass =
+  const btnClass =
     variant === "primary"
-      ? "w-full font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors disabled:opacity-60"
-      : "w-full font-semibold px-5 py-2 rounded-xl text-sm transition-colors disabled:opacity-60 border";
-
-  const colourClass =
-    variant === "primary"
-      ? "bg-gray-900 hover:bg-gray-800 text-white"
-      : "border-gray-200 text-gray-700 hover:border-gray-300 bg-white";
+      ? "w-full font-semibold px-5 py-2.5 rounded-full text-sm transition-colors disabled:opacity-60 bg-flame hover:bg-flame-dark text-white"
+      : "w-full font-semibold px-5 py-2 rounded-full text-sm transition-colors disabled:opacity-60 border border-flame text-flame hover:bg-flame-light bg-transparent";
 
   return (
     <form action={formAction} className="flex flex-col gap-2">
       {error && (
-        <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-lg">{error}</p>
+        <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">{error}</p>
       )}
       <button
         type="submit"
         disabled={pending || exhausted}
-        className={`${baseClass} ${colourClass}`}
+        className={btnClass}
       >
         {pending ? (
           <span className="flex items-center justify-center gap-2">
@@ -43,9 +38,9 @@ export function AISuggestButton({
           "5/5 AI suggestions used · Upgrade for unlimited"
         ) : (
           <>
-            Suggest with AI
-            <span className="ml-2 text-xs opacity-60 font-normal">
-              {remaining} of {FREE_AI_LIMIT} remaining this week
+            ✨ Suggest with AI
+            <span className="ml-2 text-xs opacity-70 font-normal">
+              {remaining} of {FREE_AI_LIMIT} remaining
             </span>
           </>
         )}
