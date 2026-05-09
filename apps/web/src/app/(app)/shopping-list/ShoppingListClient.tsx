@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useTransition, useState, useCallback } from "react";
+import { useOptimistic, useTransition, useState } from "react";
 import { toggleItem, setItemStore } from "./actions";
 import { assignStore, STORES, type StoreKey } from "./storeUtils";
 
@@ -22,20 +22,19 @@ function resolveStore(item: Item): StoreKey {
   return assignStore(item.ingredient_name);
 }
 
-function itemLabel(item: Item): string {
-  return [
-    item.quantity != null ? item.quantity : null,
-    item.unit,
-    item.ingredient_name,
-  ]
-    .filter(Boolean)
-    .join(" ");
+function formatItemLine(item: Item): string {
+  const qty = item.quantity != null ? `${item.quantity}` : "";
+  const unit = item.unit ?? "";
+  const suffix = [qty, unit].filter(Boolean).join(" ");
+  return suffix
+    ? `□ ${item.ingredient_name} — ${suffix}`
+    : `□ ${item.ingredient_name}`;
 }
 
 export function ShoppingListClient({ initialItems }: { initialItems: Item[] }) {
   const [, startTransition] = useTransition();
   const [activeStore, setActiveStore] = useState<StoreKey | "all">("all");
-  const [copyFeedback, setCopyFeedback] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const [items, setOptimistic] = useOptimistic(
     initialItems,
@@ -72,7 +71,6 @@ export function ShoppingListClient({ initialItems }: { initialItems: Item[] }) {
     resolvedStore: resolveStore(i),
   }));
 
-  // Count unchecked items per store
   const storeCounts = STORES.reduce<Record<StoreKey, number>>(
     (acc, s) => {
       acc[s.key] = withStore.filter((i) => !i.checked && i.resolvedStore === s.key).length;
@@ -87,45 +85,40 @@ export function ShoppingListClient({ initialItems }: { initialItems: Item[] }) {
       ? withStore
       : withStore.filter((i) => i.resolvedStore === activeStore);
 
-  const copyList = useCallback(() => {
-    const storeLabel =
-      activeStore === "all"
-        ? "Shopping List"
-        : `${STORES.find((s) => s.key === activeStore)?.label ?? activeStore} Shopping List`;
+  const storeLabel =
+    activeStore === "all"
+      ? "All stores"
+      : STORES.find((s) => s.key === activeStore)?.label ?? activeStore;
 
+  function copyList() {
     const unchecked = displayed.filter((i) => !i.checked);
     if (!unchecked.length) return;
-
-    const lines = unchecked.map((i) => `□ ${itemLabel(i)}`);
-    const text = `${storeLabel}\n${"─".repeat(storeLabel.length)}\n${lines.join("\n")}`;
-
+    const header = `NomNate Shopping List — ${storeLabel}`;
+    const divider = "─".repeat(Math.min(header.length, 40));
+    const lines = unchecked.map(formatItemLine);
+    const text = `${header}\n${divider}\n${lines.join("\n")}`;
     navigator.clipboard.writeText(text).then(() => {
-      setCopyFeedback(true);
-      setTimeout(() => setCopyFeedback(false), 2000);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     });
-  }, [displayed, activeStore]);
+  }
 
   function shareWhatsApp() {
-    const storeLabel =
-      activeStore === "all"
-        ? "Shopping List"
-        : `${STORES.find((s) => s.key === activeStore)?.label ?? activeStore} Shopping List`;
-
     const unchecked = displayed.filter((i) => !i.checked);
     if (!unchecked.length) return;
-
-    const lines = unchecked.map((i) => `□ ${itemLabel(i)}`);
-    const text = `*${storeLabel}*\n${lines.join("\n")}`;
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(text)}`,
-      "_blank",
-      "noopener,noreferrer"
-    );
+    const header = `🍽️ NomNate Shopping List`;
+    const storeLine = `🛒 ${storeLabel}`;
+    const divider = "─────────────────────";
+    const lines = unchecked.map(formatItemLine);
+    const footer = "\n\nShared from NomNate — nomnate.co.za";
+    const text = `${header}\n${storeLine}\n${divider}\n${lines.join("\n")}${footer}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
   }
 
   return (
     <div className="space-y-4">
-      {/* Store filter tabs */}
+      {/* Store filter + actions */}
       <div className="bg-white rounded-[14px] border border-gray-200 p-4 space-y-3">
         <div className="flex flex-wrap gap-2">
           <button
@@ -153,22 +146,21 @@ export function ShoppingListClient({ initialItems }: { initialItems: Item[] }) {
           ))}
         </div>
 
-        {/* Copy + WhatsApp actions */}
         {totalRemaining > 0 && (
           <div className="flex gap-2 flex-wrap">
             <button
               onClick={copyList}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                copyFeedback
+                copied
                   ? "bg-herb-light border-herb text-herb"
                   : "bg-white border-gray-200 text-slate hover:border-flame hover:text-flame"
               }`}
             >
-              {copyFeedback
+              {copied
                 ? "✓ Copied"
                 : activeStore === "all"
                 ? "Copy full list"
-                : `Copy ${STORES.find((s) => s.key === activeStore)?.label ?? ""} list`}
+                : `Copy ${storeLabel} list`}
             </button>
             <button
               onClick={shareWhatsApp}
@@ -217,9 +209,16 @@ function ItemRow({
   onToggle: (id: string, checked: boolean) => void;
   onStoreChange: (id: string, store: StoreKey) => void;
 }) {
-  const label = itemLabel(item);
   const store = STORES.find((s) => s.key === item.resolvedStore)!;
   const searchUrl = store.searchUrl(item.ingredient_name);
+
+  const label = [
+    item.quantity != null ? item.quantity : null,
+    item.unit,
+    item.ingredient_name,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div
