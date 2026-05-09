@@ -131,7 +131,11 @@ export function WeeklyCalendar({
           });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR") {
+          setVoteError("Live updates disconnected — refresh to resync");
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);

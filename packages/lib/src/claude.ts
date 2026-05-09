@@ -72,6 +72,9 @@ Rules:
     messages: [{ role: "user", content: prompt }],
   });
 
+  if (!message.content.length) {
+    throw new Error("AI returned an empty response — try again");
+  }
   const text =
     message.content[0].type === "text" ? message.content[0].text : "";
 

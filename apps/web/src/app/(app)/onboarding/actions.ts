@@ -18,6 +18,8 @@ export async function createFamily(
   const displayName = String(formData.get("displayName") ?? "").trim();
   if (!familyName) return "Family name is required";
   if (!displayName) return "Your name is required";
+  if (familyName.length > 80) return "Family name must be under 80 characters";
+  if (displayName.length > 60) return "Your name must be under 60 characters";
 
   // SELECT policy includes created_by = auth.uid(), so RETURNING is safe here
   const { data: family, error } = await supabase
@@ -55,6 +57,7 @@ export async function joinFamily(
   const displayName = String(formData.get("displayName") ?? "").trim();
   if (!inviteCode) return "Invite code is required";
   if (!displayName) return "Your name is required";
+  if (displayName.length > 60) return "Your name must be under 60 characters";
 
   const { data: families, error: lookupError } = await supabase
     .rpc("get_family_by_invite_code", { code: inviteCode });
