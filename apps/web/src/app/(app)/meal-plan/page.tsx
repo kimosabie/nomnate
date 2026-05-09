@@ -102,21 +102,28 @@ export default async function MealPlanPage() {
     );
   }
 
-  // Parallel: AI usage, shopping list check, and slots are all independent
-  const [aiUsed, { data: existingList }, { data: rawSlots }] = await Promise.all([
-    getAIUsageThisWeek(membership.family_id),
-    supabase
-      .from("shopping_lists")
-      .select("id")
-      .eq("meal_plan_id", plan.id)
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from("meal_plan_slots")
-      .select("id, day_of_week, status, recipe_id")
-      .eq("meal_plan_id", plan.id)
-      .order("day_of_week"),
-  ]);
+  // Parallel: AI usage, shopping list check, slots, and recipe library
+  const [aiUsed, { data: existingList }, { data: rawSlots }, { data: familyRecipes }] =
+    await Promise.all([
+      getAIUsageThisWeek(membership.family_id),
+      supabase
+        .from("shopping_lists")
+        .select("id")
+        .eq("meal_plan_id", plan.id)
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("meal_plan_slots")
+        .select("id, day_of_week, status, recipe_id")
+        .eq("meal_plan_id", plan.id)
+        .order("day_of_week"),
+      supabase
+        .from("recipes")
+        .select("id, title, image_url, prep_time, cuisine")
+        .eq("family_id", membership.family_id)
+        .order("is_favourite", { ascending: false })
+        .order("title"),
+    ]);
 
   const aiRemaining = FREE_AI_LIMIT - aiUsed;
 
@@ -165,6 +172,8 @@ export default async function MealPlanPage() {
           initialVotes={votes}
           memberId={membership.id}
           weekStart={weekStart}
+          recipes={familyRecipes ?? []}
+          aiRemaining={aiRemaining}
         />
 
         {/* AI suggestions */}

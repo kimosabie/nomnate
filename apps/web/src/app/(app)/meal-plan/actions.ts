@@ -327,6 +327,170 @@ export async function generateShoppingList(
   redirect("/shopping-list");
 }
 
+export async function removeFromSlot(slotId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return "Not authenticated";
+
+  const { error } = await supabase
+    .from("meal_plan_slots")
+    .update({ recipe_id: null })
+    .eq("id", slotId);
+
+  if (error) return error.message;
+  revalidatePath("/meal-plan");
+  return null;
+}
+
+export async function assignRecipeToSlot(
+  slotId: string,
+  recipeId: string
+): Promise<string | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return "Not authenticated";
+
+  const { data: membership } = await supabase
+    .from("family_members")
+    .select("family_id")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (!membership) return "No family found";
+
+  // Verify recipe belongs to this family before assigning
+  const { data: recipe } = await supabase
+    .from("recipes")
+    .select("id")
+    .eq("id", recipeId)
+    .eq("family_id", membership.family_id)
+    .maybeSingle();
+  if (!recipe) return "Recipe not found";
+
+  const { error } = await supabase
+    .from("meal_plan_slots")
+    .update({ recipe_id: recipeId })
+    .eq("id", slotId);
+
+  if (error) return error.message;
+  revalidatePath("/meal-plan");
+  return null;
+}
+
+type SlotRecipe = {
+  id: string;
+  title: string;
+  image_url: string | null;
+  prep_time: number | null;
+  cuisine: string | null;
+};
+
+export async function suggestForSlot(
+  slotId: string
+): Promise<{ error: string } | { recipe: SlotRecipe }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: membership } = await supabase
+    .from("family_members")
+    .select("family_id")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (!membership) return { error: "No family found" };
+
+  const usedThisWeek = await getAIUsageThisWeek(membership.family_id);
+  if (FREE_AI_LIMIT - usedThisWeek <= 0) {
+    return { error: "You've used all 5 AI suggestions for this week" };
+  }
+
+  const { data: members } = await supabase
+    .from("family_members")
+    .select("dietary_restrictions")
+    .eq("family_id", membership.family_id);
+
+  const allRestrictions = [
+    ...new Set(
+      (members ?? []).flatMap((m) => (m.dietary_restrictions as string[]) ?? [])
+    ),
+  ];
+  const familySize = members?.length ?? 1;
+
+  const { data: existingRecipes } = await supabase
+    .from("recipes")
+    .select("title")
+    .eq("family_id", membership.family_id);
+
+  const excludeTitles = (existingRecipes ?? []).map((r) => r.title);
+
+  let suggestions: SuggestedRecipe[];
+  try {
+    suggestions = await suggestMeals({
+      familySize,
+      dietaryRestrictions: allRestrictions,
+      excludeTitles,
+      count: 1,
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "AI suggestion failed" };
+  }
+
+  if (!suggestions.length) return { error: "No suggestion returned" };
+  const s = suggestions[0];
+
+  const { data: saved, error: saveError } = await supabase
+    .from("recipes")
+    .insert({
+      family_id: membership.family_id,
+      title: s.title,
+      source: "ai" as const,
+      instructions: s.instructions,
+      prep_time: s.prep_time,
+      cuisine: s.cuisine,
+      created_by: user.id,
+    })
+    .select("id, title, image_url, prep_time, cuisine")
+    .single();
+
+  if (saveError || !saved) return { error: saveError?.message ?? "Failed to save recipe" };
+
+  if (s.ingredients.length > 0) {
+    await supabase.from("recipe_ingredients").insert(
+      s.ingredients.map((ing) => ({
+        recipe_id: saved.id,
+        name: ing.name,
+        quantity: ing.quantity ?? null,
+        unit: ing.unit || null,
+      }))
+    );
+  }
+
+  const { error: updateError } = await supabase
+    .from("meal_plan_slots")
+    .update({ recipe_id: saved.id })
+    .eq("id", slotId);
+
+  if (updateError) return { error: updateError.message };
+
+  revalidatePath("/meal-plan");
+  return {
+    recipe: {
+      id: saved.id,
+      title: saved.title,
+      image_url: saved.image_url ?? null,
+      prep_time: saved.prep_time ?? null,
+      cuisine: saved.cuisine ?? null,
+    },
+  };
+}
+
 export async function castVote(
   slotId: string,
   memberId: string,
