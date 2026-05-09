@@ -1,269 +1,486 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
       families: {
         Row: {
-          id: string;
-          name: string;
-          invite_code: string;
-          created_by: string;
-          created_at: string;
-        };
+          created_at: string
+          created_by: string
+          id: string
+          invite_code: string
+          name: string
+        }
         Insert: {
-          id?: string;
-          name: string;
-          invite_code?: string;
-          created_by: string;
-          created_at?: string;
-        };
+          created_at?: string
+          created_by: string
+          id?: string
+          invite_code?: string
+          name: string
+        }
         Update: {
-          id?: string;
-          name?: string;
-          invite_code?: string;
-          created_by?: string;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
+          created_at?: string
+          created_by?: string
+          id?: string
+          invite_code?: string
+          name?: string
+        }
+        Relationships: []
+      }
       family_members: {
         Row: {
-          id: string;
-          family_id: string;
-          user_id: string;
-          name: string | null;
-          avatar_url: string | null;
-          dietary_restrictions: string[];
-          role: "admin" | "member";
-          joined_at: string;
-        };
+          avatar_url: string | null
+          cuisine_preferences: string[]
+          dietary_restrictions: string[]
+          family_id: string
+          id: string
+          ingredient_dislikes: string[]
+          joined_at: string
+          name: string | null
+          role: string
+          user_id: string
+        }
         Insert: {
-          id?: string;
-          family_id: string;
-          user_id: string;
-          name?: string | null;
-          avatar_url?: string | null;
-          dietary_restrictions?: string[];
-          role?: "admin" | "member";
-          joined_at?: string;
-        };
+          avatar_url?: string | null
+          cuisine_preferences?: string[]
+          dietary_restrictions?: string[]
+          family_id: string
+          id?: string
+          ingredient_dislikes?: string[]
+          joined_at?: string
+          name?: string | null
+          role?: string
+          user_id: string
+        }
         Update: {
-          id?: string;
-          family_id?: string;
-          user_id?: string;
-          name?: string | null;
-          avatar_url?: string | null;
-          dietary_restrictions?: string[];
-          role?: "admin" | "member";
-          joined_at?: string;
-        };
-        Relationships: [];
-      };
-      recipes: {
-        Row: {
-          id: string;
-          family_id: string | null;
-          title: string;
-          source: "ai" | "spoonacular" | "manual";
-          instructions: string | null;
-          image_url: string | null;
-          prep_time: number | null;
-          cuisine: string | null;
-          is_favourite: boolean;
-          spoonacular_id: number | null;
-          created_by: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          family_id?: string | null;
-          title: string;
-          source?: "ai" | "spoonacular" | "manual";
-          instructions?: string | null;
-          image_url?: string | null;
-          prep_time?: number | null;
-          cuisine?: string | null;
-          is_favourite?: boolean;
-          spoonacular_id?: number | null;
-          created_by?: string | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          family_id?: string | null;
-          title?: string;
-          source?: "ai" | "spoonacular" | "manual";
-          instructions?: string | null;
-          image_url?: string | null;
-          prep_time?: number | null;
-          cuisine?: string | null;
-          is_favourite?: boolean;
-          spoonacular_id?: number | null;
-          created_by?: string | null;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      recipe_ingredients: {
-        Row: {
-          id: string;
-          recipe_id: string;
-          name: string;
-          quantity: number | null;
-          unit: string | null;
-        };
-        Insert: {
-          id?: string;
-          recipe_id: string;
-          name: string;
-          quantity?: number | null;
-          unit?: string | null;
-        };
-        Update: {
-          id?: string;
-          recipe_id?: string;
-          name?: string;
-          quantity?: number | null;
-          unit?: string | null;
-        };
-        Relationships: [];
-      };
-      meal_plans: {
-        Row: {
-          id: string;
-          family_id: string;
-          week_start_date: string;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          family_id: string;
-          week_start_date: string;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          family_id?: string;
-          week_start_date?: string;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
+          avatar_url?: string | null
+          cuisine_preferences?: string[]
+          dietary_restrictions?: string[]
+          family_id?: string
+          id?: string
+          ingredient_dislikes?: string[]
+          joined_at?: string
+          name?: string | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_members_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meal_plan_slots: {
         Row: {
-          id: string;
-          meal_plan_id: string;
-          day_of_week: number;
-          recipe_id: string | null;
-          status: "suggested" | "voted" | "confirmed";
-        };
+          day_of_week: number
+          id: string
+          meal_plan_id: string
+          recipe_id: string | null
+          status: string
+        }
         Insert: {
-          id?: string;
-          meal_plan_id: string;
-          day_of_week: number;
-          recipe_id?: string | null;
-          status?: "suggested" | "voted" | "confirmed";
-        };
+          day_of_week: number
+          id?: string
+          meal_plan_id: string
+          recipe_id?: string | null
+          status?: string
+        }
         Update: {
-          id?: string;
-          meal_plan_id?: string;
-          day_of_week?: number;
-          recipe_id?: string | null;
-          status?: "suggested" | "voted" | "confirmed";
-        };
-        Relationships: [];
-      };
-      votes: {
+          day_of_week?: number
+          id?: string
+          meal_plan_id?: string
+          recipe_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_plan_slots_meal_plan_id_fkey"
+            columns: ["meal_plan_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_plan_slots_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meal_plans: {
         Row: {
-          id: string;
-          meal_plan_slot_id: string;
-          member_id: string;
-          value: "up" | "down" | "love";
-          created_at: string;
-        };
+          created_at: string
+          family_id: string
+          id: string
+          week_start_date: string
+        }
         Insert: {
-          id?: string;
-          meal_plan_slot_id: string;
-          member_id: string;
-          value: "up" | "down" | "love";
-          created_at?: string;
-        };
+          created_at?: string
+          family_id: string
+          id?: string
+          week_start_date: string
+        }
         Update: {
-          id?: string;
-          meal_plan_slot_id?: string;
-          member_id?: string;
-          value?: "up" | "down" | "love";
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      shopping_lists: {
+          created_at?: string
+          family_id?: string
+          id?: string
+          week_start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_plans_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipe_ingredients: {
         Row: {
-          id: string;
-          meal_plan_id: string;
-          generated_at: string;
-        };
+          id: string
+          name: string
+          quantity: number | null
+          recipe_id: string
+          unit: string | null
+        }
         Insert: {
-          id?: string;
-          meal_plan_id: string;
-          generated_at?: string;
-        };
+          id?: string
+          name: string
+          quantity?: number | null
+          recipe_id: string
+          unit?: string | null
+        }
         Update: {
-          id?: string;
-          meal_plan_id?: string;
-          generated_at?: string;
-        };
-        Relationships: [];
-      };
+          id?: string
+          name?: string
+          quantity?: number | null
+          recipe_id?: string
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_ingredients_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          cuisine: string | null
+          family_id: string | null
+          id: string
+          image_url: string | null
+          instructions: string | null
+          is_favourite: boolean
+          prep_time: number | null
+          source: string
+          spoonacular_id: number | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          cuisine?: string | null
+          family_id?: string | null
+          id?: string
+          image_url?: string | null
+          instructions?: string | null
+          is_favourite?: boolean
+          prep_time?: number | null
+          source?: string
+          spoonacular_id?: number | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          cuisine?: string | null
+          family_id?: string | null
+          id?: string
+          image_url?: string | null
+          instructions?: string | null
+          is_favourite?: boolean
+          prep_time?: number | null
+          source?: string
+          spoonacular_id?: number | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipes_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shopping_list_items: {
         Row: {
-          id: string;
-          list_id: string;
-          ingredient_name: string;
-          quantity: number | null;
-          unit: string | null;
-          checked: boolean;
-        };
+          checked: boolean
+          id: string
+          ingredient_name: string
+          list_id: string
+          quantity: number | null
+          unit: string | null
+        }
         Insert: {
-          id?: string;
-          list_id: string;
-          ingredient_name: string;
-          quantity?: number | null;
-          unit?: string | null;
-          checked?: boolean;
-        };
+          checked?: boolean
+          id?: string
+          ingredient_name: string
+          list_id: string
+          quantity?: number | null
+          unit?: string | null
+        }
         Update: {
-          id?: string;
-          list_id?: string;
-          ingredient_name?: string;
-          quantity?: number | null;
-          unit?: string | null;
-          checked?: boolean;
-        };
-        Relationships: [];
-      };
-    };
-    Views: Record<string, never>;
+          checked?: boolean
+          id?: string
+          ingredient_name?: string
+          list_id?: string
+          quantity?: number | null
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopping_list_items_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "shopping_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shopping_lists: {
+        Row: {
+          generated_at: string
+          id: string
+          meal_plan_id: string
+        }
+        Insert: {
+          generated_at?: string
+          id?: string
+          meal_plan_id: string
+        }
+        Update: {
+          generated_at?: string
+          id?: string
+          meal_plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopping_lists_meal_plan_id_fkey"
+            columns: ["meal_plan_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      votes: {
+        Row: {
+          created_at: string
+          id: string
+          meal_plan_slot_id: string
+          member_id: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          meal_plan_slot_id: string
+          member_id: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          meal_plan_slot_id?: string
+          member_id?: string
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "votes_meal_plan_slot_id_fkey"
+            columns: ["meal_plan_slot_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plan_slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "votes_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "family_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
     Functions: {
       get_family_by_invite_code: {
-        Args: { code: string };
-        Returns: Array<{ id: string; name: string }>;
-      };
-      is_family_member: {
-        Args: { check_family_id: string };
-        Returns: boolean;
-      };
-      is_family_admin: {
-        Args: { check_family_id: string };
-        Returns: boolean;
-      };
-    };
+        Args: { code: string }
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
+      is_family_admin: { Args: { check_family_id: string }; Returns: boolean }
+      is_family_member: { Args: { check_family_id: string }; Returns: boolean }
+    }
     Enums: {
-      recipe_source: "ai" | "spoonacular" | "manual";
-      slot_status: "suggested" | "voted" | "confirmed";
-      vote_value: "up" | "down" | "love";
-      member_role: "admin" | "member";
-    };
-  };
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

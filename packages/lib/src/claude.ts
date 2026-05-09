@@ -10,6 +10,8 @@ export async function suggestMeals(
   const {
     familySize,
     dietaryRestrictions,
+    cuisinePreferences = [],
+    ingredientDislikes = [],
     cuisine,
     excludeTitles = [],
     count = 7,
@@ -20,6 +22,16 @@ export async function suggestMeals(
       ? `Dietary restrictions for the family: ${dietaryRestrictions.join(", ")}.`
       : "No specific dietary restrictions.";
 
+  const preferences =
+    cuisinePreferences.length > 0
+      ? `The family enjoys these cuisines: ${cuisinePreferences.join(", ")}. Favour these where possible.`
+      : "";
+
+  const dislikes =
+    ingredientDislikes.length > 0
+      ? `Avoid these ingredients — family members dislike them: ${ingredientDislikes.join(", ")}.`
+      : "";
+
   const exclusions =
     excludeTitles.length > 0
       ? `Do not suggest these meals (already in the plan): ${excludeTitles.join(", ")}.`
@@ -29,6 +41,8 @@ export async function suggestMeals(
 
 Suggest ${count} dinner recipes for a family of ${familySize}.
 ${restrictions}
+${preferences}
+${dislikes}
 ${cuisine ? `Preferred cuisine style: ${cuisine}.` : ""}
 ${exclusions}
 

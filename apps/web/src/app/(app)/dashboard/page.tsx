@@ -13,7 +13,7 @@ export default async function DashboardPage() {
 
   const { data: membership } = await supabase
     .from("family_members")
-    .select("family_id, role, name")
+    .select("id, family_id, role, name")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -75,28 +75,39 @@ export default async function DashboardPage() {
             Members ({members?.length ?? 0})
           </h2>
           <ul className="space-y-3">
-            {members?.map((m) => (
-              <li key={m.id} className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-semibold text-sm shrink-0">
-                  {(m.name ?? "?")[0].toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">
-                    {m.name ?? "Unnamed"}
-                    {m.role === "admin" && (
-                      <span className="ml-2 text-xs text-orange-500 font-normal">
-                        admin
-                      </span>
-                    )}
-                  </p>
-                  {m.dietary_restrictions?.length > 0 && (
-                    <p className="text-xs text-gray-400">
-                      {m.dietary_restrictions.join(", ")}
+            {members?.map((m) => {
+              const isMe = m.id === membership.id;
+              return (
+                <li key={m.id} className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-semibold text-sm shrink-0">
+                    {(m.name ?? "?")[0].toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">
+                      {m.name ?? "Unnamed"}
+                      {m.role === "admin" && (
+                        <span className="ml-2 text-xs text-orange-500 font-normal">
+                          admin
+                        </span>
+                      )}
                     </p>
+                    {m.dietary_restrictions?.length > 0 && (
+                      <p className="text-xs text-gray-400">
+                        {m.dietary_restrictions.join(", ")}
+                      </p>
+                    )}
+                  </div>
+                  {isMe && (
+                    <Link
+                      href="/profile"
+                      className="shrink-0 text-xs text-orange-500 hover:text-orange-600 font-medium transition-colors"
+                    >
+                      Edit
+                    </Link>
                   )}
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         </div>
 

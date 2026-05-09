@@ -46,15 +46,25 @@ export async function suggestWithAI(
     return "You've used all 5 AI suggestions for this week. Upgrade to Premium for unlimited.";
   }
 
-  // Gather family context — dietary restrictions only, never PII
+  // Gather family context — preferences only, never PII
   const { data: members } = await supabase
     .from("family_members")
-    .select("dietary_restrictions")
+    .select("dietary_restrictions, cuisine_preferences, ingredient_dislikes")
     .eq("family_id", membership.family_id);
 
   const allRestrictions = [
     ...new Set(
       (members ?? []).flatMap((m) => (m.dietary_restrictions as string[]) ?? [])
+    ),
+  ];
+  const allCuisinePrefs = [
+    ...new Set(
+      (members ?? []).flatMap((m) => (m.cuisine_preferences as string[]) ?? [])
+    ),
+  ];
+  const allDislikes = [
+    ...new Set(
+      (members ?? []).flatMap((m) => (m.ingredient_dislikes as string[]) ?? [])
     ),
   ];
   const familySize = members?.length ?? 1;
@@ -72,6 +82,8 @@ export async function suggestWithAI(
     suggestions = await suggestMeals({
       familySize,
       dietaryRestrictions: allRestrictions,
+      cuisinePreferences: allCuisinePrefs,
+      ingredientDislikes: allDislikes,
       excludeTitles,
       count,
     });
@@ -413,12 +425,22 @@ export async function suggestForSlot(
 
   const { data: members } = await supabase
     .from("family_members")
-    .select("dietary_restrictions")
+    .select("dietary_restrictions, cuisine_preferences, ingredient_dislikes")
     .eq("family_id", membership.family_id);
 
   const allRestrictions = [
     ...new Set(
       (members ?? []).flatMap((m) => (m.dietary_restrictions as string[]) ?? [])
+    ),
+  ];
+  const allCuisinePrefs = [
+    ...new Set(
+      (members ?? []).flatMap((m) => (m.cuisine_preferences as string[]) ?? [])
+    ),
+  ];
+  const allDislikes = [
+    ...new Set(
+      (members ?? []).flatMap((m) => (m.ingredient_dislikes as string[]) ?? [])
     ),
   ];
   const familySize = members?.length ?? 1;
@@ -435,6 +457,8 @@ export async function suggestForSlot(
     suggestions = await suggestMeals({
       familySize,
       dietaryRestrictions: allRestrictions,
+      cuisinePreferences: allCuisinePrefs,
+      ingredientDislikes: allDislikes,
       excludeTitles,
       count: 1,
     });

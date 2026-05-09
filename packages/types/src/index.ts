@@ -138,6 +138,8 @@ export interface StoreLinks {
 export interface MealSuggestionParams {
   familySize: number;
   dietaryRestrictions: string[];
+  cuisinePreferences?: string[];
+  ingredientDislikes?: string[];
   cuisine?: string;
   excludeTitles?: string[];
   count?: number;
