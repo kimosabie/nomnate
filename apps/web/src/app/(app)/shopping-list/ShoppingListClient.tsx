@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { STORES, StoreKey, assignStore } from "./storeUtils";
-import { toggleItem, setItemStore } from "./actions";
+import { toggleItem as serverToggle, setItemStore as serverSetStore } from "./actions";
 
 interface ShoppingItem {
   id: string;
@@ -13,101 +13,87 @@ interface ShoppingItem {
   store: string | null;
 }
 
+type MutableItem = Omit<ShoppingItem, "store"> & { effectiveStore: StoreKey };
+
 const STORE_CYCLE: StoreKey[] = ["woolworths", "pnp", "checkers"];
 
-function formatLine(item: ShoppingItem, qty: string): string {
-  return qty ? `□ ${item.ingredient_name} — ${qty}` : `□ ${item.ingredient_name}`;
+const VALID_STORES = new Set<string>(STORE_CYCLE);
+
+function toStoreKey(raw: string | null, ingredientName: string): StoreKey {
+  if (raw && VALID_STORES.has(raw)) return raw as StoreKey;
+  return assignStore(ingredientName);
+}
+
+function storeInfo(key: StoreKey) {
+  return STORES.find((s) => s.key === key) ?? STORES[2]; // fallback to checkers
 }
 
 export function ShoppingListClient({ initialItems }: { initialItems: ShoppingItem[] }) {
-  const [selectedStore, setSelectedStore] = useState<"all" | StoreKey>("all");
-  const [checkedIds, setCheckedIds] = useState<Set<string>>(
-    () => new Set(initialItems.filter((i) => i.checked).map((i) => i.id))
+  const [items, setItems] = useState<MutableItem[]>(() =>
+    initialItems.map((i) => ({
+      ...i,
+      effectiveStore: toStoreKey(i.store, i.ingredient_name),
+    }))
   );
-  const [itemStores, setItemStores] = useState<Map<string, StoreKey>>(() => {
-    const m = new Map<string, StoreKey>();
-    for (const item of initialItems) {
-      m.set(item.id, (item.store as StoreKey) ?? assignStore(item.ingredient_name));
-    }
-    return m;
-  });
+
+  const [selectedStore, setSelectedStore] = useState<"all" | StoreKey>("all");
   const [copied, setCopied] = useState(false);
 
-  const toggle = useCallback((id: string) => {
-    setCheckedIds((prev) => {
-      const nowChecked = !prev.has(id);
-      const next = new Set(prev);
-      nowChecked ? next.add(id) : next.delete(id);
-      toggleItem(id, nowChecked);
-      return next;
-    });
-  }, []);
+  function handleToggle(id: string, currentChecked: boolean) {
+    const newChecked = !currentChecked;
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, checked: newChecked } : i)));
+    serverToggle(id, newChecked);
+  }
 
-  const cycleStore = useCallback((id: string) => {
-    setItemStores((prev) => {
-      const current = prev.get(id) ?? "checkers";
-      const idx = STORE_CYCLE.indexOf(current);
-      const next = STORE_CYCLE[(idx + 1) % STORE_CYCLE.length];
-      const newMap = new Map(prev);
-      newMap.set(id, next);
-      setItemStore(id, next);
-      return newMap;
-    });
-  }, []);
+  function handleCycleStore(id: string, currentStore: StoreKey) {
+    const idx = STORE_CYCLE.indexOf(currentStore);
+    const next = STORE_CYCLE[(idx + 1) % STORE_CYCLE.length];
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, effectiveStore: next } : i)));
+    serverSetStore(id, next);
+  }
 
-  // Per-store counts (unchecked only)
   const storeCounts = Object.fromEntries(
-    STORES.map((s) => [
-      s.key,
-      initialItems.filter((i) => !checkedIds.has(i.id) && itemStores.get(i.id) === s.key).length,
-    ])
+    STORES.map((s) => [s.key, items.filter((i) => !i.checked && i.effectiveStore === s.key).length])
   ) as Record<StoreKey, number>;
 
-  const totalUnchecked = initialItems.filter((i) => !checkedIds.has(i.id)).length;
+  const totalUnchecked = items.filter((i) => !i.checked).length;
 
   const displayed =
-    selectedStore === "all"
-      ? initialItems
-      : initialItems.filter((i) => itemStores.get(i.id) === selectedStore);
+    selectedStore === "all" ? items : items.filter((i) => i.effectiveStore === selectedStore);
 
-  const uncheckedInView = displayed.filter((i) => !checkedIds.has(i.id));
+  const uncheckedInView = displayed.filter((i) => !i.checked);
 
-  const sm = (key: StoreKey) => STORES.find((s) => s.key === key)!;
-
-  function buildShareText(label: string) {
+  function buildText(label: string, whatsapp: boolean) {
+    const prefix = whatsapp ? "🍽️ *NomNate Shopping List*\n🛒 *" : "NomNate Shopping List — ";
+    const suffix = whatsapp ? "*\n─────────────────────" : "\n─────────────────────";
+    const footer = whatsapp ? "\n\n_Shared from NomNate_" : "\n\nShared from NomNate";
     const lines = uncheckedInView.map((i) => {
       const qty = [i.quantity != null ? String(i.quantity) : "", i.unit].filter(Boolean).join(" ");
-      return formatLine(i, qty);
+      return `${whatsapp ? "•" : "□"} ${i.ingredient_name}${qty ? ` — ${qty}` : ""}`;
     });
-    return `NomNate Shopping List — ${label}\n─────────────────────\n${lines.join("\n")}\n\nShared from NomNate`;
+    return `${prefix}${label}${suffix}\n${lines.join("\n")}${footer}`;
   }
 
   function handleCopy() {
     if (!uncheckedInView.length) return;
-    const label = selectedStore === "all" ? "Full list" : sm(selectedStore).label;
-    const text = buildShareText(label);
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2500);
-      });
-    }
+    const label = selectedStore === "all" ? "Full list" : storeInfo(selectedStore).label;
+    const text = buildText(label, false);
+    navigator.clipboard?.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
   }
 
   function handleWhatsApp() {
     if (!uncheckedInView.length) return;
-    const label = selectedStore === "all" ? "Full list" : sm(selectedStore).label;
-    const lines = uncheckedInView.map((i) => {
-      const qty = [i.quantity != null ? String(i.quantity) : "", i.unit].filter(Boolean).join(" ");
-      return formatLine(i, qty);
-    });
-    const text = `🍽️ *NomNate Shopping List*\n🛒 *${label}*\n─────────────────────\n${lines.join("\n")}\n\n_Shared from NomNate_`;
+    const label = selectedStore === "all" ? "Full list" : storeInfo(selectedStore).label;
+    const text = buildText(label, true);
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
   }
 
   return (
     <div className="space-y-3">
-      {/* Store radio tabs */}
+      {/* Store filter tabs */}
       <div className="bg-white rounded-[14px] border border-cream-border px-4 py-3">
         <p className="text-[11px] text-slate font-semibold uppercase tracking-wide mb-2">Shop by store</p>
         <div className="flex gap-2 flex-wrap">
@@ -141,7 +127,7 @@ export function ShoppingListClient({ initialItems }: { initialItems: ShoppingIte
         </div>
       </div>
 
-      {/* Action buttons */}
+      {/* Share actions */}
       {uncheckedInView.length > 0 && (
         <div className="flex gap-2 flex-wrap">
           <button
@@ -166,16 +152,14 @@ export function ShoppingListClient({ initialItems }: { initialItems: ShoppingIte
         </div>
       )}
 
-      {/* Master list */}
+      {/* Item list */}
       <div className="bg-white rounded-[14px] border border-cream-border overflow-hidden">
         {displayed.length === 0 ? (
           <p className="text-sm text-slate text-center py-8">No items for this store.</p>
         ) : (
           <ul className="divide-y divide-cream-border">
             {displayed.map((item) => {
-              const isChecked = checkedIds.has(item.id);
-              const storeKey = itemStores.get(item.id) ?? "checkers";
-              const store = sm(storeKey);
+              const store = storeInfo(item.effectiveStore);
               const qty = [item.quantity != null ? String(item.quantity) : "", item.unit]
                 .filter(Boolean)
                 .join(" ");
@@ -184,20 +168,20 @@ export function ShoppingListClient({ initialItems }: { initialItems: ShoppingIte
                 <li
                   key={item.id}
                   className="flex items-center gap-3 px-4 py-3"
-                  style={{ opacity: isChecked ? 0.4 : 1 }}
+                  style={{ opacity: item.checked ? 0.4 : 1 }}
                 >
                   {/* Checkbox */}
                   <button
                     type="button"
-                    onClick={() => toggle(item.id)}
+                    onClick={() => handleToggle(item.id, item.checked)}
                     className="w-5 h-5 rounded-[5px] flex-shrink-0 flex items-center justify-center border-2 transition-colors"
                     style={{
-                      borderColor: isChecked ? "#E8621A" : "#F5D5C0",
-                      background: isChecked ? "#E8621A" : "#fff",
+                      borderColor: item.checked ? "#E8621A" : "#F5D5C0",
+                      background: item.checked ? "#E8621A" : "#fff",
                     }}
-                    aria-label={isChecked ? "Uncheck" : "Check off"}
+                    aria-label={item.checked ? "Uncheck" : "Mark as got"}
                   >
-                    {isChecked && (
+                    {item.checked && (
                       <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                         <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
@@ -208,10 +192,10 @@ export function ShoppingListClient({ initialItems }: { initialItems: ShoppingIte
                   <span
                     className="flex-1 text-sm font-medium cursor-pointer select-none"
                     style={{
-                      color: isChecked ? "#bbb" : "#1A1A1A",
-                      textDecoration: isChecked ? "line-through" : "none",
+                      color: item.checked ? "#bbb" : "#1A1A1A",
+                      textDecoration: item.checked ? "line-through" : "none",
                     }}
-                    onClick={() => toggle(item.id)}
+                    onClick={() => handleToggle(item.id, item.checked)}
                   >
                     {item.ingredient_name}
                   </span>
@@ -219,10 +203,10 @@ export function ShoppingListClient({ initialItems }: { initialItems: ShoppingIte
                   {/* Qty */}
                   {qty && <span className="text-xs text-slate flex-shrink-0">{qty}</span>}
 
-                  {/* Store cycle button — tap to change store */}
+                  {/* Store badge — tap cycles */}
                   <button
                     type="button"
-                    onClick={() => cycleStore(item.id)}
+                    onClick={() => handleCycleStore(item.id, item.effectiveStore)}
                     title="Tap to change store"
                     className={`flex-shrink-0 flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${store.badgeBg} ${store.badgeText}`}
                   >
@@ -232,7 +216,7 @@ export function ShoppingListClient({ initialItems }: { initialItems: ShoppingIte
                     </svg>
                   </button>
 
-                  {/* Search at this store */}
+                  {/* Search link */}
                   <a
                     href={store.searchUrl(item.ingredient_name)}
                     target="_blank"
@@ -255,7 +239,7 @@ export function ShoppingListClient({ initialItems }: { initialItems: ShoppingIte
           <div className="p-5 text-center border-t border-cream-border">
             <p className="text-xl mb-0.5">✅</p>
             <p className="text-xs font-semibold text-charcoal">
-              {selectedStore === "all" ? "All done — great shop!" : `Done at ${sm(selectedStore).label}!`}
+              {selectedStore === "all" ? "All done — great shop!" : `Done at ${storeInfo(selectedStore).label}!`}
             </p>
           </div>
         )}
