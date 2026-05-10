@@ -17,6 +17,7 @@ async function fetchImageByTitle(title: string): Promise<string | null> {
   }
 }
 import { FREE_AI_LIMIT } from "./constants";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function getAIUsageThisWeek(familyId: string): Promise<number> {
   const supabase = await createClient();
@@ -54,6 +55,12 @@ export async function suggestWithAI(
 
   if (remaining <= 0) {
     return "You've used all 5 AI suggestions for this week. Upgrade to Premium for unlimited.";
+  }
+
+  // Burst limit: 2 AI suggestion calls per hour prevents rapid-fire abuse
+  const burstOk = await checkRateLimit(supabase, user.id, "ai_suggest", 2, 60);
+  if (!burstOk) {
+    return "Too many requests — wait a moment before generating more suggestions.";
   }
 
   // Gather family context — preferences only, never PII
@@ -505,6 +512,11 @@ export async function suggestForSlot(
   const usedThisWeek = await getAIUsageThisWeek(membership.family_id);
   if (FREE_AI_LIMIT - usedThisWeek <= 0) {
     return { error: "You've used all 5 AI suggestions for this week" };
+  }
+
+  const burstOk = await checkRateLimit(supabase, user.id, "ai_suggest", 2, 60);
+  if (!burstOk) {
+    return { error: "Too many requests — wait a moment before trying again." };
   }
 
   const { data: members } = await supabase

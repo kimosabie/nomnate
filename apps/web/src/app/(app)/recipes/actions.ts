@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { searchRecipes } from "@nomnate/lib/spoonacular";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { mapSpoonacularDiets, getNutrient } from "@nomnate/types";
 import type { SpoonacularRecipe } from "@nomnate/types";
 
@@ -32,6 +33,16 @@ export async function searchSpoonacular(
   const query = String(formData.get("query") ?? "").trim();
   const dietFilter = String(formData.get("diet_filter") ?? "");
   if (!query) return { results: [], error: null, dietFilter };
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { results: [], error: "Sign in to search recipes", dietFilter };
+
+  // 20 searches per hour per user
+  const allowed = await checkRateLimit(supabase, user.id, "recipe_search", 20, 60);
+  if (!allowed) {
+    return { results: [], error: "Too many searches — try again in an hour", dietFilter };
+  }
 
   try {
     const spoonacularDiet = DIET_FILTER_MAP[dietFilter] ?? undefined;
