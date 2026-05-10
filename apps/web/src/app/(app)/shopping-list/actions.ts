@@ -1,35 +1,35 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-export async function setItemStore(itemId: string, store: string | null): Promise<void> {
+const STORE_CYCLE = ["woolworths", "pnp", "checkers"] as const;
+
+export async function toggleItem(formData: FormData): Promise<void> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  const valid = ["woolworths", "pnp", "checkers", null];
-  if (!valid.includes(store)) return;
+  const itemId = String(formData.get("itemId") ?? "");
+  const checked = formData.get("checked") === "true";
+  if (!itemId) return;
 
-  await supabase
-    .from("shopping_list_items")
-    .update({ store })
-    .eq("id", itemId);
+  await supabase.from("shopping_list_items").update({ checked }).eq("id", itemId);
+  revalidatePath("/shopping-list");
 }
 
-export async function toggleItem(itemId: string, checked: boolean): Promise<string | null> {
+export async function cycleStore(formData: FormData): Promise<void> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return "Not authenticated";
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
 
-  const { error } = await supabase
-    .from("shopping_list_items")
-    .update({ checked })
-    .eq("id", itemId);
+  const itemId = String(formData.get("itemId") ?? "");
+  const currentStore = String(formData.get("currentStore") ?? "");
+  if (!itemId) return;
 
-  if (error) return error.message;
-  return null;
+  const idx = STORE_CYCLE.indexOf(currentStore as typeof STORE_CYCLE[number]);
+  const next = STORE_CYCLE[(idx + 1) % STORE_CYCLE.length];
+
+  await supabase.from("shopping_list_items").update({ store: next }).eq("id", itemId);
+  revalidatePath("/shopping-list");
 }
