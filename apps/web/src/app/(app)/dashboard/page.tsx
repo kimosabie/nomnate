@@ -109,6 +109,33 @@ export default async function DashboardPage() {
     .map((m) => ({ ...m, votes: voteCounts[m.id] ?? 0 }))
     .sort((a, b) => b.votes - a.votes);
 
+  // ── Monthly Dinner Champion ────────────────────────────────────────────────
+  const monthStart = new Date();
+  monthStart.setUTCDate(1);
+  monthStart.setUTCHours(0, 0, 0, 0);
+
+  const memberIds = (members ?? []).map((m) => m.id);
+  let monthlyChampionName = "—";
+  let monthlyChampionVotes = 0;
+
+  if (memberIds.length > 0) {
+    const { data: monthVotes } = await supabase
+      .from("votes")
+      .select("member_id")
+      .in("member_id", memberIds)
+      .gte("created_at", monthStart.toISOString());
+
+    const monthlyCounts: Record<string, number> = {};
+    for (const v of monthVotes ?? []) {
+      monthlyCounts[v.member_id] = (monthlyCounts[v.member_id] ?? 0) + 1;
+    }
+    const topEntry = Object.entries(monthlyCounts).sort((a, b) => b[1] - a[1])[0];
+    if (topEntry) {
+      monthlyChampionName = members?.find((m) => m.id === topEntry[0])?.name ?? "—";
+      monthlyChampionVotes = topEntry[1];
+    }
+  }
+
   const wc = wildcardLabel();
 
   return (
@@ -148,6 +175,27 @@ export default async function DashboardPage() {
               <CopyCode code={family.invite_code} />
             </div>
           </div>
+        </div>
+
+        {/* Dinner Champion */}
+        <div className="bg-white rounded-[14px] border border-cream-border p-5 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-[12px] bg-turmeric-light flex items-center justify-center text-2xl shrink-0">
+            🏆
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-semibold text-slate uppercase tracking-wide">Dinner Champion</p>
+            <p className="text-base font-display font-medium text-charcoal truncate mt-0.5">
+              {monthlyChampionName}
+            </p>
+            <p className="text-xs text-slate mt-0.5">
+              {monthlyChampionVotes > 0
+                ? `${monthlyChampionVotes} vote${monthlyChampionVotes !== 1 ? "s" : ""} this month`
+                : "No votes yet this month"}
+            </p>
+          </div>
+          <p className="text-[10px] text-slate/60 text-right shrink-0">
+            {new Date().toLocaleString("en-ZA", { month: "long" })}
+          </p>
         </div>
 
         {/* Weekly leaderboard */}

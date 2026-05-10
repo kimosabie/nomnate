@@ -109,6 +109,7 @@ export function WeeklyCalendar({
   const [aiLoadingSlotId, setAiLoadingSlotId] = useState<string | null>(null);
   const [loadingSlotId, setLoadingSlotId] = useState<string | null>(null);
   const [slotError, setSlotError] = useState<string | null>(null);
+  const [firstVoteSlotId, setFirstVoteSlotId] = useState<string | null>(null);
 
   const [, startTransition] = useTransition();
 
@@ -151,6 +152,11 @@ export function WeeklyCalendar({
 
   function handleVote(slotId: string, value: VoteValue) {
     setVoteError(null);
+
+    const hadNoVotes = !votes.some((v) => v.meal_plan_slot_id === slotId);
+    const myExisting = votes.find((v) => v.meal_plan_slot_id === slotId && v.member_id === memberId);
+    const isFirstEver = hadNoVotes && !myExisting;
+
     setVotes((prev) => {
       const without = prev.filter(
         (v) => !(v.meal_plan_slot_id === slotId && v.member_id === memberId)
@@ -161,11 +167,17 @@ export function WeeklyCalendar({
       ];
     });
 
+    if (isFirstEver) {
+      setFirstVoteSlotId(slotId);
+      setTimeout(() => setFirstVoteSlotId(null), 2500);
+    }
+
     startTransition(async () => {
       const error = await castVote(slotId, memberId, value);
       if (error) {
         setVotes((prev) => prev.filter((v) => v.id !== `opt-${slotId}`));
         setVoteError(error);
+        setFirstVoteSlotId(null);
       }
     });
   }
@@ -384,7 +396,13 @@ export function WeeklyCalendar({
 
                     {/* Vote buttons — only show if recipe is present */}
                     {recipe && !isOpen && (
-                      <div className="flex gap-1.5 px-3 pb-2.5">
+                      <div className="px-3 pb-2.5 space-y-1.5">
+                        {firstVoteSlotId === slot.id && (
+                          <div className="px-3 py-1.5 rounded-xl bg-turmeric-light text-turmeric-dark text-xs font-semibold text-center">
+                            🎉 First to vote!
+                          </div>
+                        )}
+                        <div className="flex gap-1.5">
                         {(["love", "up", "down"] as VoteValue[]).map((val) => {
                           const { label, symbol, active, inactive } = VOTE_CONFIG[val];
                           const isActive = myVote === val;
@@ -406,6 +424,7 @@ export function WeeklyCalendar({
                             </button>
                           );
                         })}
+                        </div>
                       </div>
                     )}
 
