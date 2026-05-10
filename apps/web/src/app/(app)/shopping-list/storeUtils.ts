@@ -38,20 +38,37 @@ export const STORES: {
   },
 ];
 
-// Woolworths: specialty, premium, or hard-to-find items
+// Woolworths: premium/specialty items, fresh herbs, quality dairy, citrus
 const WOOLWORTHS_TERMS = [
+  // Specialty cheeses
   "feta", "halloumi", "brie", "camembert", "parmesan", "parmigiano",
   "gruyere", "gruyère", "mascarpone", "crème fraîche", "creme fraiche",
   "ricotta", "mozzarella", "burrata", "gorgonzola",
+  // Specialty meats / deli
   "prosciutto", "pancetta", "chorizo", "salami", "serrano", "bresaola",
+  // Specialty condiments / sauces
   "truffle", "tahini", "capers", "anchov", "pesto", "harissa", "za'atar",
   "sumac", "ras el hanout", "dukkah",
+  // Premium produce
   "asparagus", "rocket", "avocado", "avo", "baby spinach", "broccolini",
   "sugar snap", "edamame",
+  // Grains / specialty
   "quinoa", "couscous", "arborio", "risotto rice", "freekeh", "farro",
+  // Asian pantry
   "sesame oil", "truffle oil", "oyster sauce", "fish sauce", "hoisin",
-  "miso", "tempeh", "nori", "tahini",
+  "miso", "tempeh", "nori",
+  // Exotic fruit
   "pomegranate", "dragon fruit", "passion fruit",
+  // Fresh herbs (Woolworths has the best fresh herb selection in SA)
+  "fresh coriander", "cilantro", "fresh parsley", "fresh basil",
+  "fresh mint", "fresh thyme", "fresh dill", "fresh chives",
+  "fresh rosemary", "fresh sage", "fresh tarragon",
+  // Premium fresh dairy
+  "fresh cream", "double cream", "whipping cream", "crème",
+  // Citrus (Woolworths stocks these reliably)
+  "lemon", "lime", "zest",
+  // Fresh ginger (specialty fresh items)
+  "fresh ginger",
 ];
 
 // Pick n Pay: dry staples, pantry basics, canned goods, common dairy, spices
@@ -88,6 +105,14 @@ const PNP_TERMS = [
   "oil spray", "cooking spray",
   "peanut butter", "almond butter",
   "oats", "oatmeal", "granola", "muesli",
+  // Spices not covered above
+  "pepper", "black pepper", "white pepper", "mixed peppercorn",
+  "ginger", "ground ginger", "five spice", "smoked paprika",
+  // Generic oil catch-all (must come after specific oils like sesame oil / olive oil in woolworths)
+  "cooking oil", "frying oil",
+  // Tinned / jarred basics
+  "chopped tomatoes", "diced tomatoes", "tinned", "canned",
+  "jar of", "tin of",
 ];
 
 // Default to Checkers/Sixty60 — fresh produce, meat, dairy, general grocery

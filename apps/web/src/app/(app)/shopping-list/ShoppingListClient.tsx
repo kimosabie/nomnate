@@ -152,11 +152,11 @@ export function ShoppingListClient({ initialItems }: Props) {
     <div>
       {/* Store filter bar */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-        <button onClick={() => setSelectedStore("all")} style={pill(selectedStore === "all")}>
+        <button type="button" onClick={() => setSelectedStore("all")} style={pill(selectedStore === "all")}>
           All ({totalRemaining})
         </button>
         {STORE_KEYS.map((key) => (
-          <button key={key} onClick={() => setSelectedStore(key)} style={pill(selectedStore === key)}>
+          <button type="button" key={key} onClick={() => setSelectedStore(key)} style={pill(selectedStore === key)}>
             {STORE_LABELS[key]} ({storeCounts[key] ?? 0})
           </button>
         ))}
@@ -166,6 +166,7 @@ export function ShoppingListClient({ initialItems }: Props) {
       {totalRemaining > 0 && (
         <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
           <button
+            type="button"
             onClick={handleCopy}
             style={{
               borderRadius: 50, padding: "8px 16px", fontSize: 12,
@@ -178,6 +179,7 @@ export function ShoppingListClient({ initialItems }: Props) {
             {copied ? "✓ Copied!" : "📋 Copy list"}
           </button>
           <button
+            type="button"
             onClick={handleWhatsApp}
             style={{
               borderRadius: 50, padding: "8px 16px", fontSize: 12,
@@ -252,14 +254,19 @@ export function ShoppingListClient({ initialItems }: Props) {
                 <span style={{ fontSize: 12, color: "#999", flexShrink: 0 }}>{qtyLabel}</span>
               )}
 
-              {/* Store badge */}
-              <span style={{
-                fontSize: 10, fontWeight: 600, borderRadius: 50,
-                padding: "2px 8px", flexShrink: 0,
-                background: badge.bg, color: badge.color,
-              }}>
+              {/* Store badge — tap to filter */}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setSelectedStore(sk); }}
+                style={{
+                  fontSize: 10, fontWeight: 600, borderRadius: 50,
+                  padding: "2px 8px", flexShrink: 0,
+                  background: badge.bg, color: badge.color,
+                  border: "none", cursor: "pointer",
+                }}
+              >
                 {STORE_LABELS[sk]}
-              </span>
+              </button>
 
               {/* External search link */}
               <a
