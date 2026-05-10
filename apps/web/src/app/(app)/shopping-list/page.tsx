@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { ShoppingListClient } from "./ShoppingListClient";
 import { currentWeekStart } from "../meal-plan/utils";
+import { STORES, assignStore } from "./storeUtils";
 
 export default async function ShoppingListPage() {
   const supabase = await createClient();
@@ -44,7 +44,6 @@ export default async function ShoppingListPage() {
         .from("shopping_list_items")
         .select("id, ingredient_name, quantity, unit, checked, store")
         .eq("list_id", shoppingList.id)
-        .order("ingredient_name")
         .then((r) => r.data ?? [])
     : [];
 
@@ -56,6 +55,21 @@ export default async function ShoppingListPage() {
         minute: "2-digit",
       })
     : null;
+
+  // Compute per-store counts server-side
+  const storeCounts = STORES.map((s) => {
+    const storeItems = items.filter(
+      (i) => (i.store ?? assignStore(i.ingredient_name)) === s.key
+    );
+    return {
+      ...s,
+      total: storeItems.length,
+      done: storeItems.filter((i) => i.checked).length,
+    };
+  });
+
+  const totalItems = items.length;
+  const totalDone = items.filter((i) => i.checked).length;
 
   return (
     <main className="min-h-screen bg-cream">
@@ -91,20 +105,62 @@ export default async function ShoppingListPage() {
           </div>
         ) : (
           <>
+            {/* Summary row */}
             <div className="flex items-center justify-between">
               <p className="text-sm text-slate">
-                {items.filter((i) => !i.checked).length} item
-                {items.filter((i) => !i.checked).length !== 1 ? "s" : ""} to buy
-                {items.some((i) => i.checked) && ` · ${items.filter((i) => i.checked).length} done`}
+                {totalItems - totalDone} item{totalItems - totalDone !== 1 ? "s" : ""} to buy
+                {totalDone > 0 && ` · ${totalDone} done`}
               </p>
-              <Link
-                href="/meal-plan"
-                className="text-xs text-flame hover:underline font-medium"
-              >
+              <Link href="/meal-plan" className="text-xs text-flame hover:underline font-medium">
                 Regenerate ↗
               </Link>
             </div>
-            <ShoppingListClient initialItems={items} />
+
+            {/* Store cards */}
+            {storeCounts.map((s) => (
+              <Link
+                key={s.key}
+                href={`/shopping-list/${s.key}`}
+                className="block bg-white rounded-[14px] border border-cream-border p-4 hover:border-flame transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-[10px] flex items-center justify-center text-lg font-bold"
+                      style={{ background: s.selectBg }}
+                    >
+                      🛒
+                    </div>
+                    <div>
+                      <p className="font-semibold text-charcoal text-sm">{s.label}</p>
+                      <p className="text-xs text-slate">
+                        {s.total - s.done} item{s.total - s.done !== 1 ? "s" : ""} to buy
+                        {s.done > 0 && ` · ${s.done} done`}
+                      </p>
+                    </div>
+                  </div>
+                  <svg
+                    width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="#E8621A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  >
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
+                </div>
+
+                {/* Progress bar */}
+                {s.total > 0 && (
+                  <div className="mt-3 h-1.5 bg-cream-border rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${Math.round((s.done / s.total) * 100)}%`,
+                        background: s.selectBg === "#FDE8E0" ? "#E8621A" : s.selectBg === "#E8F5E9" ? "#2E7D32" : "#185FA5",
+                      }}
+                    />
+                  </div>
+                )}
+              </Link>
+            ))}
           </>
         )}
       </div>
