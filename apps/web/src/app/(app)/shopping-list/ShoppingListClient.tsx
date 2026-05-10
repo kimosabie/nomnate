@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { assignStore } from "./storeUtils";
+import { toggleItem } from "./actions";
 
 interface ShoppingItem {
   id: string;
@@ -53,8 +54,10 @@ export function ShoppingListClient({ initialItems }: Props) {
 
   const toggle = useCallback((id: string) => {
     setCheckedIds((prev) => {
+      const nowChecked = !prev.has(id);
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      nowChecked ? next.add(id) : next.delete(id);
+      toggleItem(id, nowChecked);
       return next;
     });
   }, []);

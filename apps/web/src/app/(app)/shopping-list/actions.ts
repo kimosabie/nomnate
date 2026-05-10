@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 export async function setItemStore(itemId: string, store: string | null): Promise<void> {
@@ -32,6 +31,5 @@ export async function toggleItem(itemId: string, checked: boolean): Promise<stri
     .eq("id", itemId);
 
   if (error) return error.message;
-  revalidatePath("/shopping-list");
   return null;
 }
