@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { STORES, StoreKey, assignStore } from "./storeUtils";
 
@@ -28,8 +28,6 @@ function storeInfo(key: StoreKey) {
 }
 
 export function ShoppingListClient({ initialItems }: { initialItems: ShoppingItem[] }) {
-  const supabase = useMemo(() => createClient(), []);
-
   const [items, setItems] = useState<MutableItem[]>(() =>
     initialItems.map((i) => ({
       ...i,
@@ -42,14 +40,14 @@ export function ShoppingListClient({ initialItems }: { initialItems: ShoppingIte
   async function handleToggle(id: string, currentChecked: boolean) {
     const newChecked = !currentChecked;
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, checked: newChecked } : i)));
-    await supabase.from("shopping_list_items").update({ checked: newChecked }).eq("id", id);
+    createClient().from("shopping_list_items").update({ checked: newChecked }).eq("id", id);
   }
 
   async function handleCycleStore(id: string, currentStore: StoreKey) {
     const idx = STORE_CYCLE.indexOf(currentStore);
     const next = STORE_CYCLE[(idx + 1) % STORE_CYCLE.length];
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, effectiveStore: next } : i)));
-    await supabase.from("shopping_list_items").update({ store: next }).eq("id", id);
+    createClient().from("shopping_list_items").update({ store: next }).eq("id", id);
   }
 
   const storeCounts = Object.fromEntries(
