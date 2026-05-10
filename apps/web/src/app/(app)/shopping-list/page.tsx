@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { currentWeekStart } from "../meal-plan/utils";
 import { assignStore, STORES, type StoreKey } from "./storeUtils";
-import { toggleItem, cycleStore } from "./actions";
+import { toggleItem, setStore } from "./actions";
 
 const VALID_STORES = new Set(["woolworths", "pnp", "checkers"]);
 
@@ -252,18 +252,25 @@ export default async function ShoppingListPage({
                           <span className="text-xs text-slate flex-shrink-0">{qty}</span>
                         )}
 
-                        {/* Store cycle form */}
-                        <form action={cycleStore} className="flex-shrink-0">
+                        {/* Store picker */}
+                        <form action={setStore} className="flex-shrink-0 flex items-center gap-1">
                           <input type="hidden" name="itemId" value={item.id} />
-                          <input type="hidden" name="currentStore" value={item.effectiveStore} />
+                          <select
+                            name="store"
+                            defaultValue={item.effectiveStore}
+                            className="text-[10px] font-semibold rounded-full pl-2 pr-1 py-0.5 border border-cream-border bg-white text-slate appearance-none cursor-pointer"
+                          >
+                            {STORES.map((s) => (
+                              <option key={s.key} value={s.key}>{s.label}</option>
+                            ))}
+                          </select>
                           <button
                             type="submit"
-                            className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${store.badgeBg} ${store.badgeText}`}
-                            title="Tap to change store"
+                            className="w-5 h-5 rounded-full bg-flame-light text-flame flex items-center justify-center flex-shrink-0"
+                            aria-label="Save store"
                           >
-                            {store.label}
-                            <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M4 8a4 4 0 1 1 8 0M12 4v4h-4" />
+                            <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+                              <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           </button>
                         </form>
