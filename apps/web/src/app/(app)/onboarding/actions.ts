@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { filterText } from "@/lib/contentFilter";
 
 export async function createFamily(
   _prevState: string | null,
@@ -14,12 +15,20 @@ export async function createFamily(
   } = await supabase.auth.getUser();
   if (!user) return "Not authenticated";
 
-  const familyName = String(formData.get("familyName") ?? "").trim();
-  const displayName = String(formData.get("displayName") ?? "").trim();
-  if (!familyName) return "Family name is required";
-  if (!displayName) return "Your name is required";
-  if (familyName.length > 80) return "Family name must be under 80 characters";
-  if (displayName.length > 60) return "Your name must be under 60 characters";
+  const rawFamilyName = String(formData.get("familyName") ?? "");
+  const rawDisplayName = String(formData.get("displayName") ?? "");
+  if (!rawFamilyName.trim()) return "Family name is required";
+  if (!rawDisplayName.trim()) return "Your name is required";
+
+  const fn = filterText(rawFamilyName, 80);
+  if (fn.error) return fn.error;
+  if (!fn.value) return "Family name is required";
+  const familyName = fn.value;
+
+  const dn = filterText(rawDisplayName, 60);
+  if (dn.error) return dn.error;
+  if (!dn.value) return "Your name is required";
+  const displayName = dn.value;
 
   // SELECT policy includes created_by = auth.uid(), so RETURNING is safe here
   const { data: family, error } = await supabase
@@ -54,10 +63,14 @@ export async function joinFamily(
   const inviteCode = String(formData.get("inviteCode") ?? "")
     .trim()
     .toUpperCase();
-  const displayName = String(formData.get("displayName") ?? "").trim();
+  const rawDisplayName = String(formData.get("displayName") ?? "");
   if (!inviteCode) return "Invite code is required";
-  if (!displayName) return "Your name is required";
-  if (displayName.length > 60) return "Your name must be under 60 characters";
+  if (!rawDisplayName.trim()) return "Your name is required";
+
+  const dn = filterText(rawDisplayName, 60);
+  if (dn.error) return dn.error;
+  if (!dn.value) return "Your name is required";
+  const displayName = dn.value;
 
   const { data: families, error: lookupError } = await supabase
     .rpc("get_family_by_invite_code", { code: inviteCode });

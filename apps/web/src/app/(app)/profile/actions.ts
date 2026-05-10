@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DIETARY_RESTRICTIONS, DIET_TYPES } from "@nomnate/types";
+import { filterText } from "@/lib/contentFilter";
 
 function parseJsonStringArray(raw: FormDataEntryValue | null, maxCount: number, maxLen = 100): string[] | string {
   try {
@@ -28,9 +29,12 @@ export async function updatePreferences(
   } = await supabase.auth.getUser();
   if (!user) return "Not authenticated";
 
-  const name = String(formData.get("name") ?? "").trim();
-  if (!name) return "Name is required";
-  if (name.length > 60) return "Name must be under 60 characters";
+  const rawName = String(formData.get("name") ?? "");
+  if (!rawName.trim()) return "Name is required";
+  const dn = filterText(rawName, 60);
+  if (dn.error) return dn.error;
+  if (!dn.value) return "Name is required";
+  const name = dn.value;
 
   const rawRestrictions = formData.getAll("dietary_restrictions").map(String);
   const dietaryRestrictions = rawRestrictions.filter((r) =>

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { DIET_TYPES } from "@nomnate/types";
+import { filterText } from "@/lib/contentFilter";
 
 export async function addManualRecipe(
   _prev: string | null,
@@ -23,12 +24,28 @@ export async function addManualRecipe(
     .maybeSingle();
   if (!membership) return "No family found";
 
-  const title = String(formData.get("title") ?? "").trim();
-  if (!title) return "Recipe name is required";
-  if (title.length > 200) return "Name must be under 200 characters";
+  const rawTitle = String(formData.get("title") ?? "");
+  if (!rawTitle.trim()) return "Recipe name is required";
+  const tf = filterText(rawTitle, 200);
+  if (tf.error) return tf.error;
+  if (!tf.value) return "Recipe name is required";
+  const title = tf.value;
 
-  const description = String(formData.get("description") ?? "").trim() || null;
-  const cuisine = String(formData.get("cuisine") ?? "").trim() || null;
+  const rawDescription = String(formData.get("description") ?? "").trim();
+  let description: string | null = null;
+  if (rawDescription) {
+    const df = filterText(rawDescription, 2000);
+    if (df.error) return df.error;
+    description = df.value || null;
+  }
+
+  const rawCuisine = String(formData.get("cuisine") ?? "").trim();
+  let cuisine: string | null = null;
+  if (rawCuisine) {
+    const cf = filterText(rawCuisine, 100);
+    if (cf.error) return cf.error;
+    cuisine = cf.value || null;
+  }
   const prepTime = formData.get("prep_time") ? Number(formData.get("prep_time")) || null : null;
   const cookTime = formData.get("cook_time") ? Number(formData.get("cook_time")) || null : null;
   const servings = formData.get("servings") ? Number(formData.get("servings")) || null : null;
@@ -45,14 +62,16 @@ export async function addManualRecipe(
   try {
     const raw = JSON.parse(String(formData.get("ingredients_json") ?? "[]"));
     if (Array.isArray(raw)) {
-      ingredients = raw
-        .filter((i) => typeof i.name === "string" && i.name.trim())
-        .map((i) => ({
-          name: String(i.name).trim().toLowerCase(),
+      for (const i of raw.slice(0, 100)) {
+        if (typeof i.name !== "string" || !i.name.trim()) continue;
+        const nf = filterText(i.name, 200);
+        if (nf.error || !nf.value) continue;
+        ingredients.push({
+          name: nf.value.toLowerCase(),
           quantity: i.quantity != null && i.quantity !== "" ? Number(i.quantity) || null : null,
           unit: i.unit?.trim() || null,
-        }))
-        .slice(0, 100);
+        });
+      }
     }
   } catch { /* invalid json — just skip */ }
 
@@ -60,9 +79,15 @@ export async function addManualRecipe(
   try {
     const raw = JSON.parse(String(formData.get("steps_json") ?? "[]"));
     if (Array.isArray(raw)) {
-      const steps = raw.filter((s) => typeof s === "string" && s.trim());
+      const steps: string[] = [];
+      for (const s of raw) {
+        if (typeof s !== "string" || !s.trim()) continue;
+        const sf = filterText(s, 2000);
+        if (sf.error) return sf.error;
+        if (sf.value) steps.push(sf.value);
+      }
       if (steps.length > 0) {
-        instructionText = steps.map((s: string, i: number) => `${i + 1}. ${s.trim()}`).join("\n");
+        instructionText = steps.map((s, i) => `${i + 1}. ${s}`).join("\n");
       }
     }
   } catch { /* invalid json — just skip */ }

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { filterText } from "@/lib/contentFilter";
 
 type FeedbackType = "bug" | "idea" | "feedback";
 
@@ -16,9 +17,13 @@ export async function submitFeedback(
 
   if (!user) return "Not signed in";
 
+  const mf = filterText(message, 2000);
+  if (mf.error) return mf.error;
+  if (!mf.value) return "Message is required";
+
   const { error } = await supabase.from("feedback").insert({
     type,
-    message: message.trim(),
+    message: mf.value,
     page_url: pageUrl,
     user_id: user.id,
   });
