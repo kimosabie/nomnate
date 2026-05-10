@@ -5,7 +5,7 @@ import { addManualRecipe } from "./actions";
 import { DIET_TYPES, DIET_TYPE_LABELS, CUISINES } from "@nomnate/types";
 
 const inputClass =
-  "w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-charcoal placeholder:text-slate focus:outline-none focus:ring-2 focus:ring-flame focus:border-transparent";
+  "w-full px-4 py-2.5 border border-cream-border rounded-xl text-sm text-charcoal placeholder:text-slate focus:outline-none focus:ring-2 focus:ring-flame focus:border-transparent";
 
 type Ingredient = { id: string; name: string; quantity: string; unit: string };
 type Step = { id: string; text: string };
@@ -89,7 +89,7 @@ export function AddRecipeForm() {
       ))}
 
       {/* Basic info */}
-      <div className="bg-white rounded-[14px] border border-gray-200 p-6 space-y-4">
+      <div className="bg-white rounded-[14px] border border-cream-border p-6 space-y-4">
         <h2 className="text-sm font-semibold text-slate uppercase tracking-wide">Basic info</h2>
 
         <div className="space-y-1">
@@ -140,7 +140,7 @@ export function AddRecipeForm() {
       </div>
 
       {/* Diet types */}
-      <div className="bg-white rounded-[14px] border border-gray-200 p-6 space-y-4">
+      <div className="bg-white rounded-[14px] border border-cream-border p-6 space-y-4">
         <h2 className="text-sm font-semibold text-slate uppercase tracking-wide">Diet types</h2>
         <div className="flex flex-wrap gap-2">
           {DIET_TYPES.map((key) => {
@@ -162,7 +162,7 @@ export function AddRecipeForm() {
       </div>
 
       {/* Image */}
-      <div className="bg-white rounded-[14px] border border-gray-200 p-6 space-y-3">
+      <div className="bg-white rounded-[14px] border border-cream-border p-6 space-y-3">
         <h2 className="text-sm font-semibold text-slate uppercase tracking-wide">Photo (optional)</h2>
         <input
           name="image"
@@ -174,7 +174,7 @@ export function AddRecipeForm() {
       </div>
 
       {/* Ingredients */}
-      <div className="bg-white rounded-[14px] border border-gray-200 p-6 space-y-4">
+      <div className="bg-white rounded-[14px] border border-cream-border p-6 space-y-4">
         <h2 className="text-sm font-semibold text-slate uppercase tracking-wide">Ingredients</h2>
 
         <div className="space-y-3">
@@ -231,7 +231,7 @@ export function AddRecipeForm() {
       </div>
 
       {/* Steps */}
-      <div className="bg-white rounded-[14px] border border-gray-200 p-6 space-y-4">
+      <div className="bg-white rounded-[14px] border border-cream-border p-6 space-y-4">
         <h2 className="text-sm font-semibold text-slate uppercase tracking-wide">Instructions</h2>
 
         <div className="space-y-3">

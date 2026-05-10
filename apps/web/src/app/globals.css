@@ -12,9 +12,15 @@
   --color-herb-light:     #E8F5E9;
   --color-herb-dark:      #1B5E20;
   --color-cream:          #FFF3EE;
+  --color-cream-border:   #F5D5C0;
   --color-cream-dark:     #FDE8E0;
+  --color-cream-warm:     #FFF9F6;
   --color-charcoal:       #1A1A1A;
   --color-slate:          #666666;
+  --color-sapphire:       #185FA5;
+  --color-sapphire-light: #E6F1FB;
+  --color-violet:         #534AB7;
+  --color-violet-light:   #EEEDFE;
 
   /* Font families */
   --font-sans:    var(--font-plus-jakarta), 'Plus Jakarta Sans', sans-serif;
@@ -27,11 +33,16 @@
 }
 
 body {
+  font-family: var(--font-plus-jakarta), 'Plus Jakarta Sans', sans-serif;
   background: #FFF3EE;
   color: #1A1A1A;
 }
 
-/* Fredoka for all headings */
-h1, h2, h3, h4 {
+/* Fredoka for display headings */
+h1, h2, h3 {
   font-family: var(--font-fredoka), 'Fredoka', sans-serif;
+}
+
+h4, h5, h6 {
+  font-family: var(--font-plus-jakarta), 'Plus Jakarta Sans', sans-serif;
 }

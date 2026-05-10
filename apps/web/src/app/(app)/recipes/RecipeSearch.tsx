@@ -65,7 +65,7 @@ export function RecipeSearch() {
             type="search"
             required
             placeholder="e.g. pasta, chicken curry, stir fry…"
-            className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-charcoal placeholder:text-slate focus:outline-none focus:ring-2 focus:ring-flame focus:border-transparent"
+            className="flex-1 px-4 py-2.5 border border-cream-border rounded-xl text-sm text-charcoal placeholder:text-slate focus:outline-none focus:ring-2 focus:ring-flame focus:border-transparent"
           />
           <button
             type="submit"
@@ -102,7 +102,7 @@ export function RecipeSearch() {
             return (
               <div
                 key={recipe.id}
-                className="flex items-center gap-3 rounded-[14px] border border-gray-200 bg-cream p-3"
+                className="flex items-center gap-3 rounded-[14px] border border-cream-border bg-cream p-3"
               >
                 {recipe.image ? (
                   // eslint-disable-next-line @next/next/no-img-element

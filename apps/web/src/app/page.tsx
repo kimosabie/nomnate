@@ -4,11 +4,12 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-cream flex flex-col">
       {/* Nav */}
-      <nav className="flex items-center justify-between px-6 py-5 max-w-5xl mx-auto w-full">
-        <span className="text-2xl font-semibold text-flame tracking-tight">
-          NomNate
+      <nav className="flex items-center justify-between px-6 py-4 max-w-5xl mx-auto w-full">
+        <span className="font-display text-[22px] font-medium leading-none tracking-tight">
+          <span className="text-flame">Nom</span>
+          <span className="text-herb">Nate</span>
         </span>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <Link
             href="/login"
             className="text-sm font-medium text-slate hover:text-charcoal transition-colors"
@@ -17,7 +18,7 @@ export default function Home() {
           </Link>
           <Link
             href="/signup"
-            className="text-sm font-semibold px-4 py-2 rounded-full bg-flame text-white hover:bg-flame-dark transition-colors"
+            className="text-sm font-semibold px-5 py-2 rounded-full bg-flame text-white hover:bg-flame-dark transition-colors"
           >
             Get started
           </Link>
@@ -27,10 +28,10 @@ export default function Home() {
       {/* Hero */}
       <section className="flex flex-col items-center justify-center text-center px-6 py-20 max-w-4xl mx-auto w-full">
         <div className="inline-flex items-center gap-2 bg-flame-light text-flame-dark text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
-          <span>&#10024;</span>
+          <span>✨</span>
           <span>AI-powered family meal planning</span>
         </div>
-        <h1 className="text-5xl sm:text-6xl font-semibold text-charcoal tracking-tight mb-5 leading-tight">
+        <h1 className="text-5xl sm:text-6xl font-display font-medium text-charcoal tracking-tight mb-5 leading-tight">
           Family dinner,<br />
           <span className="text-flame">decided together.</span>
         </h1>
@@ -47,7 +48,7 @@ export default function Home() {
           </Link>
           <Link
             href="/login"
-            className="px-6 py-3 rounded-full border border-gray-200 text-charcoal font-semibold hover:bg-white transition-colors"
+            className="px-6 py-3 rounded-full border border-cream-border text-slate font-semibold hover:bg-white transition-colors"
           >
             Log in
           </Link>
@@ -55,46 +56,43 @@ export default function Home() {
       </section>
 
       {/* Features */}
-      <section className="bg-white border-t border-gray-200 px-6 py-16">
+      <section className="bg-white border-t border-cream-border px-6 py-16">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-semibold text-charcoal text-center mb-2">
+          <h2 className="text-2xl font-display font-medium text-charcoal text-center mb-2">
             Built for South African families
           </h2>
           <p className="text-sm text-slate text-center mb-10">
             From the weekly plan to the trolley — everything in one place.
           </p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               {
-                icon: "&#128197;",
+                icon: "📅",
                 title: "Weekly meal plan",
                 desc: "Map out the week at a glance. Swap meals with a tap.",
               },
               {
-                icon: "&#10084;",
+                icon: "❤️",
                 title: "Family voting",
                 desc: "Love it, yes or no — everyone has a say at dinner.",
               },
               {
-                icon: "&#10024;",
+                icon: "✨",
                 title: "AI suggestions",
                 desc: "Claude suggests meals based on your family's tastes and restrictions.",
               },
               {
-                icon: "&#128722;",
+                icon: "🛒",
                 title: "SA shopping lists",
                 desc: "Assign items to Woolworths, PnP or Checkers and copy the list.",
               },
             ].map((f) => (
               <div
                 key={f.title}
-                className="bg-cream rounded-[14px] p-5 border border-gray-200"
+                className="bg-cream-warm rounded-[14px] p-5 border border-cream-border"
               >
-                <div
-                  className="text-3xl mb-3"
-                  dangerouslySetInnerHTML={{ __html: f.icon }}
-                />
-                <h3 className="font-semibold text-charcoal mb-1 text-sm">{f.title}</h3>
+                <div className="text-3xl mb-3">{f.icon}</div>
+                <p className="font-semibold text-charcoal mb-1 text-sm">{f.title}</p>
                 <p className="text-xs text-slate leading-relaxed">{f.desc}</p>
               </div>
             ))}
@@ -104,7 +102,7 @@ export default function Home() {
 
       {/* How it works */}
       <section className="px-6 py-16 max-w-4xl mx-auto w-full">
-        <h2 className="text-2xl font-semibold text-charcoal text-center mb-10">
+        <h2 className="text-2xl font-display font-medium text-charcoal text-center mb-10">
           How it works
         </h2>
         <div className="grid sm:grid-cols-3 gap-8">
@@ -130,7 +128,7 @@ export default function Home() {
                 {s.step}
               </div>
               <div>
-                <h3 className="font-semibold text-charcoal mb-1">{s.title}</h3>
+                <p className="font-semibold text-charcoal mb-1 text-sm">{s.title}</p>
                 <p className="text-sm text-slate leading-relaxed">{s.desc}</p>
               </div>
             </div>
@@ -140,7 +138,7 @@ export default function Home() {
 
       {/* CTA strip */}
       <section className="bg-flame px-6 py-14 text-center">
-        <h2 className="text-2xl font-semibold text-white mb-3">
+        <h2 className="text-2xl font-display font-medium text-white mb-3">
           Ready to take the stress out of dinner?
         </h2>
         <p className="text-flame-light text-sm mb-6">
@@ -150,12 +148,12 @@ export default function Home() {
           href="/signup"
           className="inline-block px-6 py-3 rounded-full bg-white text-flame font-semibold hover:bg-cream transition-colors"
         >
-          Create your family &rarr;
+          Create your family →
         </Link>
       </section>
 
       {/* Footer */}
-      <footer className="px-6 py-6 text-center text-xs text-slate bg-white border-t border-gray-200">
+      <footer className="px-6 py-6 text-center text-xs text-slate bg-white border-t border-cream-border">
         &copy; 2026 NomNate &mdash; Made for South African families
       </footer>
     </main>

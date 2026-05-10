@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { signOut } from "../../(auth)/actions";
 import { CopyCode } from "./CopyCode";
 
 export default async function DashboardPage() {
@@ -36,29 +35,34 @@ export default async function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-cream">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
-          <span className="text-xl font-semibold text-flame">NomNate</span>
-          <form action={signOut}>
-            <button
-              type="submit"
-              className="text-sm text-slate hover:text-charcoal transition-colors"
-            >
-              Sign out
-            </button>
-          </form>
+      <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
+        {/* Gamification row */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-flame rounded-[12px] p-3 text-center">
+            <p className="text-2xl mb-1">🔥</p>
+            <p className="text-xl font-display font-medium text-white leading-tight">0</p>
+            <p className="text-[10px] uppercase text-white/80 tracking-wide font-medium mt-0.5">day streak</p>
+          </div>
+          <div className="bg-herb rounded-[12px] p-3 text-center">
+            <p className="text-2xl mb-1">👑</p>
+            <p className="text-xl font-display font-medium text-white leading-tight">—</p>
+            <p className="text-[10px] uppercase text-white/80 tracking-wide font-medium mt-0.5">top voter</p>
+          </div>
+          <div className="bg-turmeric rounded-[12px] p-3 text-center">
+            <p className="text-2xl mb-1">🎲</p>
+            <p className="text-xl font-display font-medium text-white leading-tight">Wed</p>
+            <p className="text-[10px] uppercase text-white/80 tracking-wide font-medium mt-0.5">wildcard</p>
+          </div>
         </div>
-      </header>
 
-      <div className="max-w-3xl mx-auto px-6 py-10 space-y-6">
         {/* Family card */}
-        <div className="bg-white rounded-[14px] border border-gray-200 p-6">
+        <div className="bg-white rounded-[14px] border border-cream-border p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-medium text-slate uppercase tracking-wide mb-1">
                 Your family
               </p>
-              <h1 className="text-2xl font-semibold text-charcoal">{family.name}</h1>
+              <h1 className="text-2xl font-display font-medium text-charcoal">{family.name}</h1>
             </div>
             <div className="text-right shrink-0">
               <p className="text-xs font-medium text-slate uppercase tracking-wide mb-1">
@@ -70,8 +74,8 @@ export default async function DashboardPage() {
         </div>
 
         {/* Members */}
-        <div className="bg-white rounded-[14px] border border-gray-200 p-6">
-          <h2 className="text-sm font-semibold text-slate uppercase tracking-wide mb-4">
+        <div className="bg-white rounded-[14px] border border-cream-border p-6">
+          <h2 className="text-xs font-semibold text-slate uppercase tracking-wide mb-4">
             Members ({members?.length ?? 0})
           </h2>
           <ul className="space-y-3">
@@ -79,7 +83,7 @@ export default async function DashboardPage() {
               const isMe = m.id === membership.id;
               return (
                 <li key={m.id} className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-flame-light flex items-center justify-center text-flame-dark font-semibold text-sm shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-flame flex items-center justify-center text-white font-semibold text-sm shrink-0">
                     {(m.name ?? "?")[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -115,25 +119,25 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-2 gap-3">
           <Link
             href="/recipes"
-            className="bg-white rounded-[14px] border border-gray-200 p-5 hover:border-flame-light transition-colors"
+            className="bg-white rounded-[14px] border border-cream-border p-5 hover:border-flame transition-colors"
           >
-            <p className="text-2xl mb-2">&#127859;</p>
+            <p className="text-2xl mb-2">🍳</p>
             <p className="text-sm font-semibold text-charcoal">Recipes</p>
             <p className="text-xs text-slate mt-0.5">Browse &amp; save recipes</p>
           </Link>
           <Link
             href="/meal-plan"
-            className="bg-white rounded-[14px] border border-gray-200 p-5 hover:border-flame-light transition-colors"
+            className="bg-white rounded-[14px] border border-cream-border p-5 hover:border-flame transition-colors"
           >
-            <p className="text-2xl mb-2">&#128197;</p>
+            <p className="text-2xl mb-2">📅</p>
             <p className="text-sm font-semibold text-charcoal">Meal plan</p>
             <p className="text-xs text-slate mt-0.5">Vote on this week</p>
           </Link>
           <Link
             href="/shopping-list"
-            className="col-span-2 bg-white rounded-[14px] border border-gray-200 p-5 hover:border-flame-light transition-colors"
+            className="col-span-2 bg-white rounded-[14px] border border-cream-border p-5 hover:border-flame transition-colors"
           >
-            <p className="text-2xl mb-2">&#128722;</p>
+            <p className="text-2xl mb-2">🛒</p>
             <p className="text-sm font-semibold text-charcoal">Shopping list</p>
             <p className="text-xs text-slate mt-0.5">Ingredients with SA store links</p>
           </Link>

@@ -168,12 +168,14 @@ export async function suggestWithAI(
     .maybeSingle();
 
   if (existingPlan) {
-    // Fill empty slots first, then overwrite from the start if all full
+    // Fill empty option slots in order
     const { data: emptySlots } = await supabase
       .from("meal_plan_slots")
       .select("id")
       .eq("meal_plan_id", existingPlan.id)
-      .is("recipe_id", null);
+      .is("recipe_id", null)
+      .order("day_of_week")
+      .order("option_number");
 
     const targets = emptySlots ?? [];
     await Promise.all(
@@ -195,9 +197,11 @@ export async function suggestWithAI(
       return planError.message;
     }
 
+    // Create 1 option per day for AI-generated plans (fills option 1 of each day)
     const slots = Array.from({ length: 7 }, (_, i) => ({
       meal_plan_id: plan.id,
       day_of_week: i,
+      option_number: 1,
       recipe_id: savedIds[i] ?? null,
       status: "suggested" as const,
     }));
@@ -252,13 +256,19 @@ export async function generatePlan(
     .filter((r) => !r.is_favourite)
     .map((r) => r.id);
 
-  // Fisher-Yates shuffle for non-favourites
-  for (let i = otherIds.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [otherIds[i], otherIds[j]] = [otherIds[j], otherIds[i]];
-  }
+  // Fisher-Yates shuffle
+  const shuffle = <T>(arr: T[]): T[] => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
 
-  const orderedIds = [...favIds, ...otherIds];
+  const shuffledFavs = shuffle(favIds);
+  const shuffledOther = shuffle(otherIds);
+  const allIds = [...shuffledFavs, ...shuffledOther];
 
   // Create the meal plan — handle race condition where another member beat us here
   const { data: plan, error: planError } = await supabase
@@ -267,17 +277,45 @@ export async function generatePlan(
     .select("id")
     .single();
   if (planError) {
-    if (planError.code === "23505") redirect("/meal-plan"); // already created, just go there
+    if (planError.code === "23505") redirect("/meal-plan");
     return planError.message;
   }
 
-  // Create 7 slots (0=Mon … 6=Sun), assigning recipes in order
-  const slots = Array.from({ length: 7 }, (_, i) => ({
-    meal_plan_id: plan.id,
-    day_of_week: i,
-    recipe_id: orderedIds[i] ?? null,
-    status: "suggested" as const,
-  }));
+  // For each of 7 days, create 3 options — pick without replacement across the pool,
+  // cycling back if the library is smaller than 21.
+  const slots: {
+    meal_plan_id: string;
+    day_of_week: number;
+    option_number: number;
+    recipe_id: string | null;
+    status: "suggested";
+  }[] = [];
+
+  if (allIds.length === 0) {
+    // No recipes yet — create empty slots (1 option per day to keep it simple)
+    for (let d = 0; d < 7; d++) {
+      slots.push({ meal_plan_id: plan.id, day_of_week: d, option_number: 1, recipe_id: null, status: "suggested" });
+    }
+  } else {
+    // Build a pool that's large enough for 21 picks (7 days × 3 options)
+    const needed = 7 * 3;
+    const pool: string[] = [];
+    while (pool.length < needed) {
+      pool.push(...shuffle([...allIds]));
+    }
+    let idx = 0;
+    for (let d = 0; d < 7; d++) {
+      for (let opt = 1; opt <= 3; opt++) {
+        slots.push({
+          meal_plan_id: plan.id,
+          day_of_week: d,
+          option_number: opt,
+          recipe_id: pool[idx++],
+          status: "suggested",
+        });
+      }
+    }
+  }
 
   const { error: slotsError } = await supabase
     .from("meal_plan_slots")
@@ -315,13 +353,24 @@ export async function generateShoppingList(
     .maybeSingle();
   if (!plan) return "No meal plan for this week";
 
-  const { data: slots } = await supabase
+  // For each day, use the confirmed option first, then the lowest option_number with a recipe
+  const { data: allSlots } = await supabase
     .from("meal_plan_slots")
-    .select("recipe_id")
+    .select("day_of_week, option_number, recipe_id, status")
     .eq("meal_plan_id", plan.id)
-    .not("recipe_id", "is", null);
+    .not("recipe_id", "is", null)
+    .order("day_of_week")
+    .order("option_number");
 
-  const recipeIds = [...new Set((slots ?? []).map((s) => s.recipe_id as string))];
+  // Pick one recipe per day (confirmed > option 1 > first available)
+  const dayMap = new Map<number, string>();
+  for (const s of allSlots ?? []) {
+    const existing = dayMap.get(s.day_of_week);
+    if (!existing || s.status === "confirmed") {
+      dayMap.set(s.day_of_week, s.recipe_id as string);
+    }
+  }
+  const recipeIds = [...new Set(dayMap.values())];
   if (recipeIds.length === 0) return "No recipes in this week's plan";
 
   const { data: allIngredients, error: ingError } = await supabase
@@ -571,6 +620,35 @@ export async function suggestForSlot(
       cuisine: saved.cuisine ?? null,
     },
   };
+}
+
+export async function resetPlan(
+  _prev: string | null,
+  _formData: FormData
+): Promise<string | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return "Not authenticated";
+
+  const { data: membership } = await supabase
+    .from("family_members")
+    .select("family_id")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (!membership) return "No family found";
+
+  const weekStart = currentWeekStart();
+
+  await supabase
+    .from("meal_plans")
+    .delete()
+    .eq("family_id", membership.family_id)
+    .eq("week_start_date", weekStart);
+
+  redirect("/meal-plan");
 }
 
 export async function castVote(

@@ -6,6 +6,7 @@ import type { SlotData, VoteData } from "./WeeklyCalendar";
 import { GeneratePlanButton } from "./GeneratePlanButton";
 import { GenerateShoppingListButton } from "./GenerateShoppingListButton";
 import { AISuggestButton } from "./AISuggestButton";
+import { ResetPlanButton } from "./ResetPlanButton";
 import { getAIUsageThisWeek } from "./actions";
 import { FREE_AI_LIMIT } from "./constants";
 import { currentWeekStart } from "./utils";
@@ -56,16 +57,19 @@ export default async function MealPlanPage() {
 
     return (
       <main className="min-h-screen bg-cream">
-        <PageHeader weekRange={fmtWeekRange(weekStart)} />
-        <div className="max-w-3xl mx-auto px-6 py-12 space-y-6">
+        <div className="max-w-3xl mx-auto px-4 py-4">
+          <p className="text-xs text-slate">{fmtWeekRange(weekStart)}</p>
+          <h1 className="text-2xl font-display font-medium text-flame mt-1 mb-6">Meal plan</h1>
+        </div>
+        <div className="max-w-3xl mx-auto px-4 pb-12 space-y-6">
           <div className="flex flex-col items-center text-center gap-4">
             <div className="w-16 h-16 rounded-[14px] bg-flame-light flex items-center justify-center text-3xl">
-              &#128197;
+              📅
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-charcoal mb-2">
+              <p className="text-base font-semibold text-charcoal mb-2">
                 No plan for this week yet
-              </h2>
+              </p>
               <p className="text-sm text-slate">
                 {count > 0
                   ? `${count} recipe${count !== 1 ? "s" : ""} in your library — or let Claude suggest meals for you.`
@@ -79,9 +83,9 @@ export default async function MealPlanPage() {
             {count > 0 && (
               <>
                 <div className="flex items-center gap-3">
-                  <div className="flex-1 h-px bg-gray-200" />
+                  <div className="flex-1 h-px bg-cream-border" />
                   <span className="text-xs text-slate">or</span>
-                  <div className="flex-1 h-px bg-gray-200" />
+                  <div className="flex-1 h-px bg-cream-border" />
                 </div>
                 <GeneratePlanButton />
               </>
@@ -112,9 +116,10 @@ export default async function MealPlanPage() {
         .maybeSingle(),
       supabase
         .from("meal_plan_slots")
-        .select("id, day_of_week, status, recipe_id")
+        .select("id, day_of_week, option_number, status, recipe_id")
         .eq("meal_plan_id", plan.id)
-        .order("day_of_week"),
+        .order("day_of_week")
+        .order("option_number"),
       supabase
         .from("recipes")
         .select("id, title, image_url, prep_time, cuisine")
@@ -149,6 +154,7 @@ export default async function MealPlanPage() {
   const slotsData: SlotData[] = slots.map((s) => ({
     id: s.id,
     day_of_week: s.day_of_week,
+    option_number: s.option_number,
     status: s.status as SlotData["status"],
     recipe: s.recipe_id ? (recipeMap.get(s.recipe_id) ?? null) : null,
   }));
@@ -162,8 +168,14 @@ export default async function MealPlanPage() {
 
   return (
     <main className="min-h-screen bg-cream">
-      <PageHeader weekRange={fmtWeekRange(weekStart)} />
-      <div className="max-w-3xl mx-auto px-6 py-6 space-y-4">
+      <div className="max-w-3xl mx-auto px-4 py-4">
+        <p className="text-xs text-slate">{fmtWeekRange(weekStart)}</p>
+        <div className="flex items-baseline justify-between mt-1 mb-2">
+          <h1 className="text-2xl font-display font-medium text-flame">Meal plan</h1>
+          <ResetPlanButton />
+        </div>
+      </div>
+      <div className="max-w-3xl mx-auto px-4 pb-6 space-y-4">
         <WeeklyCalendar
           slots={slotsData}
           initialVotes={votes}
@@ -174,7 +186,7 @@ export default async function MealPlanPage() {
         />
 
         {/* AI suggestions */}
-        <div className="bg-white rounded-[14px] border border-gray-200 p-5">
+        <div className="bg-white rounded-[14px] border border-cream-border p-5">
           <div className="mb-4">
             <p className="text-sm font-semibold text-charcoal">Suggest with AI</p>
             <p className="text-xs text-slate mt-0.5">
@@ -185,7 +197,7 @@ export default async function MealPlanPage() {
         </div>
 
         {/* Shopping list */}
-        <div className="bg-white rounded-[14px] border border-gray-200 p-5">
+        <div className="bg-white rounded-[14px] border border-cream-border p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-charcoal">Shopping list</p>
@@ -200,7 +212,7 @@ export default async function MealPlanPage() {
                 href="/shopping-list"
                 className="text-sm font-semibold text-flame hover:text-flame-dark shrink-0"
               >
-                View list &#8594;
+                View list →
               </Link>
             )}
           </div>
@@ -210,25 +222,5 @@ export default async function MealPlanPage() {
         </div>
       </div>
     </main>
-  );
-}
-
-function PageHeader({ weekRange }: { weekRange: string }) {
-  return (
-    <header className="bg-white border-b border-gray-200">
-      <div className="max-w-3xl mx-auto px-6 py-4 flex items-center gap-3">
-        <Link
-          href="/dashboard"
-          className="text-slate hover:text-charcoal text-lg leading-none transition-colors"
-          aria-label="Back to dashboard"
-        >
-          &#8592;
-        </Link>
-        <div>
-          <span className="text-xl font-semibold text-flame">Meal plan</span>
-          <span className="ml-2 text-sm text-slate">{weekRange}</span>
-        </div>
-      </div>
-    </header>
   );
 }

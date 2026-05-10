@@ -8,7 +8,7 @@ export function LoginForm() {
   const [error, formAction, pending] = useActionState(signIn, null);
 
   const inputClass =
-    "w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-flame focus:border-transparent placeholder:text-slate";
+    "w-full px-4 py-2.5 border border-cream-border rounded-xl text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-flame focus:border-transparent placeholder:text-slate";
 
   return (
     <form action={formAction} className="space-y-4">

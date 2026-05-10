@@ -91,25 +91,16 @@ export default async function RecipesPage() {
 
   return (
     <main className="min-h-screen bg-cream">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center gap-3">
-          <Link
-            href="/dashboard"
-            className="text-slate hover:text-charcoal text-lg leading-none transition-colors"
-            aria-label="Back to dashboard"
-          >
-            &#8592;
-          </Link>
-          <span className="text-xl font-semibold text-flame">Recipes</span>
-        </div>
-      </header>
+      <div className="max-w-3xl mx-auto px-4 py-4">
+        <h1 className="text-2xl font-display font-medium text-flame">Recipes</h1>
+      </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
-        <div className="bg-white rounded-[14px] border border-gray-200 p-6">
+      <div className="max-w-3xl mx-auto px-4 pb-8 space-y-4">
+        <div className="bg-white rounded-[14px] border border-cream-border p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-slate uppercase tracking-wide">
+            <p className="text-xs font-semibold text-slate uppercase tracking-wide">
               Find &amp; add recipes
-            </h2>
+            </p>
             <Link
               href="/recipes/add"
               className="text-xs font-semibold px-4 py-1.5 rounded-full bg-flame-light text-flame hover:bg-cream-dark transition-colors"
@@ -120,7 +111,7 @@ export default async function RecipesPage() {
           <RecipeSearch />
         </div>
 
-        <div className="bg-white rounded-[14px] border border-gray-200 p-6">
+        <div className="bg-white rounded-[14px] border border-cream-border p-6">
           <RecipeListClient recipes={annotated} toggleFavourite={toggleFavourite} />
         </div>
       </div>

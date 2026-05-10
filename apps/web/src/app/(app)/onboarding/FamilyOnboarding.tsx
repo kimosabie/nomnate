@@ -6,7 +6,7 @@ import { createFamily, joinFamily } from "./actions";
 type Tab = "create" | "join";
 
 const inputClass =
-  "w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-flame focus:border-transparent placeholder:text-slate";
+  "w-full px-4 py-2.5 border border-cream-border rounded-xl text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-flame focus:border-transparent placeholder:text-slate";
 const labelClass = "block text-sm font-medium text-charcoal mb-1";
 
 export function FamilyOnboarding() {

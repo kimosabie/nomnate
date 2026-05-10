@@ -22,10 +22,10 @@ export function DeleteRecipeButton({ recipeId }: { recipeId: string }) {
         >
           Delete
         </button>
-        <span className="text-gray-300">|</span>
+        <span className="text-slate/40">|</span>
         <button
           onClick={() => setConfirming(false)}
-          className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+          className="text-xs text-slate hover:text-charcoal transition-colors"
         >
           Cancel
         </button>
@@ -37,7 +37,7 @@ export function DeleteRecipeButton({ recipeId }: { recipeId: string }) {
   return (
     <button
       onClick={() => setConfirming(true)}
-      className="shrink-0 p-1.5 text-gray-300 hover:text-red-400 transition-colors rounded"
+      className="shrink-0 p-1.5 text-slate/40 hover:text-red-400 transition-colors rounded"
       aria-label="Delete recipe"
       title="Delete recipe"
     >

@@ -18,7 +18,7 @@ export function CopyCode({ code }: { code: string }) {
       title="Click to copy"
     >
       {code}
-      <span className="block text-xs font-sans font-normal tracking-normal text-gray-400 mt-0.5">
+      <span className="block text-xs font-sans font-normal tracking-normal text-slate mt-0.5">
         {copied ? "Copied!" : "Tap to copy"}
       </span>
     </button>

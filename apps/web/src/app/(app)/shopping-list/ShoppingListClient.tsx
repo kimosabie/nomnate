@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useTransition, useState } from "react";
+import { useTransition, useState } from "react";
 import { toggleItem, setItemStore } from "./actions";
 import { assignStore, STORES, type StoreKey } from "./storeUtils";
 
@@ -35,33 +35,18 @@ export function ShoppingListClient({ initialItems }: { initialItems: Item[] }) {
   const [, startTransition] = useTransition();
   const [activeStore, setActiveStore] = useState<StoreKey | "all">("all");
   const [copied, setCopied] = useState(false);
-
-  const [items, setOptimistic] = useOptimistic(
-    initialItems,
-    (
-      state,
-      update:
-        | { type: "toggle"; id: string; checked: boolean }
-        | { type: "store"; id: string; store: string | null }
-    ) =>
-      state.map((i) => {
-        if (i.id !== update.id) return i;
-        if (update.type === "toggle") return { ...i, checked: update.checked };
-        if (update.type === "store") return { ...i, store: update.store };
-        return i;
-      })
-  );
+  const [items, setItems] = useState<Item[]>(initialItems);
 
   function handleToggle(id: string, checked: boolean) {
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, checked } : i)));
     startTransition(async () => {
-      setOptimistic({ type: "toggle", id, checked });
       await toggleItem(id, checked);
     });
   }
 
   function handleStoreChange(id: string, store: StoreKey) {
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, store } : i)));
     startTransition(async () => {
-      setOptimistic({ type: "store", id, store });
       await setItemStore(id, store);
     });
   }
@@ -119,14 +104,14 @@ export function ShoppingListClient({ initialItems }: { initialItems: Item[] }) {
   return (
     <div className="space-y-4">
       {/* Store filter + actions */}
-      <div className="bg-white rounded-[14px] border border-gray-200 p-4 space-y-3">
+      <div className="bg-white rounded-[14px] border border-cream-border p-4 space-y-3">
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setActiveStore("all")}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
               activeStore === "all"
-                ? "bg-charcoal text-white"
-                : "bg-cream text-slate hover:bg-cream-dark"
+                ? "bg-flame border-flame text-white"
+                : "bg-white border-cream-border text-slate hover:border-flame hover:text-flame"
             }`}
           >
             All ({totalRemaining})
@@ -135,10 +120,10 @@ export function ShoppingListClient({ initialItems }: { initialItems: Item[] }) {
             <button
               key={store.key}
               onClick={() => setActiveStore(store.key)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                 activeStore === store.key
-                  ? "bg-charcoal text-white"
-                  : "bg-cream text-slate hover:bg-cream-dark"
+                  ? "bg-flame border-flame text-white"
+                  : "bg-white border-cream-border text-slate hover:border-flame hover:text-flame"
               }`}
             >
               {store.label} ({storeCounts[store.key]})
@@ -153,7 +138,7 @@ export function ShoppingListClient({ initialItems }: { initialItems: Item[] }) {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                 copied
                   ? "bg-herb-light border-herb text-herb"
-                  : "bg-white border-gray-200 text-slate hover:border-flame hover:text-flame"
+                  : "bg-white border-flame text-flame hover:bg-flame-light"
               }`}
             >
               {copied
@@ -164,7 +149,7 @@ export function ShoppingListClient({ initialItems }: { initialItems: Item[] }) {
             </button>
             <button
               onClick={shareWhatsApp}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-gray-200 bg-white text-slate hover:border-[#25D366] hover:text-[#25D366] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-[#25D366] text-[#25D366] bg-white hover:bg-[#E8F5E9] transition-colors"
             >
               Share on WhatsApp
             </button>
@@ -173,18 +158,18 @@ export function ShoppingListClient({ initialItems }: { initialItems: Item[] }) {
       </div>
 
       {totalRemaining === 0 ? (
-        <div className="bg-white rounded-[14px] border border-gray-200 px-6 py-10 text-center">
-          <p className="text-2xl mb-2">&#127881;</p>
+        <div className="bg-white rounded-[14px] border border-cream-border px-6 py-10 text-center">
+          <p className="text-2xl mb-2">🎉</p>
           <p className="text-sm font-semibold text-charcoal mb-1">All done!</p>
           <p className="text-xs text-slate">Everything is in the trolley. Enjoy cooking!</p>
         </div>
       ) : displayed.length === 0 ? (
-        <div className="bg-white rounded-[14px] border border-gray-200 px-6 py-8 text-center">
+        <div className="bg-white rounded-[14px] border border-cream-border px-6 py-8 text-center">
           <p className="text-sm text-slate">No items assigned to this store yet.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-[14px] border border-gray-200 overflow-hidden">
-          <div className="divide-y divide-gray-100">
+        <div className="bg-white rounded-[14px] border border-cream-border overflow-hidden">
+          <div className="divide-y divide-cream-border/40">
             {displayed.map((item) => (
               <ItemRow
                 key={item.id}
@@ -228,10 +213,10 @@ function ItemRow({
     >
       <button
         onClick={() => onToggle(item.id, !item.checked)}
-        className={`w-5 h-5 rounded shrink-0 border-2 flex items-center justify-center transition-colors ${
+        className={`w-5 h-5 rounded-md shrink-0 border-2 flex items-center justify-center transition-colors ${
           item.checked
             ? "bg-flame border-flame text-white"
-            : "border-gray-300 hover:border-flame"
+            : "border-cream-border hover:border-flame"
         }`}
         aria-label={item.checked ? "Uncheck item" : "Check item"}
       >
@@ -274,7 +259,7 @@ function ItemRow({
         href={searchUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="shrink-0 text-gray-300 hover:text-slate transition-colors"
+        className="shrink-0 text-slate hover:text-charcoal transition-colors"
         aria-label={`Search for ${item.ingredient_name}`}
       >
         <svg

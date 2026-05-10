@@ -20,20 +20,17 @@ export default async function AddRecipePage() {
 
   return (
     <main className="min-h-screen bg-cream">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center gap-3">
-          <Link
-            href="/recipes"
-            className="text-slate hover:text-charcoal text-lg leading-none transition-colors"
-            aria-label="Back to recipes"
-          >
-            &#8592;
-          </Link>
-          <span className="text-xl font-semibold text-flame">Add your recipe</span>
-        </div>
-      </header>
+      <div className="max-w-3xl mx-auto px-4 py-4">
+        <Link
+          href="/recipes"
+          className="inline-flex items-center gap-1 text-sm text-slate hover:text-charcoal transition-colors mb-3"
+        >
+          ← Recipes
+        </Link>
+        <h1 className="text-2xl font-display font-medium text-flame">Add your recipe</h1>
+      </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-8">
+      <div className="max-w-3xl mx-auto px-4 pb-8">
         <AddRecipeForm />
       </div>
     </main>

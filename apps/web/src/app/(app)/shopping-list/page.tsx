@@ -59,32 +59,21 @@ export default async function ShoppingListPage() {
 
   return (
     <main className="min-h-screen bg-cream">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/meal-plan"
-              className="text-slate hover:text-charcoal text-lg leading-none transition-colors"
-              aria-label="Back to meal plan"
-            >
-              &#8592;
-            </Link>
-            <span className="text-xl font-semibold text-flame">Shopping list</span>
-          </div>
-          {generatedAt && (
-            <span className="text-xs text-slate">Updated {generatedAt}</span>
-          )}
-        </div>
-      </header>
+      <div className="max-w-3xl mx-auto px-4 py-4">
+        <h1 className="text-2xl font-display font-medium text-flame mb-1">Shopping list</h1>
+        {generatedAt && (
+          <p className="text-xs text-slate">Updated {generatedAt}</p>
+        )}
+      </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
+      <div className="max-w-3xl mx-auto px-4 pb-8 space-y-4">
         {!shoppingList ? (
-          <div className="bg-white rounded-[14px] border border-gray-200 p-8 flex flex-col items-center text-center gap-4">
+          <div className="bg-white rounded-[14px] border border-cream-border p-8 flex flex-col items-center text-center gap-4">
             <div className="w-14 h-14 rounded-[14px] bg-flame-light flex items-center justify-center text-3xl">
-              &#128722;
+              🛒
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-charcoal mb-1">No shopping list yet</h2>
+              <p className="text-base font-semibold text-charcoal mb-1">No shopping list yet</p>
               <p className="text-sm text-slate">
                 Generate one from your{" "}
                 <Link href="/meal-plan" className="text-flame hover:underline">
@@ -95,7 +84,7 @@ export default async function ShoppingListPage() {
             </div>
           </div>
         ) : items.length === 0 ? (
-          <div className="bg-white rounded-[14px] border border-gray-200 p-8 flex flex-col items-center text-center gap-4">
+          <div className="bg-white rounded-[14px] border border-cream-border p-8 flex flex-col items-center text-center gap-4">
             <p className="text-sm text-slate">
               No ingredients found — your recipes may not have ingredients saved yet.
             </p>

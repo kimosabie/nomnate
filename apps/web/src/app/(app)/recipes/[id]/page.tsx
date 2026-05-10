@@ -87,22 +87,19 @@ export default async function RecipeDetailPage({
 
   return (
     <main className="min-h-screen bg-cream">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center gap-3">
-          <Link
-            href="/recipes"
-            className="text-slate hover:text-charcoal text-lg leading-none transition-colors"
-            aria-label="Back to recipes"
-          >
-            &#8592;
-          </Link>
-          <span className="text-xl font-semibold text-flame truncate">
-            {recipe.title}
-          </span>
-        </div>
-      </header>
+      <div className="max-w-3xl mx-auto px-4 py-4">
+        <Link
+          href="/recipes"
+          className="inline-flex items-center gap-1 text-sm text-slate hover:text-charcoal transition-colors mb-3"
+        >
+          ← Recipes
+        </Link>
+        <h1 className="text-2xl font-display font-medium text-flame leading-tight">
+          {recipe.title}
+        </h1>
+      </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
+      <div className="max-w-3xl mx-auto px-4 pb-8 space-y-4">
         {recipe.image_url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -113,11 +110,9 @@ export default async function RecipeDetailPage({
         )}
 
         {/* Meta */}
-        <div className="bg-white rounded-[14px] border border-gray-200 p-6">
-          <h1 className="text-xl font-semibold text-charcoal">{recipe.title}</h1>
-
+        <div className="bg-white rounded-[14px] border border-cream-border p-6">
           {(recipe.prep_time || recipe.cook_time || recipe.servings || steps.length > 0) && (
-            <div className="flex flex-wrap gap-6 mt-4">
+            <div className="flex flex-wrap gap-6">
               {recipe.prep_time && (
                 <div>
                   <p className="text-xs text-slate mb-0.5">Prep time</p>
@@ -192,10 +187,10 @@ export default async function RecipeDetailPage({
 
         {/* Ingredients */}
         {ingredients && ingredients.length > 0 && (
-          <div className="bg-white rounded-[14px] border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-slate uppercase tracking-wide mb-4">
+          <div className="bg-white rounded-[14px] border border-cream-border p-6">
+            <p className="text-xs font-semibold text-slate uppercase tracking-wide mb-4">
               Ingredients ({ingredients.length})
-            </h2>
+            </p>
             <ul className="space-y-2">
               {ingredients.map((ing) => (
                 <li
@@ -216,10 +211,10 @@ export default async function RecipeDetailPage({
 
         {/* Instructions */}
         {steps.length > 0 && (
-          <div className="bg-white rounded-[14px] border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-slate uppercase tracking-wide mb-5">
+          <div className="bg-white rounded-[14px] border border-cream-border p-6">
+            <p className="text-xs font-semibold text-slate uppercase tracking-wide mb-5">
               Method
-            </h2>
+            </p>
 
             {steps.length === 1 ? (
               <p className="text-sm text-charcoal leading-relaxed">{steps[0]}</p>

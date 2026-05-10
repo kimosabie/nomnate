@@ -17,7 +17,7 @@ type Props = {
 };
 
 const inputClass =
-  "w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-charcoal placeholder:text-slate focus:outline-none focus:ring-2 focus:ring-flame focus:border-transparent";
+  "w-full px-4 py-2.5 border border-cream-border rounded-xl text-sm text-charcoal placeholder:text-slate focus:outline-none focus:ring-2 focus:ring-flame focus:border-transparent";
 
 function TagInput({
   values,
@@ -116,7 +116,7 @@ export function PreferencesForm({
       )}
 
       {/* Name */}
-      <div className="bg-white rounded-[14px] border border-gray-200 p-6 space-y-4">
+      <div className="bg-white rounded-[14px] border border-cream-border p-6 space-y-4">
         <h2 className="text-sm font-semibold text-slate uppercase tracking-wide">Your name</h2>
         <input
           name="name"
@@ -129,7 +129,7 @@ export function PreferencesForm({
       </div>
 
       {/* Dietary restrictions */}
-      <div className="bg-white rounded-[14px] border border-gray-200 p-6 space-y-4">
+      <div className="bg-white rounded-[14px] border border-cream-border p-6 space-y-4">
         <div>
           <h2 className="text-sm font-semibold text-slate uppercase tracking-wide">Dietary restrictions</h2>
           <p className="text-xs text-slate mt-1">Claude will never suggest meals that break these.</p>
@@ -142,7 +142,7 @@ export function PreferencesForm({
                 name="dietary_restrictions"
                 value={r}
                 defaultChecked={dietaryRestrictions.includes(r)}
-                className="w-4 h-4 rounded border-gray-300 text-flame focus:ring-flame"
+                className="w-4 h-4 rounded border-cream-border text-flame focus:ring-flame"
               />
               <span className="text-sm text-charcoal capitalize group-hover:text-charcoal">
                 {r}
@@ -153,7 +153,7 @@ export function PreferencesForm({
       </div>
 
       {/* Diet types */}
-      <div className="bg-white rounded-[14px] border border-gray-200 p-6 space-y-4">
+      <div className="bg-white rounded-[14px] border border-cream-border p-6 space-y-4">
         <div>
           <h2 className="text-sm font-semibold text-slate uppercase tracking-wide">Diet plan</h2>
           <p className="text-xs text-slate mt-1">Claude will suggest meals that match your diet.</p>
@@ -179,7 +179,7 @@ export function PreferencesForm({
       </div>
 
       {/* Calorie tracking */}
-      <div className="bg-white rounded-[14px] border border-gray-200 p-6 space-y-4">
+      <div className="bg-white rounded-[14px] border border-cream-border p-6 space-y-4">
         <div>
           <h2 className="text-sm font-semibold text-slate uppercase tracking-wide">Calorie tracking</h2>
           <p className="text-xs text-slate mt-1">Optional — shows calorie totals on your meal plan.</p>
@@ -191,7 +191,7 @@ export function PreferencesForm({
             value="true"
             checked={caloriesEnabled}
             onChange={(e) => setCaloriesEnabled(e.target.checked)}
-            className="w-4 h-4 rounded border-gray-300 text-flame focus:ring-flame"
+            className="w-4 h-4 rounded border-cream-border text-flame focus:ring-flame"
           />
           <span className="text-sm text-charcoal">Track calories for me</span>
         </label>
@@ -212,7 +212,7 @@ export function PreferencesForm({
       </div>
 
       {/* Allergies */}
-      <div className="bg-white rounded-[14px] border border-gray-200 p-6 space-y-4">
+      <div className="bg-white rounded-[14px] border border-cream-border p-6 space-y-4">
         <div>
           <h2 className="text-sm font-semibold text-slate uppercase tracking-wide">Allergies</h2>
           <p className="text-xs text-slate mt-1">Serious allergies — recipes with these will be flagged.</p>
@@ -227,7 +227,7 @@ export function PreferencesForm({
       </div>
 
       {/* Cuisine preferences */}
-      <div className="bg-white rounded-[14px] border border-gray-200 p-6 space-y-4">
+      <div className="bg-white rounded-[14px] border border-cream-border p-6 space-y-4">
         <div>
           <h2 className="text-sm font-semibold text-slate uppercase tracking-wide">Favourite cuisines</h2>
           <p className="text-xs text-slate mt-1">Claude will favour these when suggesting meals.</p>
@@ -255,7 +255,7 @@ export function PreferencesForm({
       </div>
 
       {/* Liked ingredients */}
-      <div className="bg-white rounded-[14px] border border-gray-200 p-6 space-y-4">
+      <div className="bg-white rounded-[14px] border border-cream-border p-6 space-y-4">
         <div>
           <h2 className="text-sm font-semibold text-slate uppercase tracking-wide">Favourite ingredients</h2>
           <p className="text-xs text-slate mt-1">Claude will try to include these in suggestions.</p>
@@ -270,7 +270,7 @@ export function PreferencesForm({
       </div>
 
       {/* Ingredient dislikes */}
-      <div className="bg-white rounded-[14px] border border-gray-200 p-6 space-y-4">
+      <div className="bg-white rounded-[14px] border border-cream-border p-6 space-y-4">
         <div>
           <h2 className="text-sm font-semibold text-slate uppercase tracking-wide">Ingredients to avoid</h2>
           <p className="text-xs text-slate mt-1">Meals with these ingredients won&apos;t be suggested.</p>

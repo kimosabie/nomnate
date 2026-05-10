@@ -98,7 +98,7 @@ export function RecipeListClient({
           No recipes match this filter
         </p>
       ) : (
-        <ul className="divide-y divide-gray-100">
+        <ul className="divide-y divide-cream-border/40">
           {displayed.map((r) => (
             <li key={r.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
               <Link href={`/recipes/${r.id}`} className="flex items-center gap-3 flex-1 min-w-0">
@@ -146,14 +146,14 @@ export function RecipeListClient({
                       type="submit"
                       title={r.is_favourite ? "Remove from favourites" : "Add to favourites"}
                       className={`text-xl transition-transform hover:scale-110 leading-none ${
-                        r.is_favourite ? "text-flame" : "text-gray-300"
+                        r.is_favourite ? "text-flame" : "text-slate/40"
                       }`}
                     >
                       &#9733;
                     </button>
                   </form>
                 ) : (
-                  <span className={`text-xl leading-none ${r.is_favourite ? "text-flame" : "text-gray-200"}`}>
+                  <span className={`text-xl leading-none ${r.is_favourite ? "text-flame" : "text-slate/30"}`}>
                     &#9733;
                   </span>
                 )}

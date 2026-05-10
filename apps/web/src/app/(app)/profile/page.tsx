@@ -23,22 +23,17 @@ export default async function ProfilePage() {
 
   return (
     <main className="min-h-screen bg-cream">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center gap-3">
-          <Link
-            href="/dashboard"
-            className="text-slate hover:text-charcoal text-lg leading-none transition-colors"
-            aria-label="Back to dashboard"
-          >
-            &#8592;
-          </Link>
-          <span className="text-xl font-semibold text-flame">
-            Your preferences
-          </span>
-        </div>
-      </header>
+      <div className="max-w-3xl mx-auto px-4 py-4">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-1 text-sm text-slate hover:text-charcoal transition-colors mb-3"
+        >
+          ← Home
+        </Link>
+        <h1 className="text-2xl font-display font-medium text-flame">Your preferences</h1>
+      </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-8">
+      <div className="max-w-3xl mx-auto px-4 pb-8">
         <PreferencesForm
           name={member.name ?? ""}
           dietaryRestrictions={(member.dietary_restrictions as string[]) ?? []}
