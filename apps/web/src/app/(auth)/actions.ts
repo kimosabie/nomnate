@@ -33,14 +33,9 @@ export async function signUp(
 
   if (error) return error.message;
 
-  // If email confirmation is required, session won't exist yet
+  // Email confirmation is enabled — session won't exist until the user verifies
   if (!data.session) {
-    // Sign in immediately so the user lands with a valid session
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (signInError) return signInError.message;
+    redirect("/verify-email");
   }
 
   revalidatePath("/", "layout");
