@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PreferencesForm } from "./PreferencesForm";
+import { DeleteAccountSection } from "./DeleteAccountSection";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -33,7 +34,7 @@ export default async function ProfilePage() {
         <h1 className="text-2xl font-display font-medium text-flame">Your preferences</h1>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 pb-8">
+      <div className="max-w-3xl mx-auto px-4 pb-8 space-y-4">
         <PreferencesForm
           name={member.name ?? ""}
           dietaryRestrictions={(member.dietary_restrictions as string[]) ?? []}
@@ -45,6 +46,7 @@ export default async function ProfilePage() {
           dailyCalorieTarget={member.daily_calorie_target ?? null}
           trackCalories={member.track_calories ?? false}
         />
+        <DeleteAccountSection />
       </div>
     </main>
   );
