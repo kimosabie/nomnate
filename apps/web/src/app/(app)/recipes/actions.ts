@@ -144,6 +144,36 @@ export async function deleteRecipe(recipeId: string): Promise<string | null> {
   return null;
 }
 
+export async function resetRecipeLibrary(): Promise<string | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return "Not authenticated";
+
+  const { data: membership } = await supabase
+    .from("family_members")
+    .select("family_id")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (!membership) return "No family found";
+
+  // Delete all recipes created by this user in their family
+  // recipe_ingredients cascade via FK; meal_plan_slots recipe_id set to null via FK
+  const { error } = await supabase
+    .from("recipes")
+    .delete()
+    .eq("family_id", membership.family_id)
+    .eq("created_by", user.id);
+
+  if (error) return error.message;
+
+  revalidatePath("/recipes");
+  revalidatePath("/meal-plan");
+  return null;
+}
+
 export async function toggleFavourite(formData: FormData): Promise<void> {
   const supabase = await createClient();
   const {

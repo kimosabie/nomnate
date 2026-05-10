@@ -1,16 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { usePathname } from "next/navigation";
-import { submitFeedback } from "@/app/(app)/feedback/actions";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 type FeedbackType = "bug" | "idea" | "feedback";
-
-const TYPE_LABELS: Record<FeedbackType, string> = {
-  bug: "🐛 Bug",
-  idea: "💡 Idea",
-  feedback: "💬 Feedback",
-};
 
 export function FeedbackFab() {
   const [open, setOpen] = useState(false);
@@ -19,19 +12,31 @@ export function FeedbackFab() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pathname = usePathname();
+  const [pageUrl, setPageUrl] = useState("");
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  useEffect(() => {
+    setPageUrl(window.location.pathname);
+  }, [open]);
+
+  async function handleSubmit() {
     if (!message.trim() || submitting) return;
-
     setSubmitting(true);
     setError(null);
-    const err = await submitFeedback(type, message, pathname);
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const { error: dbError } = await supabase.from("feedback").insert({
+      type,
+      message: message.trim(),
+      page_url: pageUrl,
+      user_id: user?.id ?? null,
+    });
+
     setSubmitting(false);
 
-    if (err) {
-      setError(err);
+    if (dbError) {
+      setError(dbError.message);
       return;
     }
 
@@ -41,113 +46,129 @@ export function FeedbackFab() {
       setSubmitted(false);
       setMessage("");
       setType("feedback");
-    }, 1500);
+      setError(null);
+    }, 2000);
   }
 
-  function handleClose() {
-    if (submitting) return;
-    setOpen(false);
-    setError(null);
-  }
+  const TYPES: { key: FeedbackType; label: string }[] = [
+    { key: "bug", label: "🐛 Bug" },
+    { key: "idea", label: "💡 Idea" },
+    { key: "feedback", label: "⭐ Feedback" },
+  ];
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 w-11 h-11 rounded-full bg-flame text-white flex items-center justify-center shadow-[0_2px_8px_rgba(232,98,26,0.3)] hover:bg-flame-dark transition-colors z-50"
-        aria-label="Send feedback"
-        title="Send feedback"
-      >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        </svg>
-      </button>
-
+      {/* Modal */}
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/30"
-          onClick={(e) => e.target === e.currentTarget && handleClose()}
+          style={{
+            position: "fixed", inset: 0, zIndex: 999,
+            background: "rgba(0,0,0,0.25)",
+            display: "flex", alignItems: "flex-end", justifyContent: "center",
+            padding: "0 16px 90px",
+          }}
+          onClick={(e) => e.target === e.currentTarget && setOpen(false)}
         >
-          <div className="bg-white rounded-[14px] border border-cream-border w-full max-w-sm p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-[15px] font-semibold text-charcoal">Send feedback</p>
+          <div style={{
+            width: "100%", maxWidth: 360,
+            background: "#fff", borderRadius: 16,
+            border: "1px solid #F5D5C0", padding: 20,
+            boxShadow: "0 4px 24px rgba(0,0,0,0.1)",
+          }}>
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <span style={{ fontWeight: 600, fontSize: 15, color: "#1A1A1A" }}>Send feedback</span>
               <button
-                onClick={handleClose}
-                className="text-slate hover:text-charcoal text-xl leading-none w-7 h-7 flex items-center justify-center"
+                onClick={() => setOpen(false)}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#999", lineHeight: 1 }}
               >
                 ×
               </button>
             </div>
 
             {submitted ? (
-              <div className="text-center py-4">
-                <p className="text-3xl mb-2">🙏</p>
-                <p className="text-sm font-medium text-charcoal">
-                  Thanks! We&apos;ll look into it.
-                </p>
+              <div style={{ textAlign: "center", padding: "20px 0" }}>
+                <div style={{ fontSize: 36, marginBottom: 8 }}>🙏</div>
+                <p style={{ fontWeight: 600, fontSize: 14, color: "#1A1A1A" }}>Thanks! We&apos;ll look into it.</p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-3">
-                <div className="flex gap-2">
-                  {(Object.keys(TYPE_LABELS) as FeedbackType[]).map((t) => (
+              <>
+                {/* Type selector */}
+                <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                  {TYPES.map(({ key, label }) => (
                     <button
-                      key={t}
-                      type="button"
-                      onClick={() => setType(t)}
-                      className={`flex-1 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                        type === t
-                          ? "bg-flame border-flame text-white"
-                          : "border-cream-border text-slate hover:border-flame hover:text-flame"
-                      }`}
+                      key={key}
+                      onClick={() => setType(key)}
+                      style={{
+                        flex: 1, borderRadius: 50, padding: "7px 0",
+                        fontSize: 11, fontWeight: 600, border: "1.5px solid",
+                        borderColor: type === key ? "#E8621A" : "#F5D5C0",
+                        background: type === key ? "#E8621A" : "#fff",
+                        color: type === key ? "#fff" : "#777",
+                        cursor: "pointer",
+                      }}
                     >
-                      {TYPE_LABELS[t]}
+                      {label}
                     </button>
                   ))}
                 </div>
 
+                {/* Error */}
                 {error && (
-                  <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-xl">
+                  <p style={{ fontSize: 12, color: "#dc2626", background: "#fef2f2", padding: "8px 12px", borderRadius: 8, marginBottom: 10 }}>
                     {error}
                   </p>
                 )}
 
+                {/* Textarea */}
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Tell us what's on your mind…"
                   rows={4}
-                  className="w-full px-3 py-2.5 text-sm border border-cream-border rounded-xl text-charcoal placeholder:text-slate focus:outline-none focus:ring-2 focus:ring-flame focus:border-transparent resize-none"
-                  required
+                  style={{
+                    width: "100%", border: "1.5px solid #F5D5C0", borderRadius: 10,
+                    padding: 10, fontSize: 13, resize: "none", outline: "none",
+                    color: "#1A1A1A", background: "#FFFAF8",
+                    boxSizing: "border-box",
+                  }}
                 />
 
+                {/* Submit */}
                 <button
-                  type="submit"
+                  onClick={handleSubmit}
                   disabled={!message.trim() || submitting}
-                  className="w-full bg-flame hover:bg-flame-dark disabled:opacity-50 text-white font-semibold py-2.5 rounded-full text-sm transition-colors"
+                  style={{
+                    width: "100%", marginTop: 10,
+                    background: message.trim() && !submitting ? "#E8621A" : "#F5D5C0",
+                    color: "#fff", border: "none", borderRadius: 50,
+                    padding: "11px 0", fontSize: 13, fontWeight: 600,
+                    cursor: message.trim() && !submitting ? "pointer" : "default",
+                  }}
                 >
-                  {submitting ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Sending…
-                    </span>
-                  ) : (
-                    "Send"
-                  )}
+                  {submitting ? "Sending…" : "Send feedback"}
                 </button>
-              </form>
+              </>
             )}
           </div>
         </div>
       )}
+
+      {/* FAB */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Send feedback"
+        style={{
+          position: "fixed", bottom: 24, right: 24,
+          width: 48, height: 48, borderRadius: "50%",
+          background: "#E8621A", color: "#fff",
+          border: "none", cursor: "pointer", zIndex: 1000,
+          fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 2px 12px rgba(232,98,26,0.4)",
+        }}
+      >
+        {open ? "✕" : "💬"}
+      </button>
     </>
   );
 }

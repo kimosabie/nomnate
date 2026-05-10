@@ -17,7 +17,7 @@ export function ResetPlanButton() {
         className="text-xs text-slate hover:text-red-500 disabled:opacity-50 transition-colors"
         title="Clear this week's plan and regenerate"
       >
-        {pending ? "Resetting…" : "Reset plan"}
+        {pending ? "Regenerating…" : "Regenerate"}
       </button>
     </form>
   );

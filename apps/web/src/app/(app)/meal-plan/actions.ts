@@ -642,11 +642,78 @@ export async function resetPlan(
 
   const weekStart = currentWeekStart();
 
-  await supabase
+  // Find or create the meal plan for this week
+  let planId: string | null = null;
+
+  const { data: existing } = await supabase
     .from("meal_plans")
-    .delete()
+    .select("id")
     .eq("family_id", membership.family_id)
-    .eq("week_start_date", weekStart);
+    .eq("week_start_date", weekStart)
+    .maybeSingle();
+
+  if (existing) {
+    planId = existing.id;
+    // Delete all slots (votes cascade via FK)
+    await supabase.from("meal_plan_slots").delete().eq("meal_plan_id", planId);
+    // Delete shopping lists
+    await supabase.from("shopping_lists").delete().eq("meal_plan_id", planId);
+  } else {
+    const { data: newPlan, error: planError } = await supabase
+      .from("meal_plans")
+      .insert({ family_id: membership.family_id, week_start_date: weekStart })
+      .select("id")
+      .single();
+    if (planError) return planError.message;
+    planId = newPlan.id;
+  }
+
+  // Fetch family recipes for slot generation
+  const { data: recipes } = await supabase
+    .from("recipes")
+    .select("id, is_favourite")
+    .eq("family_id", membership.family_id);
+
+  const shuffle = <T>(arr: T[]): T[] => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  const favIds = (recipes ?? []).filter((r) => r.is_favourite).map((r) => r.id);
+  const otherIds = (recipes ?? []).filter((r) => !r.is_favourite).map((r) => r.id);
+  const allIds = [...shuffle(favIds), ...shuffle(otherIds)];
+
+  type SlotInsert = {
+    meal_plan_id: string;
+    day_of_week: number;
+    option_number: number;
+    recipe_id: string | null;
+    status: "suggested";
+  };
+  const slots: SlotInsert[] = [];
+
+  if (allIds.length === 0) {
+    for (let d = 0; d < 7; d++) {
+      slots.push({ meal_plan_id: planId, day_of_week: d, option_number: 1, recipe_id: null, status: "suggested" });
+    }
+  } else {
+    const needed = 7 * 3;
+    const pool: string[] = [];
+    while (pool.length < needed) pool.push(...shuffle([...allIds]));
+    let idx = 0;
+    for (let d = 0; d < 7; d++) {
+      for (let opt = 1; opt <= 3; opt++) {
+        slots.push({ meal_plan_id: planId, day_of_week: d, option_number: opt, recipe_id: pool[idx++], status: "suggested" });
+      }
+    }
+  }
+
+  const { error: slotsError } = await supabase.from("meal_plan_slots").insert(slots);
+  if (slotsError) return slotsError.message;
 
   redirect("/meal-plan");
 }

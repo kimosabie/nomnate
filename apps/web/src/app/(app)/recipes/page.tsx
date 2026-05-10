@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { RecipeSearch } from "./RecipeSearch";
 import { toggleFavourite } from "./actions";
 import { RecipeListClient } from "./RecipeListClient";
+import { ResetRecipesButton } from "./ResetRecipesButton";
 
 function cuisineEmoji(cuisine: string | null): string {
   if (!cuisine) return "🍽️";
@@ -91,8 +92,9 @@ export default async function RecipesPage() {
 
   return (
     <main className="min-h-screen bg-cream">
-      <div className="max-w-3xl mx-auto px-4 py-4">
+      <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
         <h1 className="text-2xl font-display font-medium text-flame">Recipes</h1>
+        <ResetRecipesButton />
       </div>
 
       <div className="max-w-3xl mx-auto px-4 pb-8 space-y-4">
