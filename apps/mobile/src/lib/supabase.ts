@@ -2,10 +2,11 @@ import { createClient } from "@supabase/supabase-js";
 import * as SecureStore from "expo-secure-store";
 import type { Database } from "@nomnate/supabase/types";
 
+declare const process: { env: Record<string, string | undefined> };
+
 const ExpoSecureStoreAdapter = {
   getItem: (key: string) => SecureStore.getItemAsync(key),
-  setItem: (key: string, value: string) =>
-    SecureStore.setItemAsync(key, value),
+  setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
   removeItem: (key: string) => SecureStore.deleteItemAsync(key),
 };
 

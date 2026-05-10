@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@nomnate/supabase": "workspace:*",
+    "@supabase/supabase-js": "^2.50.0",
     "@nomnate/types": "workspace:*",
     "@nomnate/ui": "workspace:*",
     "expo": "~54.0.33",

@@ -54,7 +54,7 @@ export default function OnboardingScreen() {
       .eq("user_id", user.id);
 
     setLoading(false);
-    router.replace("/(app)");
+    router.replace("/(app)/(tabs)");
   }
 
   async function handleJoin() {
@@ -85,7 +85,7 @@ export default function OnboardingScreen() {
 
     setLoading(false);
     if (joinErr) return setError(joinErr.message);
-    router.replace("/(app)");
+    router.replace("/(app)/(tabs)");
   }
 
   return (
