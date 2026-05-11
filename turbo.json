@@ -13,7 +13,9 @@
         "ANTHROPIC_API_KEY",
         "SPOONACULAR_API_KEY",
         "RESEND_API_KEY",
-        "ADMIN_EMAIL"
+        "ADMIN_EMAIL",
+        "CRON_SECRET",
+        "NEXT_PUBLIC_SITE_URL"
       ]
     },
     "dev": {

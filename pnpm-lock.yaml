@@ -69,6 +69,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.55.1
+        version: 0.55.1
       '@nomnate/lib':
         specifier: workspace:*
         version: link:../../packages/lib

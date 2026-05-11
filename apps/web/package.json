@@ -11,6 +11,7 @@
     "clean": "rm -rf .next"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.55.1",
     "@nomnate/lib": "workspace:*",
     "@nomnate/supabase": "workspace:*",
     "@nomnate/types": "workspace:*",
