@@ -46,7 +46,8 @@ export async function GET(req: NextRequest) {
     .from("feedback")
     .select("id, type, message, page_url, user_id, created_at")
     .eq("reviewed", false)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .limit(50);
 
   if (feedbackError) {
     console.error("Feedback query error:", feedbackError);

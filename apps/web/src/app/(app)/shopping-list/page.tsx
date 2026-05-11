@@ -83,8 +83,9 @@ export default async function ShoppingListPage({
 
   const uncheckedInView = displayed.filter((i) => !i.checked);
 
+  const LOCALE_MAP: Record<string, string> = { ZA: "en-ZA", UK: "en-GB", FR: "fr-FR" };
   const generatedAt = shoppingList?.generated_at
-    ? new Date(shoppingList.generated_at).toLocaleString("en-ZA", {
+    ? new Date(shoppingList.generated_at).toLocaleString(LOCALE_MAP[country] ?? "en-ZA", {
         day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
       })
     : null;

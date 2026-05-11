@@ -2,15 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { currentWeekStart } from "../../meal-plan/utils";
-import { assignStore, STORES, type StoreKey } from "../storeUtils";
+import { assignStore, getStoresByCountry, type StoreConfig, type StoreKey } from "../storeUtils";
 import { PrintButton } from "./PrintButton";
-
-const VALID_STORES = new Set(["woolworths", "pnp", "checkers"]);
-
-function effectiveStore(store: string | null, name: string): StoreKey {
-  if (store && VALID_STORES.has(store)) return store as StoreKey;
-  return assignStore(name);
-}
 
 export default async function PrintPage() {
   const supabase = await createClient();
@@ -19,11 +12,20 @@ export default async function PrintPage() {
 
   const { data: membership } = await supabase
     .from("family_members")
-    .select("family_id")
+    .select("family_id, families(country)")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
   if (!membership) redirect("/onboarding");
+
+  const country = (membership.families as { country?: string } | null)?.country ?? "ZA";
+  const STORES: StoreConfig[] = getStoresByCountry(country);
+  const VALID_STORES = new Set(STORES.map((s) => s.key));
+
+  function effectiveStore(store: string | null, name: string): StoreKey {
+    if (store && VALID_STORES.has(store)) return store as StoreKey;
+    return assignStore(name, country);
+  }
 
   const { data: plan } = await supabase
     .from("meal_plans")
@@ -62,7 +64,8 @@ export default async function PrintPage() {
     items: items.filter((i) => i.effectiveStore === s.key),
   })).filter((g) => g.items.length > 0);
 
-  const weekLabel = new Date(currentWeekStart()).toLocaleDateString("en-ZA", {
+  const LOCALE_MAP: Record<string, string> = { ZA: "en-ZA", UK: "en-GB", FR: "fr-FR" };
+  const weekLabel = new Date(currentWeekStart()).toLocaleDateString(LOCALE_MAP[country] ?? "en-ZA", {
     day: "numeric", month: "long", year: "numeric",
   });
 

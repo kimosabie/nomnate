@@ -48,10 +48,12 @@ export function FeedbackFab() {
       .eq("user_id", user?.id ?? '')
       .single();
 
-    console.log('Calling feedback-notify API...')
-    const notifyRes = await fetch('/api/feedback-notify', {
+    await fetch('/api/feedback-notify', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-notify-secret': process.env.NEXT_PUBLIC_FEEDBACK_NOTIFY_SECRET ?? '',
+      },
       body: JSON.stringify({
         type,
         message: message.trim(),
@@ -60,7 +62,6 @@ export function FeedbackFab() {
         familyName: (member?.families as any)?.name ?? undefined,
       })
     })
-    console.log('feedback-notify response:', notifyRes.status)
 
     setSubmitted(true);
     setTimeout(() => {

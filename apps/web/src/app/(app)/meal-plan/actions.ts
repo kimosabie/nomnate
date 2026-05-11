@@ -159,6 +159,11 @@ export async function suggestWithAI(
       (members ?? []).flatMap((m) => (m.liked_ingredients as string[]) ?? [])
     ),
   ];
+  const allRestrictions = [
+    ...new Set(
+      (members ?? []).flatMap((m) => (m.dietary_restrictions as string[]) ?? [])
+    ),
+  ];
   const familySize = members?.length ?? 1;
   const familyMembers = buildFamilyMembers(members ?? []);
 
@@ -176,7 +181,7 @@ export async function suggestWithAI(
   try {
     suggestions = await suggestMeals({
       familySize,
-      dietaryRestrictions: [],
+      dietaryRestrictions: allRestrictions,
       cuisinePreferences: allCuisinePrefs,
       ingredientDislikes: allDislikes,
       likedIngredients: allLiked,
@@ -501,6 +506,24 @@ export async function removeFromSlot(slotId: string): Promise<string | null> {
   } = await supabase.auth.getUser();
   if (!user) return "Not authenticated";
 
+  const { data: slot } = await supabase
+    .from("meal_plan_slots")
+    .select("id, meal_plans(family_id)")
+    .eq("id", slotId)
+    .single();
+  if (!slot) return "Slot not found";
+
+  const familyId = (slot.meal_plans as { family_id: string } | null)?.family_id;
+  if (!familyId) return "Slot not found";
+
+  const { data: membership } = await supabase
+    .from("family_members")
+    .select("id")
+    .eq("family_id", familyId)
+    .eq("user_id", user.id)
+    .single();
+  if (!membership) return "Not authorized";
+
   const { error } = await supabase
     .from("meal_plan_slots")
     .update({ recipe_id: null })
@@ -528,6 +551,16 @@ export async function assignRecipeToSlot(
     .limit(1)
     .maybeSingle();
   if (!membership) return "No family found";
+
+  // Verify slot belongs to this user's family
+  const { data: slot } = await supabase
+    .from("meal_plan_slots")
+    .select("id, meal_plans(family_id)")
+    .eq("id", slotId)
+    .single();
+  if (!slot) return "Slot not found";
+  const slotFamilyId = (slot.meal_plans as { family_id: string } | null)?.family_id;
+  if (slotFamilyId !== membership.family_id) return "Not authorized";
 
   // Verify recipe is accessible to this family
   const { data: recipe } = await supabase
@@ -614,6 +647,11 @@ export async function suggestForSlot(
       (members ?? []).flatMap((m) => (m.liked_ingredients as string[]) ?? [])
     ),
   ];
+  const allRestrictionsSlot = [
+    ...new Set(
+      (members ?? []).flatMap((m) => (m.dietary_restrictions as string[]) ?? [])
+    ),
+  ];
   const familySize = members?.length ?? 1;
   const familyMembersSlot = buildFamilyMembers(members ?? []);
 
@@ -652,7 +690,7 @@ export async function suggestForSlot(
   try {
     suggestions = await suggestMeals({
       familySize,
-      dietaryRestrictions: [],
+      dietaryRestrictions: allRestrictionsSlot,
       cuisinePreferences: allCuisinePrefs,
       ingredientDislikes: allDislikes,
       likedIngredients: allLikedSlot,

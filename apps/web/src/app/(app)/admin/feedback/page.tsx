@@ -6,7 +6,7 @@ import { TodoList } from "./TodoList";
 import { ManualTrigger } from "./ManualTrigger";
 import { Suspense } from "react";
 
-const ADMIN_EMAIL = "kim.ormiston@me.com";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
 const TYPE_EMOJI: Record<string, string> = {
   bug: "🐛",
@@ -28,7 +28,7 @@ export default async function AdminFeedbackPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user || user.email !== ADMIN_EMAIL) redirect("/dashboard");
+  if (!ADMIN_EMAIL || !user || user.email !== ADMIN_EMAIL) redirect("/dashboard");
 
   const admin = createAdminClient();
   const { tab = "feedback" } = await searchParams;

@@ -4,12 +4,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-const ADMIN_EMAIL = "kim.ormiston@me.com";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
 async function requireAdmin() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.email !== ADMIN_EMAIL) redirect("/dashboard");
+  if (!ADMIN_EMAIL || !user || user.email !== ADMIN_EMAIL) redirect("/dashboard");
   return user;
 }
 

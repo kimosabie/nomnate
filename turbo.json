@@ -16,7 +16,9 @@
         "ADMIN_EMAIL",
         "CRON_SECRET",
         "NEXT_PUBLIC_SITE_URL",
-        "UNSPLASH_ACCESS_KEY"
+        "UNSPLASH_ACCESS_KEY",
+        "FEEDBACK_NOTIFY_SECRET",
+        "NEXT_PUBLIC_FEEDBACK_NOTIFY_SECRET"
       ]
     },
     "dev": {

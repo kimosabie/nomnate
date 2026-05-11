@@ -111,7 +111,7 @@ const FR_STORES: StoreConfig[] = [
     key: "lidl",
     label: "Lidl",
     shopUrl: "https://www.lidl.fr/",
-    searchUrl: (q) => `https://www.lidl.fr/c/recherche/${encodeURIComponent(q)}`,
+    searchUrl: (q) => `https://www.lidl.fr/q/${encodeURIComponent(q)}`,
     badgeBg: "bg-flame-light",
     badgeText: "text-flame-dark",
     selectBg: "#FDE8E0",
