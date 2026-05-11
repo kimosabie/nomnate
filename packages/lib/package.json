@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./claude": "./src/claude.ts",
     "./spoonacular": "./src/spoonacular.ts",
+    "./themealdb": "./src/themealdb.ts",
     "./stores": "./src/stores.ts"
   },
   "scripts": {

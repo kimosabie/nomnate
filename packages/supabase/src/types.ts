@@ -320,6 +320,7 @@ export type Database = {
           servings: number | null
           source: string
           spoonacular_id: number | null
+          themealdb_id: string | null
           title: string
         }
         Insert: {
@@ -342,6 +343,7 @@ export type Database = {
           servings?: number | null
           source?: string
           spoonacular_id?: number | null
+          themealdb_id?: string | null
           title: string
         }
         Update: {
@@ -364,6 +366,7 @@ export type Database = {
           servings?: number | null
           source?: string
           spoonacular_id?: number | null
+          themealdb_id?: string | null
           title?: string
         }
         Relationships: [
