@@ -4,12 +4,12 @@ import { useActionState, useState, useTransition } from "react";
 import {
   searchRecipesAction,
   addRecipeToLibrary,
-  saveSpoonacularRecipe,
   saveMealDBRecipe,
   seedSARecipes,
   searchMealDBRecipes,
   browseSouthAfricanMeals,
 } from "./actions";
+import { saveSpoonacularRecipe } from "./spoonacular-actions";
 import type { SearchState, RecipeCard, MealDBState } from "./actions";
 import type { SpoonacularRecipe } from "@nomnate/types";
 import type { MealDBMeal, MealDBListItem } from "@nomnate/lib/themealdb";
