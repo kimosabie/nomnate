@@ -24,8 +24,12 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "NomNate",
   },
+  icons: {
+    apple: "/icons/icon-192.png",
+  },
   other: {
     "mobile-web-app-capable": "yes",
+    "theme-color": "#E8621A",
   },
 };
 
@@ -39,10 +43,6 @@ export default function RootLayout({
       lang="en"
       className={`${fredoka.variable} ${plusJakarta.variable} h-full`}
     >
-      <head>
-        <meta name="theme-color" content="#E8621A" />
-        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-      </head>
       <body className="min-h-full flex flex-col">
         {children}
         <InstallPrompt />
