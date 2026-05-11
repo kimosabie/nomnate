@@ -8,6 +8,28 @@ import { searchRecipes } from "@nomnate/lib/spoonacular";
 import type { SuggestedRecipe } from "@nomnate/types";
 import { currentWeekStart } from "./utils";
 
+const UNIT_ALIASES: Record<string, string> = {
+  gram: "g", grams: "g",
+  kilogram: "kg", kilograms: "kg",
+  milliliter: "ml", milliliters: "ml", millilitre: "ml", millilitres: "ml",
+  liter: "l", liters: "l", litre: "l", litres: "l",
+  tablespoon: "tbsp", tablespoons: "tbsp",
+  teaspoon: "tsp", teaspoons: "tsp",
+  ounce: "oz", ounces: "oz",
+  pound: "lb", pounds: "lb",
+  cups: "cup",
+  cloves: "clove",
+  pieces: "piece",
+  cans: "can",
+  slices: "slice",
+};
+
+function normalizeUnit(unit: string | null | undefined): string {
+  if (!unit) return "";
+  const lower = unit.toLowerCase().trim();
+  return UNIT_ALIASES[lower] ?? lower;
+}
+
 async function fetchImageByTitle(title: string): Promise<string | null> {
   try {
     const results = await searchRecipes(title, process.env.SPOONACULAR_API_KEY!, { number: 1 });
@@ -390,18 +412,20 @@ export async function generateShoppingList(
   type Item = { ingredient_name: string; quantity: number | null; unit: string | null };
   const map = new Map<string, Item>();
   for (const ing of allIngredients ?? []) {
-    const key = `${ing.name.toLowerCase().trim()}|${(ing.unit ?? "").toLowerCase().trim()}`;
+    const normUnit = normalizeUnit(ing.unit);
+    const key = `${ing.name.toLowerCase().trim()}|${normUnit}`;
     const existing = map.get(key);
     if (existing) {
-      existing.quantity =
-        existing.quantity != null && ing.quantity != null
-          ? existing.quantity + ing.quantity
-          : null;
+      if (existing.quantity != null && ing.quantity != null) {
+        existing.quantity = existing.quantity + ing.quantity;
+      } else if (existing.quantity == null) {
+        existing.quantity = ing.quantity ?? null;
+      }
     } else {
       map.set(key, {
         ingredient_name: ing.name,
         quantity: ing.quantity ?? null,
-        unit: ing.unit ?? null,
+        unit: normUnit || null,
       });
     }
   }
