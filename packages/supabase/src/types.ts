@@ -299,6 +299,48 @@ export type Database = {
           },
         ]
       }
+      family_recipes: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          family_id: string
+          id: string
+          is_favourite: boolean
+          recipe_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          family_id: string
+          id?: string
+          is_favourite?: boolean
+          recipe_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          family_id?: string
+          id?: string
+          is_favourite?: boolean
+          recipe_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_recipes_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_recipes_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipes: {
         Row: {
           calories_per_serving: number | null
@@ -309,16 +351,20 @@ export type Database = {
           cuisine: string | null
           description: string | null
           diet_types: string[]
+          external_id: string | null
           family_id: string | null
           fat_g: number | null
           id: string
           image_url: string | null
           instructions: string | null
           is_favourite: boolean
+          is_global: boolean
           prep_time: number | null
           protein_g: number | null
           servings: number | null
           source: string
+          source_attribution: string | null
+          source_url: string | null
           spoonacular_id: number | null
           themealdb_id: string | null
           title: string
@@ -332,16 +378,20 @@ export type Database = {
           cuisine?: string | null
           description?: string | null
           diet_types?: string[]
+          external_id?: string | null
           family_id?: string | null
           fat_g?: number | null
           id?: string
           image_url?: string | null
           instructions?: string | null
           is_favourite?: boolean
+          is_global?: boolean
           prep_time?: number | null
           protein_g?: number | null
           servings?: number | null
           source?: string
+          source_attribution?: string | null
+          source_url?: string | null
           spoonacular_id?: number | null
           themealdb_id?: string | null
           title: string
@@ -355,16 +405,20 @@ export type Database = {
           cuisine?: string | null
           description?: string | null
           diet_types?: string[]
+          external_id?: string | null
           family_id?: string | null
           fat_g?: number | null
           id?: string
           image_url?: string | null
           instructions?: string | null
           is_favourite?: boolean
+          is_global?: boolean
           prep_time?: number | null
           protein_g?: number | null
           servings?: number | null
           source?: string
+          source_attribution?: string | null
+          source_url?: string | null
           spoonacular_id?: number | null
           themealdb_id?: string | null
           title?: string

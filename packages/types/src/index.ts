@@ -159,11 +159,24 @@ export interface Recipe {
   carbs_g: number | null;
   fat_g: number | null;
   is_favourite: boolean;
+  is_global: boolean;
+  external_id: string | null;
+  source_url: string | null;
+  source_attribution: string | null;
   spoonacular_id: number | null;
   themealdb_id: string | null;
   created_by: string | null;
   created_at: string;
   ingredients?: RecipeIngredient[];
+}
+
+export interface FamilyRecipe {
+  id: string;
+  family_id: string;
+  recipe_id: string;
+  added_by: string | null;
+  added_at: string;
+  is_favourite: boolean;
 }
 
 export interface MealPlan {

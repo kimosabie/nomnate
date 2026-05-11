@@ -60,6 +60,27 @@ function normalizeUnit(unit: string | null | undefined): string {
   return UNIT_ALIASES[lower] ?? lower;
 }
 
+async function getFamilyRecipePool(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  familyId: string
+): Promise<Array<{ id: string; is_favourite: boolean }>> {
+  const [{ data: manual }, { data: global }] = await Promise.all([
+    supabase
+      .from("recipes")
+      .select("id, is_favourite")
+      .eq("family_id", familyId)
+      .eq("is_global", false),
+    supabase
+      .from("family_recipes")
+      .select("recipe_id, is_favourite")
+      .eq("family_id", familyId),
+  ]);
+  return [
+    ...(manual ?? []),
+    ...(global ?? []).map((fr) => ({ id: fr.recipe_id, is_favourite: fr.is_favourite })),
+  ];
+}
+
 async function fetchImageByTitle(title: string): Promise<string | null> {
   try {
     const results = await searchRecipes(title, process.env.SPOONACULAR_API_KEY!, { number: 1 });
@@ -74,13 +95,15 @@ import { checkRateLimit } from "@/lib/rateLimit";
 export async function getAIUsageThisWeek(familyId: string): Promise<number> {
   const supabase = await createClient();
   const weekStart = currentWeekStart();
-  const { count } = await supabase
-    .from("recipes")
-    .select("id", { count: "exact", head: true })
+  // Count AI recipes added to this family's library this week
+  const { data } = await supabase
+    .from("family_recipes")
+    .select("recipe:recipes!inner(source)")
     .eq("family_id", familyId)
-    .eq("source", "ai")
-    .gte("created_at", weekStart + "T00:00:00.000Z");
-  return count ?? 0;
+    .gte("added_at", weekStart + "T00:00:00.000Z");
+  return (data ?? []).filter(
+    (r) => (r.recipe as { source: string } | null)?.source === "ai"
+  ).length;
 }
 
 export async function suggestWithAI(
@@ -139,12 +162,14 @@ export async function suggestWithAI(
   const familySize = members?.length ?? 1;
   const familyMembers = buildFamilyMembers(members ?? []);
 
-  const { data: existingRecipes } = await supabase
-    .from("recipes")
-    .select("title")
-    .eq("family_id", membership.family_id);
-
-  const excludeTitles = (existingRecipes ?? []).map((r) => r.title);
+  const [{ data: manualTitles }, { data: globalLinks }] = await Promise.all([
+    supabase.from("recipes").select("title").eq("family_id", membership.family_id).eq("is_global", false),
+    supabase.from("family_recipes").select("recipe:recipes(title)").eq("family_id", membership.family_id),
+  ]);
+  const excludeTitles = [
+    ...(manualTitles ?? []).map((r) => r.title),
+    ...(globalLinks ?? []).map((l) => (l.recipe as { title: string } | null)?.title ?? "").filter(Boolean),
+  ];
   const count = Math.min(remaining, 7);
 
   let suggestions: SuggestedRecipe[];
@@ -166,16 +191,16 @@ export async function suggestWithAI(
   // Fetch food photos in parallel before saving
   const imageUrls = await Promise.all(suggestions.map((s) => fetchImageByTitle(s.title)));
 
-  // Save generated recipes to the family library
+  // Save AI recipes globally + link to family library
   const savedIds: string[] = [];
   for (let i = 0; i < suggestions.length; i++) {
     const s = suggestions[i];
     const { data: saved, error } = await supabase
       .from("recipes")
       .insert({
-        family_id: membership.family_id,
         title: s.title,
         source: "ai" as const,
+        source_attribution: "AI-generated recipe by Claude (Anthropic). Inspired by traditional " + s.cuisine + " cooking.",
         instructions: s.instructions,
         prep_time: s.prep_time,
         cuisine: s.cuisine,
@@ -184,6 +209,7 @@ export async function suggestWithAI(
         protein_g: s.protein_g ?? null,
         carbs_g: s.carbs_g ?? null,
         fat_g: s.fat_g ?? null,
+        is_global: true,
         created_by: user.id,
       })
       .select("id")
@@ -200,6 +226,10 @@ export async function suggestWithAI(
         }))
       );
     }
+    await supabase.from("family_recipes").upsert(
+      { family_id: membership.family_id, recipe_id: saved.id, added_by: user.id },
+      { onConflict: "family_id,recipe_id", ignoreDuplicates: true }
+    );
     savedIds.push(saved.id);
   }
 
@@ -289,18 +319,11 @@ export async function generatePlan(
     .maybeSingle();
   if (existing) redirect("/meal-plan");
 
-  // Fetch family recipes — favourites first, then shuffle the rest
-  const { data: recipes } = await supabase
-    .from("recipes")
-    .select("id, is_favourite")
-    .eq("family_id", membership.family_id);
+  // Fetch family recipe pool (manual + global-in-library)
+  const recipes = await getFamilyRecipePool(supabase, membership.family_id);
 
-  const favIds = (recipes ?? [])
-    .filter((r) => r.is_favourite)
-    .map((r) => r.id);
-  const otherIds = (recipes ?? [])
-    .filter((r) => !r.is_favourite)
-    .map((r) => r.id);
+  const favIds = recipes.filter((r) => r.is_favourite).map((r) => r.id);
+  const otherIds = recipes.filter((r) => !r.is_favourite).map((r) => r.id);
 
   // Fisher-Yates shuffle
   const shuffle = <T>(arr: T[]): T[] => {
@@ -506,14 +529,25 @@ export async function assignRecipeToSlot(
     .maybeSingle();
   if (!membership) return "No family found";
 
-  // Verify recipe belongs to this family before assigning
+  // Verify recipe is accessible to this family
   const { data: recipe } = await supabase
     .from("recipes")
-    .select("id")
+    .select("id, is_global, family_id")
     .eq("id", recipeId)
-    .eq("family_id", membership.family_id)
     .maybeSingle();
   if (!recipe) return "Recipe not found";
+
+  if (recipe.is_global) {
+    const { data: libEntry } = await supabase
+      .from("family_recipes")
+      .select("id")
+      .eq("recipe_id", recipeId)
+      .eq("family_id", membership.family_id)
+      .maybeSingle();
+    if (!libEntry) return "Recipe not in your library";
+  } else if (recipe.family_id !== membership.family_id) {
+    return "Recipe not found";
+  }
 
   const { error } = await supabase
     .from("meal_plan_slots")
@@ -583,10 +617,14 @@ export async function suggestForSlot(
   const familySize = members?.length ?? 1;
   const familyMembersSlot = buildFamilyMembers(members ?? []);
 
-  const { data: existingRecipes } = await supabase
-    .from("recipes")
-    .select("title")
-    .eq("family_id", membership.family_id);
+  const [{ data: manualRecipes }, { data: globalRecipeLinks }] = await Promise.all([
+    supabase.from("recipes").select("title").eq("family_id", membership.family_id).eq("is_global", false),
+    supabase.from("family_recipes").select("recipe:recipes(title)").eq("family_id", membership.family_id),
+  ]);
+  const libraryTitles = [
+    ...(manualRecipes ?? []).map((r) => r.title),
+    ...(globalRecipeLinks ?? []).map((l) => (l.recipe as { title: string } | null)?.title ?? "").filter(Boolean),
+  ];
 
   // Also exclude meals already assigned to other slots this week
   const { data: thisSlot } = await supabase
@@ -608,10 +646,7 @@ export async function suggestForSlot(
       .filter((t): t is string => !!t);
   }
 
-  const excludeTitles = [
-    ...(existingRecipes ?? []).map((r) => r.title),
-    ...assignedTitles,
-  ];
+  const excludeTitles = [...libraryTitles, ...assignedTitles];
 
   let suggestions: SuggestedRecipe[];
   try {
@@ -637,9 +672,9 @@ export async function suggestForSlot(
   const { data: saved, error: saveError } = await supabase
     .from("recipes")
     .insert({
-      family_id: membership.family_id,
       title: s.title,
       source: "ai" as const,
+      source_attribution: `AI-generated recipe by Claude (Anthropic). Inspired by traditional ${s.cuisine} cooking.`,
       instructions: s.instructions,
       prep_time: s.prep_time,
       cuisine: s.cuisine,
@@ -648,6 +683,7 @@ export async function suggestForSlot(
       protein_g: s.protein_g ?? null,
       carbs_g: s.carbs_g ?? null,
       fat_g: s.fat_g ?? null,
+      is_global: true,
       created_by: user.id,
     })
     .select("id, title, image_url, prep_time, cuisine")
@@ -665,6 +701,11 @@ export async function suggestForSlot(
       }))
     );
   }
+
+  await supabase.from("family_recipes").upsert(
+    { family_id: membership.family_id, recipe_id: saved.id, added_by: user.id },
+    { onConflict: "family_id,recipe_id", ignoreDuplicates: true }
+  );
 
   const { error: updateError } = await supabase
     .from("meal_plan_slots")
@@ -731,11 +772,8 @@ export async function resetPlan(
     planId = newPlan.id;
   }
 
-  // Fetch family recipes for slot generation
-  const { data: recipes } = await supabase
-    .from("recipes")
-    .select("id, is_favourite")
-    .eq("family_id", membership.family_id);
+  // Fetch family recipe pool (manual + global-in-library)
+  const recipes = await getFamilyRecipePool(supabase, membership.family_id);
 
   const shuffle = <T>(arr: T[]): T[] => {
     const a = [...arr];

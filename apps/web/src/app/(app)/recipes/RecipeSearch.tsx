@@ -2,77 +2,105 @@
 
 import { useActionState, useState, useTransition } from "react";
 import {
-  searchSpoonacular,
-  saveRecipe,
-  searchMealDBRecipes,
-  browseSouthAfricanMeals,
+  searchRecipesAction,
+  addRecipeToLibrary,
+  saveSpoonacularRecipe,
   saveMealDBRecipe,
   seedSARecipes,
+  searchMealDBRecipes,
+  browseSouthAfricanMeals,
 } from "./actions";
-import type { SearchState, MealDBState } from "./actions";
+import type { SearchState, RecipeCard, MealDBState } from "./actions";
 import type { SpoonacularRecipe } from "@nomnate/types";
 import type { MealDBMeal, MealDBListItem } from "@nomnate/lib/themealdb";
-import { DIET_TYPE_LABELS } from "@nomnate/types";
 
-type Tab = "spoonacular" | "themealdb" | "ai";
+type Tab = "search" | "themealdb" | "sa_staples";
 
-const SEARCH_DIET_OPTIONS: Array<{ key: string; label: string }> = [
-  { key: "", label: "Any diet" },
-  { key: "vegetarian", label: "Vegetarian" },
-  { key: "vegan", label: "Vegan" },
-  { key: "gluten-free", label: "Gluten-Free" },
-  { key: "keto", label: "Keto" },
-  { key: "paleo", label: "Paleo" },
-  { key: "mediterranean", label: "Mediterranean" },
-  { key: "whole30", label: "Whole30" },
-  { key: "low-carb", label: "Low-Carb" },
+const SOURCE_BADGE: Record<string, string> = {
+  themealdb: "🌍 Community",
+  ai: "✨ AI",
+  manual: "👨‍🍳 Family",
+  prescribed: "🏥 Prescribed",
+};
+
+const QUICK_FILTERS = [
+  { key: "sa_classics", label: "🇿🇦 SA Classics" },
+  { key: "braai", label: "🥩 Braai" },
+  { key: "healthy", label: "🥗 Healthy" },
+  { key: "quick", label: "⚡ Quick" },
 ];
 
-const spoonacularInitial: SearchState = { results: [], error: null, dietFilter: "" };
-const mealdbInitial: MealDBState = { results: [], saItems: [], error: null, mode: "idle" };
+const searchInitial: SearchState = {
+  results: [],
+  spoonResults: [],
+  error: null,
+  query: "",
+  filter: null,
+};
+
+const mealdbInitial: MealDBState = {
+  results: [],
+  saItems: [],
+  error: null,
+  mode: "idle",
+};
 
 export function RecipeSearch() {
-  const [activeTab, setActiveTab] = useState<Tab>("spoonacular");
+  const [activeTab, setActiveTab] = useState<Tab>("search");
 
-  // Spoonacular state
-  const [spoonState, spoonSearchAction, spoonPending] = useActionState(searchSpoonacular, spoonacularInitial);
-  const [savedSpoonIds, setSavedSpoonIds] = useState<Set<number>>(new Set());
-  const [savingSpoonId, setSavingSpoonId] = useState<number | null>(null);
-  const [dietFilter, setDietFilter] = useState("");
+  // Unified search tab
+  const [searchState, searchAction, searchPending] = useActionState(
+    searchRecipesAction,
+    searchInitial
+  );
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
-  // TheMealDB state
-  const [mealdbState, mealdbSearchAction, mealdbPending] = useActionState(searchMealDBRecipes, mealdbInitial);
+  // TheMealDB tab
+  const [mealdbState, mealdbSearchAction, mealdbPending] = useActionState(
+    searchMealDBRecipes,
+    mealdbInitial
+  );
   const [savedMealDbIds, setSavedMealDbIds] = useState<Set<string>>(new Set());
   const [savingMealDbId, setSavingMealDbId] = useState<string | null>(null);
-  const [mealdbDisplayState, setMealdbDisplayState] = useState<MealDBState>(mealdbInitial);
+  const [mealdbBrowse, setMealdbBrowse] = useState<MealDBState>(mealdbInitial);
   const [saLoading, startSATransition] = useTransition();
 
-  // AI Generate / Seed state
+  // SA Staples tab
   const [seedResult, setSeedResult] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
 
   function handleTabChange(tab: Tab) {
     setActiveTab(tab);
-    if (tab === "themealdb" && mealdbDisplayState.mode === "idle" && mealdbState.mode === "idle") {
+    if (tab === "themealdb" && mealdbBrowse.mode === "idle" && mealdbState.mode === "idle") {
       startSATransition(async () => {
         const result = await browseSouthAfricanMeals();
-        setMealdbDisplayState(result);
+        setMealdbBrowse(result);
       });
     }
   }
 
-  async function handleSaveSpoon(recipe: SpoonacularRecipe) {
-    setSavingSpoonId(recipe.id);
-    const error = await saveRecipe(recipe);
-    setSavingSpoonId(null);
-    if (!error) setSavedSpoonIds((prev) => new Set([...prev, recipe.id]));
+  async function handleSaveDBResult(recipeId: string) {
+    setSavingId(recipeId);
+    const err = await addRecipeToLibrary(recipeId);
+    setSavingId(null);
+    if (!err) setSavedIds((prev) => new Set([...prev, recipeId]));
+  }
+
+  async function handleSaveSpoonacular(recipe: SpoonacularRecipe) {
+    const key = `spoon_${recipe.id}`;
+    setSavingId(key);
+    const err = await saveSpoonacularRecipe(recipe);
+    setSavingId(null);
+    if (!err) setSavedIds((prev) => new Set([...prev, key]));
   }
 
   async function handleSaveMealDB(id: string, title?: string) {
     setSavingMealDbId(id);
-    const error = await saveMealDBRecipe(id, title);
+    const err = await saveMealDBRecipe(id, title);
     setSavingMealDbId(null);
-    if (!error) setSavedMealDbIds((prev) => new Set([...prev, id]));
+    if (!err) setSavedMealDbIds((prev) => new Set([...prev, id]));
   }
 
   async function handleSeed() {
@@ -85,113 +113,128 @@ export function RecipeSearch() {
     } else if (result.seeded === 0 && result.skipped > 0) {
       setSeedResult(`All ${result.skipped} SA staples are already in your library.`);
     } else {
-      setSeedResult(`Added ${result.seeded} SA staple${result.seeded !== 1 ? "s" : ""}${result.skipped > 0 ? ` (${result.skipped} already existed)` : ""}.`);
+      setSeedResult(
+        `Added ${result.seeded} SA staple${result.seeded !== 1 ? "s" : ""}${result.skipped > 0 ? ` (${result.skipped} already in global library, linked to yours)` : ""}.`
+      );
     }
   }
 
-  const mealdbResults = mealdbState.mode !== "idle" ? mealdbState : mealdbDisplayState;
+  const mealdbResults = mealdbState.mode !== "idle" ? mealdbState : mealdbBrowse;
 
   return (
     <div className="space-y-4">
       {/* Tabs */}
       <div className="flex gap-1 bg-cream rounded-xl p-1">
-        {(["spoonacular", "themealdb", "ai"] as Tab[]).map((tab) => (
+        {(["search", "themealdb", "sa_staples"] as Tab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => handleTabChange(tab)}
-            className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-colors ${
+            className={`flex-1 py-2 px-2 rounded-lg text-xs font-semibold transition-colors ${
               activeTab === tab
                 ? "bg-white text-flame shadow-sm"
                 : "text-slate hover:text-charcoal"
             }`}
           >
-            {tab === "spoonacular" ? "Spoonacular" : tab === "themealdb" ? "TheMealDB" : "SA Staples"}
+            {tab === "search" ? "Search" : tab === "themealdb" ? "TheMealDB" : "SA Staples"}
           </button>
         ))}
       </div>
 
-      {/* Spoonacular tab */}
-      {activeTab === "spoonacular" && (
+      {/* ── Unified Search Tab ─────────────────────────────────────── */}
+      {activeTab === "search" && (
         <div className="space-y-4">
-          <form action={spoonSearchAction} className="space-y-3">
-            <div className="flex flex-wrap gap-1.5">
-              {SEARCH_DIET_OPTIONS.map((opt) => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => setDietFilter(dietFilter === opt.key ? "" : opt.key)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                    dietFilter === opt.key
-                      ? "bg-herb text-white"
-                      : "bg-cream text-slate hover:bg-cream-dark"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            <input type="hidden" name="diet_filter" value={dietFilter} />
-            <div className="flex gap-2">
-              <input
-                name="query"
-                type="search"
-                required
-                placeholder="e.g. pasta, chicken curry, stir fry…"
-                className="flex-1 px-4 py-2.5 border border-cream-border rounded-xl text-sm text-charcoal placeholder:text-slate focus:outline-none focus:ring-2 focus:ring-flame focus:border-transparent"
-              />
+          {/* Quick filter chips */}
+          <div className="flex flex-wrap gap-1.5">
+            {QUICK_FILTERS.map((f) => (
               <button
-                type="submit"
-                disabled={spoonPending}
-                className="bg-flame hover:bg-flame-dark disabled:opacity-60 text-white font-semibold px-5 py-2.5 rounded-full text-sm transition-colors shrink-0"
+                key={f.key}
+                type="button"
+                onClick={() => setActiveFilter(activeFilter === f.key ? null : f.key)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  activeFilter === f.key
+                    ? "bg-flame text-white"
+                    : "bg-cream text-slate hover:bg-cream-dark"
+                }`}
               >
-                {spoonPending ? "Searching…" : "Search"}
+                {f.label}
               </button>
-            </div>
+            ))}
+          </div>
+
+          <form action={searchAction} className="flex gap-2">
+            <input type="hidden" name="filter" value={activeFilter ?? ""} />
+            <input
+              name="query"
+              type="search"
+              placeholder="Search recipes…"
+              className="flex-1 px-4 py-2.5 border border-cream-border rounded-xl text-sm text-charcoal placeholder:text-slate focus:outline-none focus:ring-2 focus:ring-flame focus:border-transparent"
+            />
+            <button
+              type="submit"
+              disabled={searchPending}
+              className="bg-flame hover:bg-flame-dark disabled:opacity-60 text-white font-semibold px-5 py-2.5 rounded-full text-sm transition-colors shrink-0"
+            >
+              {searchPending ? "Searching…" : "Search"}
+            </button>
           </form>
 
-          {spoonState.error && (
-            <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">{spoonState.error}</p>
+          {searchState.error && (
+            <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">
+              {searchState.error}
+            </p>
           )}
 
-          {spoonState.results.length > 0 ? (
+          {/* DB results */}
+          {searchState.results.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs font-medium text-slate uppercase tracking-wide">
-                {spoonState.results.length} results
+                {searchState.results.length} in NomNate library
               </p>
-              {spoonState.results.map((recipe) => {
-                const isSaved = savedSpoonIds.has(recipe.id);
-                const isSaving = savingSpoonId === recipe.id;
-                const dietTags = (recipe.diets ?? [])
-                  .map((d) => {
-                    const key = d.toLowerCase().replace(/ /g, "-");
-                    return DIET_TYPE_LABELS[key as keyof typeof DIET_TYPE_LABELS] ?? null;
-                  })
-                  .filter(Boolean)
-                  .slice(0, 2);
+              {searchState.results.map((r) => (
+                <DBRecipeRow
+                  key={r.id}
+                  recipe={r}
+                  isSaved={r.inLibrary || savedIds.has(r.id)}
+                  isSaving={savingId === r.id}
+                  onAdd={handleSaveDBResult}
+                />
+              ))}
+            </div>
+          )}
 
+          {/* Spoonacular results (fallback when DB has < 6) */}
+          {searchState.spoonResults.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-slate uppercase tracking-wide">
+                {searchState.spoonResults.length} from Spoonacular
+              </p>
+              {searchState.spoonResults.map((r) => {
+                const key = `spoon_${r.id}`;
                 return (
                   <SpoonRecipeRow
-                    key={recipe.id}
-                    recipe={recipe}
-                    isSaved={isSaved}
-                    isSaving={isSaving}
-                    dietTags={dietTags as string[]}
-                    onSave={handleSaveSpoon}
+                    key={r.id}
+                    recipe={r}
+                    isSaved={savedIds.has(key)}
+                    isSaving={savingId === key}
+                    onSave={handleSaveSpoonacular}
                   />
                 );
               })}
             </div>
-          ) : (
-            !spoonPending && !spoonState.error && (
-              <p className="text-sm text-slate text-center py-4">
-                Search Spoonacular&apos;s database of 5,000+ recipes
-              </p>
-            )
           )}
+
+          {!searchPending &&
+            searchState.results.length === 0 &&
+            searchState.spoonResults.length === 0 &&
+            !searchState.error && (
+              <p className="text-sm text-slate text-center py-4">
+                Search by name, or pick a quick filter above
+              </p>
+            )}
         </div>
       )}
 
-      {/* TheMealDB tab */}
+      {/* ── TheMealDB Tab ──────────────────────────────────────────── */}
       {activeTab === "themealdb" && (
         <div className="space-y-4">
           <form action={mealdbSearchAction} className="flex gap-2">
@@ -211,9 +254,9 @@ export function RecipeSearch() {
             </button>
           </form>
 
-          {(mealdbState.error || mealdbDisplayState.error) && (
+          {(mealdbState.error || mealdbBrowse.error) && (
             <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">
-              {mealdbState.error ?? mealdbDisplayState.error}
+              {mealdbState.error ?? mealdbBrowse.error}
             </p>
           )}
 
@@ -260,20 +303,18 @@ export function RecipeSearch() {
           )}
 
           {!saLoading && !mealdbPending && mealdbResults.mode === "idle" && (
-            <p className="text-sm text-slate text-center py-4">
-              Free recipe database with thousands of meals
-            </p>
+            <p className="text-sm text-slate text-center py-4">Free recipe database — search any meal</p>
           )}
         </div>
       )}
 
-      {/* SA Staples tab */}
-      {activeTab === "ai" && (
+      {/* ── SA Staples Tab ─────────────────────────────────────────── */}
+      {activeTab === "sa_staples" && (
         <div className="space-y-4">
           <div className="bg-turmeric-light rounded-[14px] p-5">
             <p className="text-sm font-semibold text-charcoal mb-1">South African Staples</p>
             <p className="text-xs text-slate leading-relaxed mb-4">
-              Add 10 classic SA recipes to your library — Bobotie, Potjiekos, Malva Pudding, Bunny Chow, and more. These are pre-written and ready to use.
+              Add 10 classic SA recipes to your library — Bobotie, Potjiekos, Malva Pudding, Bunny Chow, and more.
             </p>
             <button
               onClick={handleSeed}
@@ -290,7 +331,7 @@ export function RecipeSearch() {
           </div>
 
           <div className="space-y-1.5">
-            {["Bobotie", "Braai Boerewors", "Pap en Vleis", "Malva Pudding", "Potjiekos", "Vetkoek", "Bunny Chow", "Chakalaka", "Sosaties", "Melktert"].map((name) => (
+            {SA_STAPLE_NAMES.map((name) => (
               <div key={name} className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-cream">
                 <span className="w-1.5 h-1.5 rounded-full bg-flame shrink-0" />
                 <span className="text-sm text-charcoal">{name}</span>
@@ -303,17 +344,93 @@ export function RecipeSearch() {
   );
 }
 
+const SA_STAPLE_NAMES = [
+  "Bobotie", "Braai Boerewors", "Pap en Vleis", "Malva Pudding",
+  "Potjiekos", "Vetkoek", "Bunny Chow", "Chakalaka", "Sosaties", "Melktert",
+];
+
+function sourceBadge(source: string) {
+  const label = SOURCE_BADGE[source];
+  if (!label) return null;
+  return (
+    <span className="text-xs bg-slate/10 text-slate font-medium px-2 py-0.5 rounded-full shrink-0">
+      {label}
+    </span>
+  );
+}
+
+function AddButton({
+  inLibrary,
+  isSaving,
+  onClick,
+}: {
+  inLibrary: boolean;
+  isSaving: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={inLibrary || isSaving}
+      className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${
+        inLibrary
+          ? "bg-herb-light text-herb cursor-default"
+          : "bg-flame-light text-flame hover:bg-cream-dark disabled:opacity-60"
+      }`}
+    >
+      {isSaving ? "Adding…" : inLibrary ? "In Library" : "Add"}
+    </button>
+  );
+}
+
+function DBRecipeRow({
+  recipe,
+  isSaved,
+  isSaving,
+  onAdd,
+}: {
+  recipe: RecipeCard;
+  isSaved: boolean;
+  isSaving: boolean;
+  onAdd: (id: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-[14px] border border-cream-border bg-cream p-3">
+      {recipe.image_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={recipe.image_url} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0" />
+      ) : (
+        <div className="w-14 h-14 rounded-xl bg-flame-light shrink-0" />
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-charcoal truncate">{recipe.title}</p>
+        <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+          <p className="text-xs text-slate">
+            {[recipe.prep_time ? `${recipe.prep_time} min` : null, recipe.cuisine]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+          {sourceBadge(recipe.source)}
+        </div>
+      </div>
+      <AddButton
+        inLibrary={isSaved}
+        isSaving={isSaving}
+        onClick={() => onAdd(recipe.id)}
+      />
+    </div>
+  );
+}
+
 function SpoonRecipeRow({
   recipe,
   isSaved,
   isSaving,
-  dietTags,
   onSave,
 }: {
   recipe: SpoonacularRecipe;
   isSaved: boolean;
   isSaving: boolean;
-  dietTags: string[];
   onSave: (r: SpoonacularRecipe) => void;
 }) {
   return (
@@ -326,30 +443,13 @@ function SpoonRecipeRow({
       )}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-charcoal truncate">{recipe.title}</p>
-        <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-          <p className="text-xs text-slate">
-            {[recipe.readyInMinutes ? `${recipe.readyInMinutes} min` : null, recipe.cuisines?.[0]]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-          {dietTags.map((tag) => (
-            <span key={tag} className="text-xs bg-herb-light text-herb font-medium px-2 py-0.5 rounded-full">
-              {tag}
-            </span>
-          ))}
-        </div>
+        <p className="text-xs text-slate mt-0.5">
+          {[recipe.readyInMinutes ? `${recipe.readyInMinutes} min` : null, recipe.cuisines?.[0]]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
       </div>
-      <button
-        onClick={() => onSave(recipe)}
-        disabled={isSaved || isSaving}
-        className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${
-          isSaved
-            ? "bg-herb-light text-herb"
-            : "bg-flame-light text-flame hover:bg-cream-dark disabled:opacity-60"
-        }`}
-      >
-        {isSaving ? "Adding…" : isSaved ? "Added ✓" : "Add"}
-      </button>
+      <AddButton inLibrary={isSaved} isSaving={isSaving} onClick={() => onSave(recipe)} />
     </div>
   );
 }
@@ -375,19 +475,13 @@ function MealDBListItemRow({
       )}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-charcoal truncate">{item.strMeal}</p>
-        <p className="text-xs text-slate mt-0.5">South African</p>
+        <p className="text-xs text-slate mt-0.5">South African · 🌍 Community</p>
       </div>
-      <button
+      <AddButton
+        inLibrary={isSaved}
+        isSaving={isSaving}
         onClick={() => onSave(item.idMeal, item.strMeal)}
-        disabled={isSaved || isSaving}
-        className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${
-          isSaved
-            ? "bg-herb-light text-herb"
-            : "bg-flame-light text-flame hover:bg-cream-dark disabled:opacity-60"
-        }`}
-      >
-        {isSaving ? "Adding…" : isSaved ? "Added ✓" : "Add"}
-      </button>
+      />
     </div>
   );
 }
@@ -413,21 +507,18 @@ function MealDBFullRow({
       )}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-charcoal truncate">{meal.strMeal}</p>
-        <p className="text-xs text-slate mt-0.5">
-          {[meal.strCategory, meal.strArea].filter(Boolean).join(" · ")}
-        </p>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <p className="text-xs text-slate">
+            {[meal.strCategory, meal.strArea].filter(Boolean).join(" · ")}
+          </p>
+          <span className="text-xs bg-slate/10 text-slate font-medium px-2 py-0.5 rounded-full">🌍 Community</span>
+        </div>
       </div>
-      <button
+      <AddButton
+        inLibrary={isSaved}
+        isSaving={isSaving}
         onClick={() => onSave(meal.idMeal, meal.strMeal ?? undefined)}
-        disabled={isSaved || isSaving}
-        className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${
-          isSaved
-            ? "bg-herb-light text-herb"
-            : "bg-flame-light text-flame hover:bg-cream-dark disabled:opacity-60"
-        }`}
-      >
-        {isSaving ? "Adding…" : isSaved ? "Added ✓" : "Add"}
-      </button>
+      />
     </div>
   );
 }

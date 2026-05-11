@@ -23,6 +23,20 @@ function cuisineEmoji(cuisine: string | null): string {
   return "🍽️";
 }
 
+type RecipeRow = {
+  id: string;
+  title: string;
+  image_url: string | null;
+  prep_time: number | null;
+  cuisine: string | null;
+  is_favourite: boolean;
+  source: string;
+  created_by: string | null;
+  diet_types: string[];
+  calories_per_serving: number | null;
+  is_global: boolean;
+};
+
 export default async function RecipesPage() {
   const supabase = await createClient();
   const {
@@ -39,21 +53,48 @@ export default async function RecipesPage() {
 
   if (!membership) redirect("/onboarding");
 
-  const [{ data: recipes }, { data: members }] = await Promise.all([
+  const familyId = membership.family_id;
+
+  // Fetch manual (family-scoped) recipes + global recipes via family_recipes junction
+  const [
+    { data: manualRecipes },
+    { data: globalLinks },
+    { data: members },
+  ] = await Promise.all([
     supabase
       .from("recipes")
-      .select("id, title, image_url, prep_time, cuisine, is_favourite, source, created_by, diet_types, calories_per_serving")
-      .eq("family_id", membership.family_id)
+      .select("id, title, image_url, prep_time, cuisine, is_favourite, source, created_by, diet_types, calories_per_serving, is_global")
+      .eq("family_id", familyId)
+      .eq("is_global", false)
       .order("is_favourite", { ascending: false })
       .order("created_at", { ascending: false }),
     supabase
+      .from("family_recipes")
+      .select("is_favourite, recipe:recipes(id, title, image_url, prep_time, cuisine, source, created_by, diet_types, calories_per_serving, is_global, created_at)")
+      .eq("family_id", familyId)
+      .order("added_at", { ascending: false }),
+    supabase
       .from("family_members")
       .select("name, dietary_restrictions, ingredient_dislikes, allergies")
-      .eq("family_id", membership.family_id),
+      .eq("family_id", familyId),
   ]);
 
+  // Combine: global recipes use family_recipes.is_favourite
+  const allRecipes: RecipeRow[] = [
+    ...(manualRecipes ?? []) as RecipeRow[],
+    ...(globalLinks ?? []).map((link) => {
+      const r = link.recipe as Omit<RecipeRow, "is_favourite">;
+      return { ...r, is_favourite: link.is_favourite } as RecipeRow;
+    }),
+  ];
+
+  // Sort: favourites first, then by created_at (globals use added_at ordering from query)
+  const favs = allRecipes.filter((r) => r.is_favourite);
+  const rest = allRecipes.filter((r) => !r.is_favourite);
+  const recipes = [...favs, ...rest];
+
+  const recipeIds = recipes.map((r) => r.id);
   const conflictMap = new Map<string, string[]>();
-  const recipeIds = recipes?.map((r) => r.id) ?? [];
 
   if (recipeIds.length > 0 && members && members.length > 0) {
     const { data: ingredients } = await supabase
@@ -81,11 +122,12 @@ export default async function RecipesPage() {
     }
   }
 
-  const annotated = (recipes ?? []).map((r) => ({
+  const annotated = recipes.map((r) => ({
     ...r,
     emoji: cuisineEmoji(r.cuisine),
     conflicts: conflictMap.get(r.id) ?? [],
-    isOwner: r.created_by === user.id,
+    // Any family member can manage global recipes in their library
+    isOwner: r.is_global ? true : r.created_by === user.id,
     diet_types: (r.diet_types as string[]) ?? [],
     calories_per_serving: r.calories_per_serving ?? null,
   }));

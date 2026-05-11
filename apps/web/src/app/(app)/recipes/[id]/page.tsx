@@ -96,14 +96,17 @@ export default async function RecipeDetailPage({
     .maybeSingle();
   if (!membership) redirect("/onboarding");
 
+  // Global recipes have family_id = null — query without family_id filter,
+  // access is controlled by RLS (global readable + family_id readable to members)
   const { data: recipe } = await supabase
     .from("recipes")
-    .select("id, title, description, image_url, prep_time, cook_time, servings, cuisine, source, instructions, diet_types, calories_per_serving, protein_g, carbs_g, fat_g")
+    .select("id, title, description, image_url, prep_time, cook_time, servings, cuisine, source, source_url, source_attribution, instructions, diet_types, calories_per_serving, protein_g, carbs_g, fat_g, is_global, family_id")
     .eq("id", id)
-    .eq("family_id", membership.family_id)
     .maybeSingle();
 
+  // Verify access: global recipe OR belongs to this family
   if (!recipe) notFound();
+  if (!recipe.is_global && recipe.family_id !== membership.family_id) notFound();
 
   const { data: ingredients } = await supabase
     .from("recipe_ingredients")
@@ -264,6 +267,26 @@ export default async function RecipeDetailPage({
               </ol>
             )}
           </div>
+        )}
+
+        {/* Source attribution */}
+        {(recipe.source_attribution || recipe.source_url) && (
+          <p className="text-xs text-slate/60 text-center leading-relaxed px-2">
+            {recipe.source_attribution}
+            {recipe.source_url && (
+              <>
+                {" · "}
+                <a
+                  href={recipe.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-slate"
+                >
+                  View original
+                </a>
+              </>
+            )}
+          </p>
         )}
       </div>
     </main>
