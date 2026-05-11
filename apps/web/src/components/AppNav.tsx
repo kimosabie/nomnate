@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { signOut } from "@/app/(auth)/actions";
 
 const LINKS = [
@@ -11,8 +12,16 @@ const LINKS = [
   { href: "/shopping-list", label: "Shopping" },
 ];
 
-export function AppNav({ initials }: { initials: string }) {
+export function AppNav({ initials, inviteCode }: { initials: string; inviteCode: string | null }) {
   const pathname = usePathname();
+  const [codeCopied, setCodeCopied] = useState(false);
+
+  function copyCode() {
+    if (!inviteCode) return;
+    navigator.clipboard.writeText(inviteCode);
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 2000);
+  }
 
   return (
     <header className="bg-white border-b border-cream-border sticky top-0 z-40 print:hidden">
@@ -44,6 +53,17 @@ export function AppNav({ initials }: { initials: string }) {
             );
           })}
         </nav>
+
+        {inviteCode && (
+          <button
+            onClick={copyCode}
+            title={codeCopied ? "Copied!" : "Copy invite code"}
+            className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border border-[#F5D5C0] bg-[#FFF3EE] text-slate hover:text-charcoal transition-colors shrink-0"
+          >
+            <span className="font-mono tracking-wider">{inviteCode}</span>
+            <span>{codeCopied ? "✓" : "📋"}</span>
+          </button>
+        )}
 
         <form action={signOut} className="shrink-0">
           <button

@@ -1,0 +1,24 @@
+{
+  "name": "NomNate",
+  "short_name": "NomNate",
+  "description": "Family dinner, decided together",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#FFF3EE",
+  "theme_color": "#E8621A",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ]
+}

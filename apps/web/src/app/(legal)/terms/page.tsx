@@ -95,7 +95,7 @@ export default function TermsOfService() {
       <p>
         You may delete your account at any time from your profile settings. We may suspend or
         terminate accounts that violate these Terms. On termination, your data will be deleted
-        in accordance with our <a href="/legal/privacy">Privacy Policy</a>.
+        in accordance with our <a href="/privacy">Privacy Policy</a>.
       </p>
 
       <h2>10. Changes to these Terms</h2>

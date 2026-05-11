@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { currentWeekStart } from "../meal-plan/utils";
 import { CopyCode } from "./CopyCode";
+import { InviteBanner } from "@/components/InviteBanner";
+import { InviteModal } from "@/components/InviteModal";
 
 const DAY_MS = 86_400_000;
 
@@ -176,6 +178,14 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Invite banner — show when family has fewer than 4 members */}
+        {(members?.length ?? 0) < 4 && (
+          <InviteBanner code={family.invite_code} familyName={family.name} />
+        )}
+
+        {/* First-visit invite modal */}
+        <InviteModal code={family.invite_code} />
 
         {/* Dinner Champion */}
         <div className="bg-white rounded-[14px] border border-cream-border p-5 flex items-center gap-4">

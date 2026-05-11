@@ -10,9 +10,9 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
             <span className="text-herb">Nate</span>
           </Link>
           <nav className="flex items-center gap-4 text-xs text-slate">
-            <Link href="/legal/privacy" className="hover:text-flame transition-colors">Privacy</Link>
-            <Link href="/legal/terms" className="hover:text-flame transition-colors">Terms</Link>
-            <Link href="/legal/cookies" className="hover:text-flame transition-colors">Cookies</Link>
+            <Link href="/privacy" className="hover:text-flame transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-flame transition-colors">Terms</Link>
+            <Link href="/cookies" className="hover:text-flame transition-colors">Cookies</Link>
           </nav>
         </div>
       </header>
@@ -37,9 +37,9 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
 
       <footer className="border-t border-cream-border mt-12">
         <div className="max-w-2xl mx-auto px-4 py-6 text-xs text-slate flex flex-wrap gap-4">
-          <Link href="/legal/privacy" className="hover:text-flame transition-colors">Privacy Policy</Link>
-          <Link href="/legal/terms" className="hover:text-flame transition-colors">Terms of Service</Link>
-          <Link href="/legal/cookies" className="hover:text-flame transition-colors">Cookie Policy</Link>
+          <Link href="/privacy" className="hover:text-flame transition-colors">Privacy Policy</Link>
+          <Link href="/terms" className="hover:text-flame transition-colors">Terms of Service</Link>
+          <Link href="/cookies" className="hover:text-flame transition-colors">Cookie Policy</Link>
           <span className="ml-auto">© {new Date().getFullYear()} NomNate</span>
         </div>
       </footer>
