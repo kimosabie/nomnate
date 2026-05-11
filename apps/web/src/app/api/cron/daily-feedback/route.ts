@@ -67,8 +67,10 @@ export async function GET(req: NextRequest) {
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  const aiResponse = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+  let aiResponse;
+  try {
+    aiResponse = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
     max_tokens: 2000,
     messages: [
       {
@@ -106,6 +108,10 @@ ${rows.map((f, i) => `#${i + 1}: ${f.id}`).join("\n")}`,
       },
     ],
   });
+  } catch (err) {
+    console.error("Anthropic API error:", err);
+    return NextResponse.json({ error: "AI analysis failed", detail: String(err) }, { status: 500 });
+  }
 
   const content =
     aiResponse.content[0].type === "text" ? aiResponse.content[0].text : "";
