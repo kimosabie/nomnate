@@ -25,6 +25,10 @@ export const metadata: Metadata = {
     title: "NomNate",
   },
   icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icons/icon-96.png", type: "image/png", sizes: "96x96" },
+    ],
     apple: "/icons/icon-192.png",
   },
   other: {
