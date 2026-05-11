@@ -47,7 +47,7 @@ export async function createFamily(
     .eq("user_id", user.id);
 
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect("/onboarding/welcome");
 }
 
 export async function joinFamily(
@@ -99,5 +99,5 @@ export async function joinFamily(
   }
 
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect("/onboarding/welcome");
 }

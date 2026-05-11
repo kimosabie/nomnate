@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { suggestMeals } from "@nomnate/lib/claude";
 import { searchRecipes } from "@nomnate/lib/spoonacular";
-import type { SuggestedRecipe } from "@nomnate/types";
+import type { FamilyMemberContext, SuggestedRecipe } from "@nomnate/types";
 import { currentWeekStart } from "./utils";
 
 const UNIT_ALIASES: Record<string, string> = {
@@ -23,6 +23,36 @@ const UNIT_ALIASES: Record<string, string> = {
   cans: "can",
   slices: "slice",
 };
+
+function computeAge(dob: string): number {
+  const birth = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+}
+
+function buildFamilyMembers(
+  members: Array<{
+    relationship: string | null;
+    age: number | null;
+    date_of_birth: string | null;
+    dietary_restrictions: string[];
+    allergies: string[];
+    diet_types: string[];
+    daily_calorie_target: number | null;
+  }>
+): FamilyMemberContext[] {
+  return members.map((m) => ({
+    relationship: m.relationship,
+    age: m.date_of_birth ? computeAge(m.date_of_birth) : (m.age ?? null),
+    dietaryRestrictions: (m.dietary_restrictions as string[]) ?? [],
+    allergies: (m.allergies as string[]) ?? [],
+    dietTypes: (m.diet_types as string[]) ?? [],
+    calorieTarget: m.daily_calorie_target,
+  }));
+}
 
 function normalizeUnit(unit: string | null | undefined): string {
   if (!unit) return "";
@@ -85,17 +115,12 @@ export async function suggestWithAI(
     return "Too many requests — wait a moment before generating more suggestions.";
   }
 
-  // Gather family context — preferences only, never PII
+  // Gather family context — preferences + composition only, never PII
   const { data: members } = await supabase
     .from("family_members")
-    .select("dietary_restrictions, cuisine_preferences, ingredient_dislikes, liked_ingredients, diet_types, daily_calorie_target")
+    .select("relationship, age, date_of_birth, dietary_restrictions, cuisine_preferences, ingredient_dislikes, liked_ingredients, diet_types, daily_calorie_target, allergies")
     .eq("family_id", membership.family_id);
 
-  const allRestrictions = [
-    ...new Set(
-      (members ?? []).flatMap((m) => (m.dietary_restrictions as string[]) ?? [])
-    ),
-  ];
   const allCuisinePrefs = [
     ...new Set(
       (members ?? []).flatMap((m) => (m.cuisine_preferences as string[]) ?? [])
@@ -111,15 +136,8 @@ export async function suggestWithAI(
       (members ?? []).flatMap((m) => (m.liked_ingredients as string[]) ?? [])
     ),
   ];
-  const allDietTypes = [
-    ...new Set(
-      (members ?? []).flatMap((m) => (m.diet_types as string[]) ?? [])
-    ),
-  ];
-  const calorieTarget =
-    (members ?? []).find((m) => m.daily_calorie_target != null)
-      ?.daily_calorie_target ?? null;
   const familySize = members?.length ?? 1;
+  const familyMembers = buildFamilyMembers(members ?? []);
 
   const { data: existingRecipes } = await supabase
     .from("recipes")
@@ -133,14 +151,13 @@ export async function suggestWithAI(
   try {
     suggestions = await suggestMeals({
       familySize,
-      dietaryRestrictions: allRestrictions,
+      dietaryRestrictions: [],
       cuisinePreferences: allCuisinePrefs,
       ingredientDislikes: allDislikes,
       likedIngredients: allLiked,
-      dietTypes: allDietTypes,
-      calorieTarget,
       excludeTitles,
       count,
+      familyMembers,
     });
   } catch (err) {
     return err instanceof Error ? err.message : "AI suggestion failed — try again";
@@ -545,14 +562,9 @@ export async function suggestForSlot(
 
   const { data: members } = await supabase
     .from("family_members")
-    .select("dietary_restrictions, cuisine_preferences, ingredient_dislikes, liked_ingredients, diet_types, daily_calorie_target")
+    .select("relationship, age, date_of_birth, dietary_restrictions, cuisine_preferences, ingredient_dislikes, liked_ingredients, diet_types, daily_calorie_target, allergies")
     .eq("family_id", membership.family_id);
 
-  const allRestrictions = [
-    ...new Set(
-      (members ?? []).flatMap((m) => (m.dietary_restrictions as string[]) ?? [])
-    ),
-  ];
   const allCuisinePrefs = [
     ...new Set(
       (members ?? []).flatMap((m) => (m.cuisine_preferences as string[]) ?? [])
@@ -568,15 +580,8 @@ export async function suggestForSlot(
       (members ?? []).flatMap((m) => (m.liked_ingredients as string[]) ?? [])
     ),
   ];
-  const allDietTypesSlot = [
-    ...new Set(
-      (members ?? []).flatMap((m) => (m.diet_types as string[]) ?? [])
-    ),
-  ];
-  const calorieTargetSlot =
-    (members ?? []).find((m) => m.daily_calorie_target != null)
-      ?.daily_calorie_target ?? null;
   const familySize = members?.length ?? 1;
+  const familyMembersSlot = buildFamilyMembers(members ?? []);
 
   const { data: existingRecipes } = await supabase
     .from("recipes")
@@ -589,14 +594,13 @@ export async function suggestForSlot(
   try {
     suggestions = await suggestMeals({
       familySize,
-      dietaryRestrictions: allRestrictions,
+      dietaryRestrictions: [],
       cuisinePreferences: allCuisinePrefs,
       ingredientDislikes: allDislikes,
       likedIngredients: allLikedSlot,
-      dietTypes: allDietTypesSlot,
-      calorieTarget: calorieTargetSlot,
       excludeTitles,
       count: 1,
+      familyMembers: familyMembersSlot,
     });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "AI suggestion failed" };

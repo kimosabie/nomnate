@@ -216,6 +216,15 @@ export interface StoreLinks {
 
 // ─── Claude / AI types ────────────────────────────────────────────────────────
 
+export interface FamilyMemberContext {
+  relationship: string | null;
+  age: number | null;
+  dietaryRestrictions: string[];
+  allergies: string[];
+  dietTypes: string[];
+  calorieTarget?: number | null;
+}
+
 export interface MealSuggestionParams {
   familySize: number;
   dietaryRestrictions: string[];
@@ -227,6 +236,7 @@ export interface MealSuggestionParams {
   cuisine?: string;
   excludeTitles?: string[];
   count?: number;
+  familyMembers?: FamilyMemberContext[];
 }
 
 export interface SuggestedRecipe {

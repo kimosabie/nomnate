@@ -37,7 +37,7 @@ export default async function AppLayout({
       <AppNav initials={initials} />
       <div className="flex-1">{children}</div>
       <FeedbackFab />
-      <footer className="border-t border-cream-border mt-4 pb-20">
+      <footer className="border-t border-cream-border mt-4 pb-20 print:hidden">
         <div className="max-w-3xl mx-auto px-4 py-4 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate">
           <Link href="/legal/privacy" className="hover:text-flame transition-colors">Privacy Policy</Link>
           <Link href="/legal/terms" className="hover:text-flame transition-colors">Terms of Service</Link>

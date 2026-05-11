@@ -4,6 +4,30 @@ import { useActionState, useState } from "react";
 import { updatePreferences } from "./actions";
 import { DIETARY_RESTRICTIONS, DIET_TYPES, DIET_TYPE_LABELS, CUISINES } from "@nomnate/types";
 
+const RELATIONSHIPS: { value: string; emoji: string; label: string }[] = [
+  { value: "mom",          emoji: "👩",  label: "Mom" },
+  { value: "dad",          emoji: "👨",  label: "Dad" },
+  { value: "grandmother",  emoji: "👵",  label: "Grandma" },
+  { value: "grandfather",  emoji: "👴",  label: "Grandpa" },
+  { value: "brother",      emoji: "👦",  label: "Brother" },
+  { value: "sister",       emoji: "👧",  label: "Sister" },
+  { value: "son",          emoji: "👶",  label: "Son" },
+  { value: "daughter",     emoji: "🌸",  label: "Daughter" },
+  { value: "uncle",        emoji: "👨‍👦",  label: "Uncle" },
+  { value: "aunt",         emoji: "👩‍👦",  label: "Aunt" },
+  { value: "cousin",       emoji: "👫",  label: "Cousin" },
+  { value: "other",        emoji: "😊",  label: "Other" },
+];
+
+function computeAge(dob: string): number {
+  const birth = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+}
+
 type Props = {
   name: string;
   dietaryRestrictions: string[];
@@ -14,6 +38,8 @@ type Props = {
   dietTypes: string[];
   dailyCalorieTarget: number | null;
   trackCalories: boolean;
+  relationship: string | null;
+  dateOfBirth: string | null;
 };
 
 const inputClass =
@@ -89,6 +115,8 @@ export function PreferencesForm({
   dietTypes,
   dailyCalorieTarget,
   trackCalories,
+  relationship,
+  dateOfBirth,
 }: Props) {
   const [error, action, pending] = useActionState(updatePreferences, null);
 
@@ -98,6 +126,8 @@ export function PreferencesForm({
   const [likedList, setLikedList] = useState<string[]>(likedIngredients);
   const [selectedDietTypes, setSelectedDietTypes] = useState<string[]>(dietTypes);
   const [caloriesEnabled, setCaloriesEnabled] = useState(trackCalories);
+  const [selectedRelationship, setSelectedRelationship] = useState<string | null>(relationship);
+  const [dob, setDob] = useState(dateOfBirth ?? "");
 
   function toggleCuisine(c: string) {
     setCuisines((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]);
@@ -126,6 +156,55 @@ export function PreferencesForm({
           placeholder="e.g. Mum"
           className={inputClass}
         />
+      </div>
+
+      {/* Relationship */}
+      <div className="bg-white rounded-[14px] border border-cream-border p-6 space-y-4">
+        <h2 className="text-sm font-semibold text-slate uppercase tracking-wide">Who are you?</h2>
+        <input type="hidden" name="relationship" value={selectedRelationship ?? ""} />
+        <div className="grid grid-cols-2 gap-2">
+          {RELATIONSHIPS.map((r) => {
+            const active = selectedRelationship === r.value;
+            return (
+              <button
+                key={r.value}
+                type="button"
+                onClick={() => setSelectedRelationship(active ? null : r.value)}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-full text-[13px] font-medium transition-all border"
+                style={{
+                  background: active ? "#E8621A" : "#FFF3EE",
+                  borderColor: active ? "#E8621A" : "#F5D5C0",
+                  color: active ? "#fff" : "#1A1A1A",
+                }}
+              >
+                <span>{r.emoji}</span>
+                <span>{r.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Age / Date of birth */}
+      <div className="bg-white rounded-[14px] border border-cream-border p-6 space-y-3">
+        <h2 className="text-sm font-semibold text-slate uppercase tracking-wide">How old are you?</h2>
+        <input
+          name="date_of_birth"
+          type="date"
+          value={dob}
+          onChange={(e) => setDob(e.target.value)}
+          max={new Date().toISOString().split("T")[0]}
+          className={inputClass + " max-w-xs"}
+        />
+        {dob && !isNaN(new Date(dob).getTime()) && (() => {
+          const age = computeAge(dob);
+          if (age < 1 || age > 120) return null;
+          return (
+            <p className="text-xs text-slate">
+              Born {new Date(dob).toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" })} · {age} years old
+            </p>
+          );
+        })()}
       </div>
 
       {/* Dietary restrictions */}

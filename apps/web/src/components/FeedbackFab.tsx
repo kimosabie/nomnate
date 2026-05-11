@@ -158,6 +158,7 @@ export function FeedbackFab() {
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label="Send feedback"
+        className="print:hidden"
         style={{
           position: "fixed", bottom: 24, right: 24,
           width: 48, height: 48, borderRadius: "50%",

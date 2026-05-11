@@ -14,7 +14,7 @@ export default async function ProfilePage() {
   const { data: member } = await supabase
     .from("family_members")
     .select(
-      "name, dietary_restrictions, cuisine_preferences, ingredient_dislikes, allergies, liked_ingredients, diet_types, daily_calorie_target, track_calories"
+      "name, dietary_restrictions, cuisine_preferences, ingredient_dislikes, allergies, liked_ingredients, diet_types, daily_calorie_target, track_calories, relationship, date_of_birth"
     )
     .eq("user_id", user.id)
     .limit(1)
@@ -45,6 +45,8 @@ export default async function ProfilePage() {
           dietTypes={(member.diet_types as string[]) ?? []}
           dailyCalorieTarget={member.daily_calorie_target ?? null}
           trackCalories={member.track_calories ?? false}
+          relationship={member.relationship ?? null}
+          dateOfBirth={member.date_of_birth ?? null}
         />
         <DeleteAccountSection />
       </div>

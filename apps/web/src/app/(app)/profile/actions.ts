@@ -69,6 +69,27 @@ export async function updatePreferences(
     if (!isNaN(n) && n >= 500 && n <= 10000) dailyCalorieTarget = n;
   }
 
+  // Relationship
+  const VALID_RELATIONSHIPS = ["mom","dad","grandmother","grandfather","brother","sister","son","daughter","uncle","aunt","cousin","other"];
+  const rawRelationship = String(formData.get("relationship") ?? "").trim();
+  const relationship = VALID_RELATIONSHIPS.includes(rawRelationship) ? rawRelationship : null;
+
+  // Date of birth → compute age
+  const rawDob = String(formData.get("date_of_birth") ?? "").trim();
+  let dateOfBirth: string | null = null;
+  let age: number | null = null;
+  if (rawDob) {
+    const parsed = new Date(rawDob);
+    if (!isNaN(parsed.getTime())) {
+      dateOfBirth = rawDob;
+      const today = new Date();
+      let a = today.getFullYear() - parsed.getFullYear();
+      const m = today.getMonth() - parsed.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < parsed.getDate())) a--;
+      if (a >= 1 && a <= 120) age = a;
+    }
+  }
+
   const { error } = await supabase
     .from("family_members")
     .update({
@@ -81,6 +102,9 @@ export async function updatePreferences(
       diet_types: dietTypes,
       track_calories: trackCalories,
       daily_calorie_target: dailyCalorieTarget,
+      relationship,
+      date_of_birth: dateOfBirth,
+      age,
     })
     .eq("user_id", user.id);
 

@@ -15,7 +15,7 @@ export function AppNav({ initials }: { initials: string }) {
   const pathname = usePathname();
 
   return (
-    <header className="bg-white border-b border-cream-border sticky top-0 z-40">
+    <header className="bg-white border-b border-cream-border sticky top-0 z-40 print:hidden">
       <div className="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
         <Link href="/dashboard" className="shrink-0 mr-1">
           <span className="font-display text-[22px] font-medium leading-none tracking-tight">

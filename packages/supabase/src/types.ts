@@ -43,10 +43,12 @@ export type Database = {
       }
       family_members: {
         Row: {
+          age: number | null
           allergies: string[]
           avatar_url: string | null
           cuisine_preferences: string[]
           daily_calorie_target: number | null
+          date_of_birth: string | null
           diet_types: string[]
           dietary_restrictions: string[]
           family_id: string
@@ -55,15 +57,18 @@ export type Database = {
           joined_at: string
           liked_ingredients: string[]
           name: string | null
+          relationship: string | null
           role: string
           track_calories: boolean
           user_id: string
         }
         Insert: {
+          age?: number | null
           allergies?: string[]
           avatar_url?: string | null
           cuisine_preferences?: string[]
           daily_calorie_target?: number | null
+          date_of_birth?: string | null
           diet_types?: string[]
           dietary_restrictions?: string[]
           family_id: string
@@ -72,15 +77,18 @@ export type Database = {
           joined_at?: string
           liked_ingredients?: string[]
           name?: string | null
+          relationship?: string | null
           role?: string
           track_calories?: boolean
           user_id: string
         }
         Update: {
+          age?: number | null
           allergies?: string[]
           avatar_url?: string | null
           cuisine_preferences?: string[]
           daily_calorie_target?: number | null
+          date_of_birth?: string | null
           diet_types?: string[]
           dietary_restrictions?: string[]
           family_id?: string
@@ -89,6 +97,7 @@ export type Database = {
           joined_at?: string
           liked_ingredients?: string[]
           name?: string | null
+          relationship?: string | null
           role?: string
           track_calories?: boolean
           user_id?: string

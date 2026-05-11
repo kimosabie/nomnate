@@ -51,7 +51,7 @@ export default async function DashboardPage() {
 
   const { data: members } = await supabase
     .from("family_members")
-    .select("id, name, role, dietary_restrictions")
+    .select("id, name, role, dietary_restrictions, allergies, diet_types, relationship, date_of_birth, age")
     .eq("family_id", family.id)
     .order("joined_at");
 
@@ -244,36 +244,77 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* Members */}
+        {/* Meet the Family */}
         <div className="bg-white rounded-[14px] border border-cream-border p-6">
           <h2 className="text-xs font-semibold text-slate uppercase tracking-wide mb-4">
-            Members ({members?.length ?? 0})
+            👨‍👩‍👧‍👦 {family.name}
           </h2>
           <ul className="space-y-3">
             {members?.map((m) => {
               const isMe = m.id === membership.id;
+              const restrictions = (m.dietary_restrictions as string[]) ?? [];
+              const allergiesList = (m.allergies as string[]) ?? [];
+              const dietTypesList = (m.diet_types as string[]) ?? [];
+              const hasAllergy = allergiesList.length > 0;
+
+              // Compute age
+              let displayAge: number | null = null;
+              if (m.date_of_birth) {
+                const birth = new Date(m.date_of_birth as string);
+                const today = new Date();
+                let a = today.getFullYear() - birth.getFullYear();
+                const mo = today.getMonth() - birth.getMonth();
+                if (mo < 0 || (mo === 0 && today.getDate() < birth.getDate())) a--;
+                displayAge = a;
+              } else if (m.age) {
+                displayAge = m.age as number;
+              }
+
+              const rel = m.relationship as string | null;
+              const isChild = displayAge !== null && displayAge < 18;
+              const subtitle = [
+                rel ? rel.charAt(0).toUpperCase() + rel.slice(1) : null,
+                displayAge ? String(displayAge) : null,
+              ].filter(Boolean).join(" · ");
+
               return (
-                <li key={m.id} className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-flame flex items-center justify-center text-white font-semibold text-sm shrink-0">
+                <li key={m.id} className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-full bg-flame flex items-center justify-center text-white font-semibold text-sm shrink-0 mt-0.5">
                     {(m.name ?? "?")[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-charcoal">
-                      {m.name ?? "Unnamed"}
-                      {m.role === "admin" && (
-                        <span className="ml-2 text-xs text-flame font-normal">admin</span>
-                      )}
-                    </p>
-                    {(m.dietary_restrictions as string[])?.length > 0 && (
-                      <p className="text-xs text-slate">
-                        {(m.dietary_restrictions as string[]).join(", ")}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-sm font-medium text-charcoal">
+                        {m.name ?? "Unnamed"}
                       </p>
+                      {isChild && <span className="text-xs">🧒</span>}
+                      {hasAllergy && (
+                        <span className="text-xs text-[#E8621A] font-semibold">⚠️</span>
+                      )}
+                      {m.role === "admin" && (
+                        <span className="text-xs text-flame font-normal">admin</span>
+                      )}
+                    </div>
+                    {subtitle && (
+                      <p className="text-xs text-slate">{subtitle}</p>
                     )}
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {dietTypesList.slice(0, 2).map((d) => (
+                        <span key={d} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-herb-light text-herb">
+                          {d}
+                        </span>
+                      ))}
+                      {restrictions.slice(0, 2).map((r) => (
+                        <span key={r} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-cream text-slate capitalize">
+                          {r}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                   {isMe && (
                     <Link
                       href="/profile"
-                      className="shrink-0 text-xs text-flame hover:text-flame-dark font-medium transition-colors"
+                      className="shrink-0 text-xs text-flame hover:text-flame-dark font-medium transition-colors mt-0.5"
                     >
                       Edit
                     </Link>

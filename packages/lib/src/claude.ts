@@ -1,9 +1,43 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { MealSuggestionParams, SuggestedRecipe } from "@nomnate/types";
+import type { FamilyMemberContext, MealSuggestionParams, SuggestedRecipe } from "@nomnate/types";
 import { DIET_TYPE_LABELS } from "@nomnate/types";
 
-// Only call server-side (Next.js API routes / Edge Functions)
 const client = new Anthropic();
+
+function buildMemberLines(members: FamilyMemberContext[]): string[] {
+  return members.map((m) => {
+    const who = m.relationship
+      ? m.relationship.charAt(0).toUpperCase() + m.relationship.slice(1)
+      : "Family member";
+    const agePart = m.age ? `, ${m.age}` : "";
+    const parts: string[] = [];
+    if (m.dietaryRestrictions.length > 0) parts.push(m.dietaryRestrictions.join(", "));
+    if (m.allergies.length > 0) parts.push(`allergic to ${m.allergies.join(", ")}`);
+    if (m.dietTypes.length > 0) {
+      const labels = m.dietTypes.map((d) => DIET_TYPE_LABELS[d as keyof typeof DIET_TYPE_LABELS] ?? d);
+      parts.push(labels.join(", "));
+    }
+    if (m.calorieTarget) parts.push(`~${m.calorieTarget} kcal/day`);
+    const details = parts.length > 0 ? ` — ${parts.join("; ")}` : " — no restrictions";
+    return `- ${who}${agePart}${details}`;
+  });
+}
+
+function buildFallbackContext(
+  familySize: number,
+  dietaryRestrictions: string[],
+  dietTypes: string[],
+  calorieTarget?: number | null
+): string {
+  const parts: string[] = [];
+  if (dietaryRestrictions.length > 0)
+    parts.push(`Dietary restrictions: ${dietaryRestrictions.join(", ")}.`);
+  if (dietTypes.length > 0)
+    parts.push(`Diet plans: ${dietTypes.map((d) => DIET_TYPE_LABELS[d as keyof typeof DIET_TYPE_LABELS] ?? d).join(", ")}.`);
+  if (calorieTarget)
+    parts.push(`Target approximately ${calorieTarget} calories per serving.`);
+  return parts.length > 0 ? parts.join("\n") : `No specific dietary restrictions for this family of ${familySize}.`;
+}
 
 export async function suggestMeals(
   params: MealSuggestionParams
@@ -19,12 +53,8 @@ export async function suggestMeals(
     cuisine,
     excludeTitles = [],
     count = 7,
+    familyMembers = [],
   } = params;
-
-  const restrictions =
-    dietaryRestrictions.length > 0
-      ? `Dietary restrictions for the family: ${dietaryRestrictions.join(", ")}.`
-      : "No specific dietary restrictions.";
 
   const preferences =
     cuisinePreferences.length > 0
@@ -41,30 +71,23 @@ export async function suggestMeals(
       ? `Try to include these favourite ingredients where suitable: ${likedIngredients.join(", ")}.`
       : "";
 
-  const diets =
-    dietTypes.length > 0
-      ? `Diet plans being followed: ${dietTypes.map((d) => DIET_TYPE_LABELS[d as keyof typeof DIET_TYPE_LABELS] ?? d).join(", ")}. All suggestions must comply with these diets.`
-      : "";
-
-  const calories =
-    calorieTarget
-      ? `Target approximately ${calorieTarget} calories per serving.`
-      : "";
-
   const exclusions =
     excludeTitles.length > 0
       ? `Do not suggest these meals (already in the plan): ${excludeTitles.join(", ")}.`
       : "";
 
+  const memberLines = buildMemberLines(familyMembers);
+  const familyContext = memberLines.length > 0
+    ? `Family composition:\n${memberLines.join("\n")}`
+    : buildFallbackContext(familySize, dietaryRestrictions, dietTypes, calorieTarget);
+
   const prompt = `You are a helpful meal planning assistant for a South African family.
 
 Suggest ${count} dinner recipes for a family of ${familySize}.
-${restrictions}
+${familyContext}
 ${preferences}
 ${dislikes}
 ${liked}
-${diets}
-${calories}
 ${cuisine ? `Preferred cuisine style: ${cuisine}.` : ""}
 ${exclusions}
 

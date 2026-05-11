@@ -174,9 +174,9 @@ export default async function ShoppingListPage({
               </div>
             </div>
 
-            {/* WhatsApp share — plain link */}
-            {uncheckedInView.length > 0 && (
-              <div className="flex gap-2 flex-wrap">
+            {/* Action buttons */}
+            <div className="flex gap-2 flex-wrap">
+              {uncheckedInView.length > 0 && (
                 <a
                   href={`https://wa.me/?text=${encodeURIComponent(waText)}`}
                   target="_blank"
@@ -185,8 +185,14 @@ export default async function ShoppingListPage({
                 >
                   💬 Share on WhatsApp
                 </a>
-              </div>
-            )}
+              )}
+              <Link
+                href="/shopping-list/print"
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-cream-border text-slate bg-white hover:text-charcoal transition-colors"
+              >
+                🖨️ Print
+              </Link>
+            </div>
 
             {/* Item list */}
             <div className="bg-white rounded-[14px] border border-cream-border overflow-hidden">
