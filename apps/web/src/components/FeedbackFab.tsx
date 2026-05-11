@@ -1,5 +1,6 @@
 "use client";
 
+import { notifyFeedback } from "@/lib/actions/notify-feedback";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -38,7 +39,25 @@ export function FeedbackFab() {
     if (dbError) {
       setError(dbError.message);
       return;
+  
     }
+
+    // Get member + family context for email notification
+    const { data: member } = await supabase
+      .from("family_members")
+      .select("name, families(name)")
+      .eq("user_id", user?.id)
+      .single();
+
+    await notifyFeedback({
+      type,
+      message: message.trim(),
+      pageUrl,
+      userName: member?.name ?? undefined,
+      familyName: (member?.families as any)?.name ?? undefined,
+    });
+
+
 
     setSubmitted(true);
     setTimeout(() => {

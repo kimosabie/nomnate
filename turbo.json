@@ -12,6 +12,8 @@
         "SUPABASE_SERVICE_ROLE_KEY",
         "ANTHROPIC_API_KEY",
         "SPOONACULAR_API_KEY"
+        "RESEND_API_KEY",
+        "ADMIN_EMAIL"
       ]
     },
     "dev": {
