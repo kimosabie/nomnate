@@ -11,6 +11,7 @@ type Recipe = {
   image_url: string | null;
   prep_time: number | null;
   cuisine: string | null;
+  source: string;
   is_favourite: boolean;
   emoji: string;
   conflicts: string[];
@@ -18,6 +19,14 @@ type Recipe = {
   diet_types: string[];
   calories_per_serving: number | null;
 };
+
+function sourceBadge(source: string, cuisine?: string | null): string | null {
+  if (source === "web_reference" || (source === "ai" && cuisine?.toLowerCase().includes("south african"))) return "🇿🇦 SA Classic";
+  if (source === "themealdb") return "🌍 Community";
+  if (source === "ai") return "✨ AI Chef";
+  if (source === "manual") return "👨‍🍳 Family";
+  return null;
+}
 
 export function RecipeListClient({
   recipes,
@@ -125,6 +134,11 @@ export function RecipeListClient({
                     {r.calories_per_serving != null && (
                       <span className="text-xs text-turmeric-dark bg-turmeric-light font-medium px-2 py-0.5 rounded-full">
                         {r.calories_per_serving} kcal
+                      </span>
+                    )}
+                    {sourceBadge(r.source, r.cuisine) && (
+                      <span className="text-xs bg-slate/10 text-slate font-medium px-2 py-0.5 rounded-full">
+                        {sourceBadge(r.source, r.cuisine)}
                       </span>
                     )}
                     {r.conflicts.length > 0 && (

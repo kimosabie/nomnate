@@ -100,7 +100,7 @@ export default async function RecipeDetailPage({
   // access is controlled by RLS (global readable + family_id readable to members)
   const { data: recipe } = await supabase
     .from("recipes")
-    .select("id, title, description, image_url, prep_time, cook_time, servings, cuisine, source, source_url, source_attribution, instructions, diet_types, calories_per_serving, protein_g, carbs_g, fat_g, is_global, family_id")
+    .select("id, title, description, image_url, image_attribution, prep_time, cook_time, servings, cuisine, source, source_url, source_attribution, instructions, diet_types, calories_per_serving, protein_g, carbs_g, fat_g, is_global, family_id")
     .eq("id", id)
     .maybeSingle();
 
@@ -134,12 +134,19 @@ export default async function RecipeDetailPage({
 
       <div className="max-w-3xl mx-auto px-4 pb-8 space-y-4">
         {recipe.image_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={recipe.image_url}
-            alt={recipe.title}
-            className="w-full h-56 object-cover rounded-[14px]"
-          />
+          <div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={recipe.image_url}
+              alt={recipe.title}
+              className="w-full h-56 object-cover rounded-[14px]"
+            />
+            {(recipe as { image_attribution?: string | null }).image_attribution && (
+              <p className="text-xs text-slate/50 text-right mt-1 px-1">
+                {(recipe as { image_attribution?: string | null }).image_attribution}
+              </p>
+            )}
+          </div>
         )}
 
         {/* Meta */}

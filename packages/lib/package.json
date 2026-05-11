@@ -9,7 +9,8 @@
     "./claude": "./src/claude.ts",
     "./spoonacular": "./src/spoonacular.ts",
     "./themealdb": "./src/themealdb.ts",
-    "./stores": "./src/stores.ts"
+    "./stores": "./src/stores.ts",
+    "./unsplash": "./src/unsplash.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

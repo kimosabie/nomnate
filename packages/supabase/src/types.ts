@@ -367,6 +367,7 @@ export type Database = {
           source_url: string | null
           spoonacular_id: number | null
           themealdb_id: string | null
+          image_attribution: string | null
           title: string
         }
         Insert: {
@@ -394,6 +395,7 @@ export type Database = {
           source_url?: string | null
           spoonacular_id?: number | null
           themealdb_id?: string | null
+          image_attribution?: string | null
           title: string
         }
         Update: {
@@ -421,6 +423,7 @@ export type Database = {
           source_url?: string | null
           spoonacular_id?: number | null
           themealdb_id?: string | null
+          image_attribution?: string | null
           title?: string
         }
         Relationships: [

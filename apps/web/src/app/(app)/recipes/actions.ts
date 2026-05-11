@@ -28,9 +28,13 @@ export type RecipeCard = {
   external_id: string | null;
 };
 
+export type ExternalResult =
+  | { source: "spoonacular"; recipe: SpoonacularRecipe }
+  | { source: "themealdb"; meal: MealDBMeal };
+
 export type SearchState = {
   results: RecipeCard[];
-  spoonResults: SpoonacularRecipe[];
+  externalResults: ExternalResult[];
   error: string | null;
   query: string;
   filter: string | null;
@@ -78,12 +82,12 @@ export async function searchRecipesAction(
   const filter = (formData.get("filter") as string | null) || null;
 
   if (!query && !filter) {
-    return { results: [], spoonResults: [], error: null, query: "", filter: null };
+    return { results: [], externalResults: [], error: null, query: "", filter: null };
   }
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { results: [], spoonResults: [], error: "Sign in to search recipes", query, filter };
+  if (!user) return { results: [], externalResults: [], error: "Sign in to search recipes", query, filter };
 
   const { data: membership } = await supabase
     .from("family_members")
@@ -91,9 +95,56 @@ export async function searchRecipesAction(
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
-  if (!membership) return { results: [], spoonResults: [], error: "No family found", query, filter };
+  if (!membership) return { results: [], externalResults: [], error: "No family found", query, filter };
 
   const familyId = membership.family_id;
+
+  // ── Favourites filter — query library directly ─────────────────────────────
+  if (filter === "favourites") {
+    const [{ data: favLinks }, { data: favManual }] = await Promise.all([
+      supabase
+        .from("family_recipes")
+        .select("recipe:recipes(id, title, image_url, prep_time, cuisine, source, source_attribution, is_global, diet_types, calories_per_serving, external_id)")
+        .eq("family_id", familyId)
+        .eq("is_favourite", true),
+      supabase
+        .from("recipes")
+        .select("id, title, image_url, prep_time, cuisine, source, source_attribution, is_global, diet_types, calories_per_serving, external_id")
+        .eq("family_id", familyId)
+        .eq("is_favourite", true)
+        .eq("is_global", false),
+    ]);
+    const results: RecipeCard[] = [
+      ...((favLinks ?? []).flatMap((l) => {
+        const r = l.recipe as typeof favManual extends null ? never : NonNullable<typeof favManual>[number] | null;
+        if (!r) return [];
+        return [{ ...(r as RecipeCard), is_favourite: true, inLibrary: true, diet_types: ((r as RecipeCard).diet_types as string[]) ?? [] }];
+      })),
+      ...((favManual ?? []).map((r) => ({ ...r, is_favourite: true, inLibrary: true, diet_types: (r.diet_types as string[]) ?? [], source_attribution: r.source_attribution ?? null, external_id: r.external_id ?? null }))),
+    ];
+    return { results, externalResults: [], error: null, query, filter };
+  }
+
+  // ── Family filter — manually added recipes only ────────────────────────────
+  if (filter === "family") {
+    const { data: manualRecipes } = await supabase
+      .from("recipes")
+      .select("id, title, image_url, prep_time, cuisine, source, source_attribution, is_global, diet_types, calories_per_serving, external_id")
+      .eq("family_id", familyId)
+      .eq("source", "manual")
+      .eq("is_global", false)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    const results: RecipeCard[] = (manualRecipes ?? []).map((r) => ({
+      ...r,
+      is_favourite: false,
+      inLibrary: true,
+      diet_types: (r.diet_types as string[]) ?? [],
+      source_attribution: r.source_attribution ?? null,
+      external_id: r.external_id ?? null,
+    }));
+    return { results, externalResults: [], error: null, query, filter };
+  }
 
   // Step 1: Build DB query
   let dbQuery = supabase
@@ -110,7 +161,7 @@ export async function searchRecipesAction(
       "diet_types.cs.{vegetarian},diet_types.cs.{vegan},diet_types.cs.{mediterranean},diet_types.cs.{gluten-free}"
     );
   } else if (filter === "quick") {
-    dbQuery = dbQuery.or("prep_time.lt.30,prep_time.is.null").not("prep_time", "gt", 29);
+    dbQuery = dbQuery.not("prep_time", "gt", 29);
   } else if (query) {
     dbQuery = dbQuery.ilike("title", `%${query}%`);
   }
@@ -155,22 +206,33 @@ export async function searchRecipesAction(
     })),
   ];
 
-  // Step 2: If query-based search and DB doesn't have enough, call Spoonacular
-  let spoonResults: SpoonacularRecipe[] = [];
+  // Step 2: If query-based search and DB doesn't have enough, call external APIs in parallel
+  const externalResults: ExternalResult[] = [];
   if (query && dbResults.length < DB_THRESHOLD) {
     const rateOk = await checkRateLimit(supabase, user.id, "recipe_search", 20, 60);
     if (rateOk) {
-      try {
-        spoonResults = await searchRecipes(query, process.env.SPOONACULAR_API_KEY!, { number: 12 });
-        // Save new Spoonacular results globally (fire-and-forget, errors don't block UI)
-        void saveSpoonacularGlobally(spoonResults, user.id).catch(console.error);
-      } catch {
-        // Non-fatal — DB results are still useful
+      const existingExternalIds = new Set(dbResults.map((r) => r.external_id).filter(Boolean));
+      const [spoonRes, mealdbRes] = await Promise.allSettled([
+        searchRecipes(query, process.env.SPOONACULAR_API_KEY!, { number: 8 }),
+        searchMealDB(query),
+      ]);
+      if (spoonRes.status === "fulfilled" && spoonRes.value.length > 0) {
+        void saveSpoonacularGlobally(spoonRes.value, user.id).catch(console.error);
+        for (const r of spoonRes.value.slice(0, 8)) {
+          externalResults.push({ source: "spoonacular", recipe: r });
+        }
+      }
+      if (mealdbRes.status === "fulfilled") {
+        for (const m of mealdbRes.value) {
+          if (!existingExternalIds.has(`themealdb_${m.idMeal}`)) {
+            externalResults.push({ source: "themealdb", meal: m });
+          }
+        }
       }
     }
   }
 
-  return { results: dbResults, spoonResults, error: null, query, filter };
+  return { results: dbResults, externalResults: externalResults.slice(0, 12), error: null, query, filter };
 }
 
 // ─── Add to family library ────────────────────────────────────────────────────

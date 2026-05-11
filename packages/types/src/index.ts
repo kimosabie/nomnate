@@ -1,6 +1,6 @@
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
-export type RecipeSource = "ai" | "spoonacular" | "manual" | "prescribed" | "themealdb";
+export type RecipeSource = "ai" | "spoonacular" | "manual" | "prescribed" | "themealdb" | "web_reference";
 
 export type SlotStatus = "suggested" | "voted" | "confirmed";
 
@@ -165,6 +165,7 @@ export interface Recipe {
   source_attribution: string | null;
   spoonacular_id: number | null;
   themealdb_id: string | null;
+  image_attribution: string | null;
   created_by: string | null;
   created_at: string;
   ingredients?: RecipeIngredient[];
