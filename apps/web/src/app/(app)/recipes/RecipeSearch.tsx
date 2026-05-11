@@ -202,11 +202,11 @@ export function RecipeSearch() {
             </div>
           )}
 
-          {/* Spoonacular results (fallback when DB has < 6) */}
+          {/* Online fallback results (when DB has < 6) */}
           {searchState.spoonResults.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs font-medium text-slate uppercase tracking-wide">
-                {searchState.spoonResults.length} from Spoonacular
+                {searchState.spoonResults.length} found online
               </p>
               {searchState.spoonResults.map((r) => {
                 const key = `spoon_${r.id}`;
