@@ -33,7 +33,34 @@ export type ChefResponse = {
   error: string | null;
 };
 
-const CHEF_SYSTEM_PROMPT = `You are NomNate's AI Chef — a friendly, knowledgeable South African cooking assistant. You help families create delicious meals using ingredients available at South African stores like Woolworths, Pick n Pay, and Checkers.
+const COUNTRY_STORES: Record<string, string> = {
+  ZA: "Woolworths, Pick n Pay, and Checkers Sixty60",
+  UK: "Waitrose, Sainsbury's, and M&S Food",
+  FR: "Auchan, Carrefour, Monoprix, and Lidl",
+};
+
+const COUNTRY_STORE_GUIDANCE: Record<string, string> = {
+  ZA: `  → Use SA product names and brands (e.g. "Woolworths free-range chicken", "PnP free-range eggs")
+  → Suggest Sixty60 for quick delivery of staples`,
+  UK: `  → Suggest UK equivalents for SA ingredients
+  → e.g. "boerewors available at Woolworths UK or make your own with pork/beef mince"
+  → Note SA products available at UK stores (Woolworths UK stocks boerewors, biltong, rooibos)`,
+  FR: `  → Suggest French equivalents for SA ingredients
+  → e.g. "use merguez sausage as a boerewors alternative from Carrefour"
+  → Note any SA imports available (rooibos at Monoprix, biltong at specialist stores)`,
+};
+
+function buildSystemPrompt(country: string): string {
+  const stores = COUNTRY_STORES[country] ?? COUNTRY_STORES.ZA;
+  const storeGuidance = COUNTRY_STORE_GUIDANCE[country] ?? COUNTRY_STORE_GUIDANCE.ZA;
+  const firstStore = stores.split(",")[0].trim();
+
+  return `You are NomNate's AI Chef for a South African family. ALL families using NomNate are South African — those living in South Africa and SA expats living abroad.
+
+Always suggest South African recipes and embrace SA food culture regardless of which country this family lives in.
+
+This family shops in ${country === "ZA" ? "South Africa" : country === "UK" ? "the United Kingdom" : "France"}. Suggest ingredients available at their local stores (${stores}):
+${storeGuidance}
 
 When a user first messages you:
 - If they've given you enough detail (servings, time available, dietary needs), generate the recipe right away.
@@ -43,12 +70,14 @@ When generating a recipe:
 - Use the generate_recipe tool to output structured recipe data.
 - Provide a warm, encouraging 1–2 sentence intro in your text response.
 - Include FULL detailed step-by-step instructions (minimum 8 steps, no abbreviations).
-- Include SA ingredient alternatives where relevant (e.g. "available at Woolworths").
+- Suggest where to buy key ingredients (e.g. "available at ${firstStore}").
+- Draw inspiration from SA classics: bobotie, braai, potjie, malva pudding, Cape Malay curry, Durban curry, boerewors, koeksisters, vetkoek, peri-peri chicken.
 - Consider children and the whole family in your suggestions.
-- Add a fun fact about the dish when interesting.
+- End your recipe suggestion with a fun SA food fact or cooking tip.
 - This recipe will be disclosed as "Created by NomNate AI Chef (powered by Claude, Anthropic)".
 
-Be warm, practical, and encouraging. Never include personal information in your responses.`;
+Be warm, practical, and encouraging. Celebrate SA food culture in every response. Never include personal information in your responses.`;
+}
 
 const GENERATE_RECIPE_TOOL: Anthropic.Tool = {
   name: "generate_recipe",
@@ -96,13 +125,27 @@ export async function chatWithChef(messages: ChatMessage[]): Promise<ChefRespons
     return { message: "", recipe: null, error: "AI Chef is not configured." };
   }
 
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  let country = "ZA";
+  if (user) {
+    const { data: m } = await supabase
+      .from("family_members")
+      .select("families(country)")
+      .eq("user_id", user.id)
+      .limit(1)
+      .maybeSingle();
+    country = (m?.families as { country?: string } | null)?.country ?? "ZA";
+  }
+
+  const systemPrompt = buildSystemPrompt(country);
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   try {
     const response = await client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 4000,
-      system: CHEF_SYSTEM_PROMPT,
+      system: systemPrompt,
       tools: [GENERATE_RECIPE_TOOL],
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
     });
@@ -117,7 +160,7 @@ export async function chatWithChef(messages: ChatMessage[]): Promise<ChefRespons
       const followUp = await client.messages.create({
         model: "claude-sonnet-4-6",
         max_tokens: 800,
-        system: CHEF_SYSTEM_PROMPT,
+        system: systemPrompt,
         tools: [GENERATE_RECIPE_TOOL],
         messages: [
           ...messages.map((m) => ({ role: m.role, content: m.content })),

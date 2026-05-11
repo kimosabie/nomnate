@@ -43,8 +43,8 @@ function buildSVG(size) {
   const lineH = Math.max(1, Math.round(size * 0.022))
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-  <!-- Background -->
-  <rect width="${size}" height="${size}" rx="${r}" ry="${r}" fill="#E8621A"/>
+  <!-- Background — full square; iOS/Android clips corners itself -->
+  <rect width="${size}" height="${size}" fill="#E8621A"/>
   <!-- Subtle inner glow -->
   <rect
     x="${Math.round(size * 0.07)}" y="${Math.round(size * 0.07)}"
@@ -77,21 +77,31 @@ function buildSVG(size) {
 </svg>`
 }
 
-const SIZES = [32, 48, 96, 192, 512]
+const SIZES = [
+  { size: 16,  name: 'favicon-16' },
+  { size: 32,  name: 'favicon-32' },
+  { size: 48,  name: 'icon-48' },
+  { size: 96,  name: 'icon-96' },
+  { size: 180, name: 'apple-touch-icon' },
+  { size: 192, name: 'icon-192' },
+  { size: 512, name: 'icon-512' },
+]
 
-for (const size of SIZES) {
+for (const { size, name } of SIZES) {
   const svg = buildSVG(size)
-  const outPath = resolve(outDir, `icon-${size}.png`)
+  const outPath = resolve(outDir, `${name}.png`)
   await sharp(Buffer.from(svg))
+    .flatten({ background: '#E8621A' })
     .png({ compressionLevel: 9 })
     .toFile(outPath)
-  console.log(`  ✓ icon-${size}.png`)
+  console.log(`  ✓ ${name}.png (${size}×${size})`)
 }
 
-// favicon.ico — write as 32px PNG (browsers accept PNG-in-ICO path, but plain PNG
-// as favicon.ico is universally supported by modern browsers)
-const faviconSvg = buildSVG(32)
-const faviconBuf = await sharp(Buffer.from(faviconSvg)).png().toBuffer()
+// favicon.ico — plain PNG works universally in modern browsers
+const faviconBuf = await sharp(Buffer.from(buildSVG(32)))
+  .flatten({ background: '#E8621A' })
+  .png()
+  .toBuffer()
 writeFileSync(resolve(__dirname, '../apps/web/public/favicon.ico'), faviconBuf)
 console.log('  ✓ favicon.ico')
 

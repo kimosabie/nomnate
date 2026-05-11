@@ -18,23 +18,6 @@ const plusJakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "NomNate — Family meal planning",
   description: "Plan your family's weekly meals together with voting, AI suggestions, and SA store shopping lists.",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "NomNate",
-  },
-  icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/icons/icon-96.png", type: "image/png", sizes: "96x96" },
-    ],
-    apple: "/icons/icon-192.png",
-  },
-  other: {
-    "mobile-web-app-capable": "yes",
-    "theme-color": "#E8621A",
-  },
 };
 
 export default function RootLayout({
@@ -47,6 +30,19 @@ export default function RootLayout({
       lang="en"
       className={`${fredoka.variable} ${plusJakarta.variable} h-full`}
     >
+      <head>
+        {/* Favicons */}
+        <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
+        {/* iOS home screen icon — must be explicit for Safari to pick it up */}
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+        {/* PWA */}
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#E8621A" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="NomNate" />
+      </head>
       <body className="min-h-full flex flex-col">
         {children}
         <InstallPrompt />

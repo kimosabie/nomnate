@@ -17,6 +17,7 @@ export async function createFamily(
 
   const rawFamilyName = String(formData.get("familyName") ?? "");
   const rawDisplayName = String(formData.get("displayName") ?? "");
+  const rawCountry = String(formData.get("country") ?? "ZA");
   if (!rawFamilyName.trim()) return "Family name is required";
   if (!rawDisplayName.trim()) return "Your name is required";
 
@@ -30,10 +31,12 @@ export async function createFamily(
   if (!dn.value) return "Your name is required";
   const displayName = dn.value;
 
+  const country = ["ZA", "UK", "FR"].includes(rawCountry) ? rawCountry : "ZA";
+
   // SELECT policy includes created_by = auth.uid(), so RETURNING is safe here
   const { data: family, error } = await supabase
     .from("families")
-    .insert({ name: familyName, created_by: user.id })
+    .insert({ name: familyName, created_by: user.id, country })
     .select("id")
     .single();
 

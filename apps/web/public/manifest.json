@@ -4,7 +4,7 @@
   "description": "Family dinner, decided together",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#FFF3EE",
+  "background_color": "#E8621A",
   "theme_color": "#E8621A",
   "orientation": "portrait",
   "icons": [

@@ -9,8 +9,15 @@ const inputClass =
   "w-full px-4 py-2.5 border border-cream-border rounded-xl text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-flame focus:border-transparent placeholder:text-slate";
 const labelClass = "block text-sm font-medium text-charcoal mb-1";
 
+const COUNTRIES = [
+  { code: "ZA", label: "South Africa", flag: "🇿🇦" },
+  { code: "UK", label: "United Kingdom", flag: "🇬🇧" },
+  { code: "FR", label: "France", flag: "🇫🇷" },
+];
+
 export function FamilyOnboarding() {
   const [tab, setTab] = useState<Tab>("create");
+  const [country, setCountry] = useState("ZA");
   const [createError, createAction, createPending] = useActionState(createFamily, null);
   const [joinError, joinAction, joinPending] = useActionState(joinFamily, null);
 
@@ -59,6 +66,27 @@ export function FamilyOnboarding() {
               placeholder="e.g. The Ormistons"
               className={inputClass}
             />
+          </div>
+          <div>
+            <label className={labelClass}>Where are you shopping?</label>
+            <div className="flex gap-2">
+              {COUNTRIES.map((c) => (
+                <button
+                  key={c.code}
+                  type="button"
+                  onClick={() => setCountry(c.code)}
+                  className={`flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs font-medium transition-all ${
+                    country === c.code
+                      ? "border-flame bg-flame-light text-flame-dark"
+                      : "border-cream-border bg-white text-slate hover:border-flame/40"
+                  }`}
+                >
+                  <span className="text-xl">{c.flag}</span>
+                  <span>{c.label}</span>
+                </button>
+              ))}
+            </div>
+            <input type="hidden" name="country" value={country} />
           </div>
           <button
             type="submit"

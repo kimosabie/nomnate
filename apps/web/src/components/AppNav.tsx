@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { signOut } from "@/app/(auth)/actions";
 
 const LINKS = [
@@ -12,9 +12,11 @@ const LINKS = [
   { href: "/shopping-list", label: "Shopping" },
 ];
 
-export function AppNav({ initials, inviteCode }: { initials: string; inviteCode: string | null }) {
+export function AppNav({ initials, inviteCode, isAdmin }: { initials: string; inviteCode: string | null; isAdmin?: boolean }) {
   const pathname = usePathname();
   const [codeCopied, setCodeCopied] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   function copyCode() {
     if (!inviteCode) return;
@@ -65,15 +67,55 @@ export function AppNav({ initials, inviteCode }: { initials: string; inviteCode:
           </button>
         )}
 
-        <form action={signOut} className="shrink-0">
+        <div className="relative shrink-0" ref={menuRef}>
           <button
-            type="submit"
+            onClick={() => setMenuOpen((v) => !v)}
             className="w-8 h-8 rounded-full bg-flame text-white text-xs font-semibold flex items-center justify-center hover:bg-flame-dark transition-colors"
-            title="Sign out"
+            title="Account menu"
           >
             {initials}
           </button>
-        </form>
+          {menuOpen && (
+            <div
+              className="absolute right-0 top-10 w-44 bg-white border border-cream-border rounded-xl shadow-lg py-1 z-50"
+              onMouseLeave={() => setMenuOpen(false)}
+            >
+              <Link
+                href="/profile"
+                onClick={() => setMenuOpen(false)}
+                className="block px-4 py-2 text-sm text-charcoal hover:bg-cream transition-colors"
+              >
+                Preferences
+              </Link>
+              <Link
+                href="/family"
+                onClick={() => setMenuOpen(false)}
+                className="block px-4 py-2 text-sm text-charcoal hover:bg-cream transition-colors"
+              >
+                Family settings
+              </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin/dashboard"
+                  onClick={() => setMenuOpen(false)}
+                  className="block px-4 py-2 text-sm font-semibold text-charcoal hover:bg-cream transition-colors border-t border-cream-border mt-1 pt-2"
+                >
+                  Admin dashboard
+                </Link>
+              )}
+              <div className="border-t border-cream-border mt-1 pt-1">
+                <form action={signOut}>
+                  <button
+                    type="submit"
+                    className="w-full text-left px-4 py-2 text-sm text-slate hover:text-charcoal hover:bg-cream transition-colors"
+                  >
+                    Sign out
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

@@ -1,6 +1,6 @@
-export type StoreKey = "woolworths" | "checkers" | "pnp";
+export type StoreKey = string;
 
-export const STORES: {
+export interface StoreConfig {
   key: StoreKey;
   label: string;
   shopUrl: string;
@@ -8,7 +8,9 @@ export const STORES: {
   badgeBg: string;
   badgeText: string;
   selectBg: string;
-}[] = [
+}
+
+const ZA_STORES: StoreConfig[] = [
   {
     key: "woolworths",
     label: "Woolworths",
@@ -37,6 +39,95 @@ export const STORES: {
     selectBg: "#E8F5E9",
   },
 ];
+
+const UK_STORES: StoreConfig[] = [
+  {
+    key: "waitrose",
+    label: "Waitrose",
+    shopUrl: "https://www.waitrose.com/ecom/shop/browse/groceries",
+    searchUrl: (q) => `https://www.waitrose.com/ecom/shop/search?&searchTerm=${encodeURIComponent(q)}`,
+    badgeBg: "bg-herb-light",
+    badgeText: "text-herb",
+    selectBg: "#E8F5E9",
+  },
+  {
+    key: "sainsburys",
+    label: "Sainsbury's",
+    shopUrl: "https://www.sainsburys.co.uk/gol-ui/groceries",
+    searchUrl: (q) => `https://www.sainsburys.co.uk/gol-ui/SearchDisplayView?filters[keyword]=${encodeURIComponent(q)}`,
+    badgeBg: "bg-turmeric-light",
+    badgeText: "text-turmeric-dark",
+    selectBg: "#FEF9EC",
+  },
+  {
+    key: "marks_spencer",
+    label: "M&S Food",
+    shopUrl: "https://www.marksandspencer.com/c/food-to-order",
+    searchUrl: (q) => `https://www.marksandspencer.com/c/food?q=${encodeURIComponent(q)}`,
+    badgeBg: "bg-flame-light",
+    badgeText: "text-flame-dark",
+    selectBg: "#FDE8E0",
+  },
+  {
+    key: "tesco",
+    label: "Tesco",
+    shopUrl: "https://www.tesco.com/groceries/",
+    searchUrl: (q) => `https://www.tesco.com/groceries/en-GB/search?query=${encodeURIComponent(q)}`,
+    badgeBg: "bg-sapphire-light",
+    badgeText: "text-sapphire",
+    selectBg: "#E6F1FB",
+  },
+];
+
+const FR_STORES: StoreConfig[] = [
+  {
+    key: "auchan",
+    label: "Auchan",
+    shopUrl: "https://www.auchan.fr/",
+    searchUrl: (q) => `https://www.auchan.fr/recherche?text=${encodeURIComponent(q)}`,
+    badgeBg: "bg-turmeric-light",
+    badgeText: "text-turmeric-dark",
+    selectBg: "#FEF9EC",
+  },
+  {
+    key: "carrefour",
+    label: "Carrefour",
+    shopUrl: "https://www.carrefour.fr/",
+    searchUrl: (q) => `https://www.carrefour.fr/s?q=${encodeURIComponent(q)}`,
+    badgeBg: "bg-sapphire-light",
+    badgeText: "text-sapphire",
+    selectBg: "#E6F1FB",
+  },
+  {
+    key: "monoprix",
+    label: "Monoprix",
+    shopUrl: "https://www.monoprix.fr/courses-en-ligne",
+    searchUrl: (q) => `https://www.monoprix.fr/courses-en-ligne/recherche?search=${encodeURIComponent(q)}`,
+    badgeBg: "bg-herb-light",
+    badgeText: "text-herb",
+    selectBg: "#E8F5E9",
+  },
+  {
+    key: "lidl",
+    label: "Lidl",
+    shopUrl: "https://www.lidl.fr/",
+    searchUrl: (q) => `https://www.lidl.fr/c/recherche/${encodeURIComponent(q)}`,
+    badgeBg: "bg-flame-light",
+    badgeText: "text-flame-dark",
+    selectBg: "#FDE8E0",
+  },
+];
+
+export function getStoresByCountry(country: string | null | undefined): StoreConfig[] {
+  switch (country) {
+    case "UK": return UK_STORES;
+    case "FR": return FR_STORES;
+    default: return ZA_STORES;
+  }
+}
+
+// Keep backward-compat export for existing imports
+export const STORES = ZA_STORES;
 
 // Woolworths: premium/specialty items, fresh herbs, quality dairy, citrus
 const WOOLWORTHS_TERMS = [
@@ -115,8 +206,11 @@ const PNP_TERMS = [
   "jar of", "tin of",
 ];
 
-// Default to Checkers/Sixty60 — fresh produce, meat, dairy, general grocery
-export function assignStore(ingredientName: string): StoreKey {
+// ZA: smart assignment. Non-ZA: first store in list (no term-based logic yet)
+export function assignStore(ingredientName: string, country?: string | null): StoreKey {
+  if (country && country !== "ZA") {
+    return getStoresByCountry(country)[0]?.key ?? "checkers";
+  }
   const name = ingredientName.toLowerCase();
   if (WOOLWORTHS_TERMS.some((t) => name.includes(t))) return "woolworths";
   if (PNP_TERMS.some((t) => name.includes(t))) return "pnp";

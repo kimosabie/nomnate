@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       families: {
         Row: {
+          country: string
           created_at: string
           created_by: string
           id: string
@@ -24,6 +25,7 @@ export type Database = {
           preferred_stores: string[]
         }
         Insert: {
+          country?: string
           created_at?: string
           created_by: string
           id?: string
@@ -32,6 +34,7 @@ export type Database = {
           preferred_stores?: string[]
         }
         Update: {
+          country?: string
           created_at?: string
           created_by?: string
           id?: string
@@ -114,28 +117,100 @@ export type Database = {
       }
       feedback: {
         Row: {
+          ai_category: string | null
+          ai_summary: string | null
+          approved: boolean | null
           created_at: string
           id: string
           message: string
           page_url: string
+          priority: string | null
+          reviewed: boolean | null
           type: string
           user_id: string | null
         }
         Insert: {
+          ai_category?: string | null
+          ai_summary?: string | null
+          approved?: boolean | null
           created_at?: string
           id?: string
           message: string
           page_url?: string
+          priority?: string | null
+          reviewed?: boolean | null
           type: string
           user_id?: string | null
         }
         Update: {
+          ai_category?: string | null
+          ai_summary?: string | null
+          approved?: boolean | null
           created_at?: string
           id?: string
           message?: string
           page_url?: string
+          priority?: string | null
+          reviewed?: boolean | null
           type?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      rate_limits: {
+        Row: {
+          action: string
+          count: number
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          action: string
+          count?: number
+          user_id: string
+          window_start: string
+        }
+        Update: {
+          action?: string
+          count?: number
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
+      todo_items: {
+        Row: {
+          approved: boolean | null
+          approved_at: string | null
+          category: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          priority: string | null
+          source_feedback_ids: string[] | null
+          title: string
+        }
+        Insert: {
+          approved?: boolean | null
+          approved_at?: string | null
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          priority?: string | null
+          source_feedback_ids?: string[] | null
+          title: string
+        }
+        Update: {
+          approved?: boolean | null
+          approved_at?: string | null
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          priority?: string | null
+          source_feedback_ids?: string[] | null
+          title?: string
         }
         Relationships: []
       }

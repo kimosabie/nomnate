@@ -35,14 +35,16 @@ export default async function AppLayout({
   const { data: family } = member?.family_id
     ? await supabase
         .from("families")
-        .select("invite_code")
+        .select("invite_code, country")
         .eq("id", member.family_id)
         .single()
     : { data: null };
 
+  const isAdmin = !!process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL;
+
   return (
     <div className="min-h-screen flex flex-col">
-      <AppNav initials={initials} inviteCode={family?.invite_code ?? null} />
+      <AppNav initials={initials} inviteCode={family?.invite_code ?? null} isAdmin={isAdmin} />
       <div className="flex-1">{children}</div>
       <FeedbackFab />
       <footer className="border-t border-cream-border mt-4 pb-20 print:hidden">

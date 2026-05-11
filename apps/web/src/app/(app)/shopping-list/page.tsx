@@ -2,14 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { currentWeekStart } from "../meal-plan/utils";
-import { assignStore, STORES, type StoreKey } from "./storeUtils";
+import { assignStore, getStoresByCountry, type StoreKey, type StoreConfig } from "./storeUtils";
 import { toggleItem, setStore } from "./actions";
 
-const VALID_STORES = new Set(["woolworths", "pnp", "checkers"]);
-
-function effectiveStore(store: string | null, name: string): StoreKey {
-  if (store && VALID_STORES.has(store)) return store as StoreKey;
-  return assignStore(name);
+function effectiveStore(store: string | null, name: string, validKeys: Set<string>, country: string): StoreKey {
+  if (store && validKeys.has(store)) return store;
+  return assignStore(name, country);
 }
 
 export default async function ShoppingListPage({
@@ -23,15 +21,19 @@ export default async function ShoppingListPage({
 
   const { data: membership } = await supabase
     .from("family_members")
-    .select("family_id")
+    .select("family_id, families(country)")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
   if (!membership) redirect("/onboarding");
 
+  const country = (membership.families as { country?: string } | null)?.country ?? "ZA";
+  const STORES: StoreConfig[] = getStoresByCountry(country);
+  const VALID_STORES = new Set(STORES.map((s) => s.key));
+
   const { store: storeParam } = await searchParams;
   const selectedStore: StoreKey | "all" =
-    storeParam && VALID_STORES.has(storeParam) ? (storeParam as StoreKey) : "all";
+    storeParam && VALID_STORES.has(storeParam) ? storeParam : "all";
 
   const { data: plan } = await supabase
     .from("meal_plans")
@@ -62,7 +64,7 @@ export default async function ShoppingListPage({
 
   const items = rawItems.map((i) => ({
     ...i,
-    effectiveStore: effectiveStore(i.store, i.ingredient_name),
+    effectiveStore: effectiveStore(i.store, i.ingredient_name, VALID_STORES, country),
   }));
 
   const storeCounts = Object.fromEntries(
@@ -201,7 +203,7 @@ export default async function ShoppingListPage({
               ) : (
                 <ul className="divide-y divide-cream-border">
                   {displayed.map((item) => {
-                    const store = STORES.find((s) => s.key === item.effectiveStore) ?? STORES[2];
+                    const store = STORES.find((s) => s.key === item.effectiveStore) ?? STORES[0];
                     const qty = [
                       item.quantity != null ? String(item.quantity) : "",
                       item.unit,
