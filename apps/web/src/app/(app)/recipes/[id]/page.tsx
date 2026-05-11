@@ -3,6 +3,33 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DIET_TYPE_LABELS } from "@nomnate/types";
 
+function toMetric(
+  quantity: number | null,
+  unit: string | null
+): { qty: number | null; unit: string | null } {
+  if (quantity == null || !unit) return { qty: quantity, unit };
+  const u = unit.toLowerCase().trim();
+  if (u === "oz" || u === "ounce" || u === "ounces") {
+    const g = Math.round(quantity * 28.35);
+    return g >= 1000 ? { qty: Math.round(g / 100) / 10, unit: "kg" } : { qty: g, unit: "g" };
+  }
+  if (u === "lb" || u === "lbs" || u === "pound" || u === "pounds") {
+    const g = Math.round(quantity * 453.6);
+    return g >= 1000 ? { qty: Math.round(g / 100) / 10, unit: "kg" } : { qty: g, unit: "g" };
+  }
+  if (u === "fl oz" || u === "fluid ounce" || u === "fluid ounces") {
+    return { qty: Math.round(quantity * 29.574), unit: "ml" };
+  }
+  if (u === "cup" || u === "cups") {
+    const ml = quantity * 250;
+    return { qty: Number.isInteger(ml) ? ml : Math.round(ml * 10) / 10, unit: "ml" };
+  }
+  if (u === "gallon" || u === "gallons" || u === "gal") {
+    return { qty: Math.round(quantity * 3.785 * 10) / 10, unit: "l" };
+  }
+  return { qty: quantity, unit };
+}
+
 function parseInstructions(raw: string): string[] {
   const s = raw.trim();
   if (!s) return [];
@@ -71,7 +98,7 @@ export default async function RecipeDetailPage({
 
   const { data: recipe } = await supabase
     .from("recipes")
-    .select("id, title, image_url, prep_time, cook_time, servings, cuisine, source, instructions, diet_types, calories_per_serving, protein_g, carbs_g, fat_g")
+    .select("id, title, description, image_url, prep_time, cook_time, servings, cuisine, source, instructions, diet_types, calories_per_serving, protein_g, carbs_g, fat_g")
     .eq("id", id)
     .eq("family_id", membership.family_id)
     .maybeSingle();
@@ -97,6 +124,9 @@ export default async function RecipeDetailPage({
         <h1 className="text-2xl font-display font-medium text-flame leading-tight">
           {recipe.title}
         </h1>
+        {recipe.description && (
+          <p className="text-sm text-slate mt-1 leading-relaxed">{recipe.description}</p>
+        )}
       </div>
 
       <div className="max-w-3xl mx-auto px-4 pb-8 space-y-4">
@@ -199,9 +229,12 @@ export default async function RecipeDetailPage({
                 >
                   <span className="mt-2 w-1.5 h-1.5 rounded-full bg-flame shrink-0" />
                   <span>
-                    {ing.quantity != null
-                      ? `${ing.quantity}${ing.unit ? ` ${ing.unit}` : ""} ${ing.name}`
-                      : ing.name}
+                    {(() => {
+                      const { qty, unit: u } = toMetric(ing.quantity, ing.unit);
+                      return qty != null
+                        ? `${qty}${u ? ` ${u}` : ""} ${ing.name}`
+                        : ing.name;
+                    })()}
                   </span>
                 </li>
               ))}

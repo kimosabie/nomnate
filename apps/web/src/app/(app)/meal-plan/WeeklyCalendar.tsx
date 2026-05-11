@@ -230,6 +230,17 @@ export function WeeklyCalendar({
     setAiRemaining((n) => Math.max(0, n - 1));
   }
 
+  // Days where this member has already cast a vote (for the single-vote-per-day rule)
+  const myVotedDays = useMemo(() => {
+    const days = new Set<number>();
+    for (const slot of slots) {
+      if (votes.some((v) => v.meal_plan_slot_id === slot.id && v.member_id === memberId)) {
+        days.add(slot.day_of_week);
+      }
+    }
+    return days;
+  }, [votes, slots, memberId]);
+
   // Group slots by day_of_week
   const dayGroups = useMemo(() => {
     const map = new Map<number, SlotData[]>();
@@ -301,6 +312,8 @@ export function WeeklyCalendar({
                 const isOpen = openPickerSlotId === slot.id;
                 const isLeading = leadingSlotId === slot.id && recipe !== null;
                 const isConfirmed = slot.status === "confirmed";
+                const iVotedThisSlot = votes.some((v) => v.meal_plan_slot_id === slot.id && v.member_id === memberId);
+                const dayAlreadyVoted = myVotedDays.has(dow) && !iVotedThisSlot;
 
                 return (
                   <div
@@ -402,29 +415,35 @@ export function WeeklyCalendar({
                             🎉 First to vote!
                           </div>
                         )}
-                        <div className="flex gap-1.5">
-                        {(["love", "up", "down"] as VoteValue[]).map((val) => {
-                          const { label, symbol, active, inactive } = VOTE_CONFIG[val];
-                          const isActive = myVote === val;
-                          return (
-                            <button
-                              key={val}
-                              onClick={() => handleVote(slot.id, val)}
-                              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
-                                isActive ? active : inactive
-                              }`}
-                            >
-                              <span>{symbol}</span>
-                              <span>{label}</span>
-                              {counts[val] > 0 && (
-                                <span className={isActive ? "opacity-80" : "opacity-50"}>
-                                  {counts[val]}
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
-                        </div>
+                        {dayAlreadyVoted ? (
+                          <p className="text-xs text-slate/60 italic px-1">
+                            You&apos;ve voted for another meal today
+                          </p>
+                        ) : (
+                          <div className="flex gap-1.5">
+                          {(["love", "up", "down"] as VoteValue[]).map((val) => {
+                            const { label, symbol, active, inactive } = VOTE_CONFIG[val];
+                            const isActive = myVote === val;
+                            return (
+                              <button
+                                key={val}
+                                onClick={() => handleVote(slot.id, val)}
+                                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+                                  isActive ? active : inactive
+                                }`}
+                              >
+                                <span>{symbol}</span>
+                                <span>{label}</span>
+                                {counts[val] > 0 && (
+                                  <span className={isActive ? "opacity-80" : "opacity-50"}>
+                                    {counts[val]}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                          </div>
+                        )}
                       </div>
                     )}
 
