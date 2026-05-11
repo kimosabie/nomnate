@@ -21,8 +21,8 @@ type FeedbackRow = {
   type: string;
   message: string;
   page_url: string | null;
+  user_id: string | null;
   created_at: string;
-  family_members: { name?: string; families?: { name?: string } } | null;
 };
 
 type TodoItem = {
@@ -42,11 +42,16 @@ export async function GET(req: NextRequest) {
 
   const supabase = createAdminClient();
 
-  const { data: feedback } = await supabase
+  const { data: feedback, error: feedbackError } = await supabase
     .from("feedback")
-    .select("*, family_members(name, families(name))")
+    .select("id, type, message, page_url, user_id, created_at")
     .eq("reviewed", false)
     .order("created_at", { ascending: true });
+
+  if (feedbackError) {
+    console.error("Feedback query error:", feedbackError);
+    return NextResponse.json({ error: feedbackError.message }, { status: 500 });
+  }
 
   if (!feedback || feedback.length === 0) {
     return NextResponse.json({ message: "No new feedback" });
@@ -54,13 +59,23 @@ export async function GET(req: NextRequest) {
 
   const rows = feedback as FeedbackRow[];
 
+  // Resolve member names separately (no FK between feedback and family_members)
+  const userIds = [...new Set(rows.map((r) => r.user_id).filter(Boolean))] as string[];
+  let nameMap: Record<string, string> = {};
+  if (userIds.length > 0) {
+    const { data: members } = await supabase
+      .from("family_members")
+      .select("user_id, name")
+      .in("user_id", userIds);
+    for (const m of members ?? []) nameMap[m.user_id] = m.name;
+  }
+
   const feedbackText = rows
     .map(
       (f, i) =>
         `#${i + 1} [${f.type.toUpperCase()}] ${f.message}
      Page: ${f.page_url ?? "unknown"}
-     From: ${f.family_members?.name ?? "Unknown"}
-     Family: ${f.family_members?.families?.name ?? "Unknown"}
+     From: ${f.user_id ? (nameMap[f.user_id] ?? "Unknown") : "Unknown"}
      Date: ${new Date(f.created_at).toLocaleDateString("en-ZA")}`
     )
     .join("\n\n");
