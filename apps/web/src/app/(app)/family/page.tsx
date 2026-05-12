@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CountryForm } from "./CountryForm";
+import { StorePreferencesForm } from "./StorePreferencesForm";
+import { getStoresByCountry } from "../shopping-list/storeUtils";
 
 export default async function FamilySettingsPage() {
   const supabase = await createClient();
@@ -10,7 +12,7 @@ export default async function FamilySettingsPage() {
 
   const { data: membership } = await supabase
     .from("family_members")
-    .select("family_id, role, name, families(name, invite_code, country, created_at)")
+    .select("family_id, role, name, families(name, invite_code, country, created_at, preferred_stores)")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -21,6 +23,7 @@ export default async function FamilySettingsPage() {
     invite_code: string | null;
     country: string;
     created_at: string;
+    preferred_stores: string[];
   } | null;
 
   const memberCount = await supabase
@@ -30,6 +33,10 @@ export default async function FamilySettingsPage() {
     .then((r) => r.count ?? 0);
 
   const isAdmin = membership.role === "admin";
+  const countryStores = getStoresByCountry(family?.country ?? "ZA").map((s) => ({
+    key: s.key,
+    label: s.label,
+  }));
 
   return (
     <main className="min-h-screen bg-cream">
@@ -76,6 +83,37 @@ export default async function FamilySettingsPage() {
             <p className="text-sm font-medium text-charcoal">
               {family?.country === "UK" ? "🇬🇧 United Kingdom" : family?.country === "FR" ? "🇫🇷 France" : "🇿🇦 South Africa"}
             </p>
+          )}
+        </div>
+
+        {/* Preferred stores */}
+        <div className="bg-white rounded-[14px] border border-cream-border p-6 space-y-3">
+          <div>
+            <p className="text-xs font-semibold text-slate uppercase tracking-wide mb-1">Preferred stores</p>
+            <p className="text-xs text-slate">
+              Only selected stores will appear in your shopping list.
+              {!isAdmin && " Only the family admin can change this."}
+            </p>
+          </div>
+          {isAdmin ? (
+            <StorePreferencesForm
+              stores={countryStores}
+              currentPreferred={family?.preferred_stores ?? []}
+            />
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {(family?.preferred_stores?.length
+                ? countryStores.filter((s) => family.preferred_stores.includes(s.key))
+                : countryStores
+              ).map((s) => (
+                <span
+                  key={s.key}
+                  className="px-3 py-1 rounded-full text-xs font-semibold border border-cream-border text-slate bg-white"
+                >
+                  {s.label}
+                </span>
+              ))}
+            </div>
           )}
         </div>
       </div>

@@ -12,19 +12,25 @@ export default async function PrintPage() {
 
   const { data: membership } = await supabase
     .from("family_members")
-    .select("family_id, families(country)")
+    .select("family_id, families(country, preferred_stores)")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
   if (!membership) redirect("/onboarding");
 
-  const country = (membership.families as { country?: string } | null)?.country ?? "ZA";
-  const STORES: StoreConfig[] = getStoresByCountry(country);
+  const familyData = membership.families as { country?: string; preferred_stores?: string[] } | null;
+  const country = familyData?.country ?? "ZA";
+  const allStores: StoreConfig[] = getStoresByCountry(country);
+  const preferredKeys: string[] = familyData?.preferred_stores ?? [];
+  const filtered = preferredKeys.length > 0 ? allStores.filter((s) => preferredKeys.includes(s.key)) : [];
+  const STORES: StoreConfig[] = filtered.length > 0 ? filtered : allStores;
   const VALID_STORES = new Set(STORES.map((s) => s.key));
 
   function effectiveStore(store: string | null, name: string): StoreKey {
     if (store && VALID_STORES.has(store)) return store as StoreKey;
-    return assignStore(name, country);
+    const natural = assignStore(name, country);
+    if (VALID_STORES.has(natural)) return natural as StoreKey;
+    return [...VALID_STORES][0] as StoreKey ?? natural;
   }
 
   const { data: plan } = await supabase
