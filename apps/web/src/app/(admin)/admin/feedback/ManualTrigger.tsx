@@ -13,12 +13,12 @@ export function ManualTrigger() {
     setResult(null);
     try {
       const json = await runDailyBrief();
-      if (json.message) {
+      if ("message" in json) {
         setResult(json.message);
-      } else if (json.ok) {
+      } else if ("ok" in json) {
         setResult(`✅ Done — ${json.feedbackProcessed} feedback → ${json.todosCreated} todos`);
       } else {
-        setResult(`⚠️ ${json.error ?? "Unknown error"}${json.detail ? `: ${json.detail}` : ""}`);
+        setResult(`⚠️ ${json.error}${json.detail ? `: ${json.detail}` : ""}`);
       }
     } catch (e) {
       setResult(`⚠️ ${e instanceof Error ? e.message : "Failed"}`);
