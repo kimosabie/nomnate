@@ -313,13 +313,28 @@ export async function suggestWithAI(
   const familySize = members?.length ?? 1;
   const familyMembers = buildFamilyMembers(members ?? []);
 
-  const [{ data: manualTitles }, { data: globalLinks }] = await Promise.all([
+  // Fetch library titles + already-assigned slots this week (exclude both)
+  const [{ data: manualTitles }, { data: globalLinks }, { data: currentPlan }] = await Promise.all([
     supabase.from("recipes").select("title").eq("family_id", membership.family_id).eq("is_global", false),
     supabase.from("family_recipes").select("recipe:recipes(title)").eq("family_id", membership.family_id),
+    supabase.from("meal_plans").select("id").eq("family_id", membership.family_id).eq("week_start_date", weekStart).maybeSingle(),
   ]);
+  const assignedThisWeek: string[] = [];
+  if (currentPlan) {
+    const { data: assignedSlots } = await supabase
+      .from("meal_plan_slots")
+      .select("recipes(title)")
+      .eq("meal_plan_id", currentPlan.id)
+      .not("recipe_id", "is", null);
+    for (const s of assignedSlots ?? []) {
+      const t = (s.recipes as { title: string } | null)?.title;
+      if (t) assignedThisWeek.push(t);
+    }
+  }
   const excludeTitles = [
     ...(manualTitles ?? []).map((r) => r.title),
     ...(globalLinks ?? []).map((l) => (l.recipe as { title: string } | null)?.title ?? "").filter(Boolean),
+    ...assignedThisWeek,
   ];
   const count = Math.min(remaining, 7);
 

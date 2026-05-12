@@ -30,6 +30,17 @@ export async function approveTodo(id: string) {
     .eq("id", id);
 }
 
+export async function archiveApprovedTodos() {
+  await requireAdmin();
+  const admin = createAdminClient();
+  await admin
+    .from("todo_items")
+    .update({ archived_at: new Date().toISOString() })
+    .eq("approved", true)
+    .is("archived_at", null);
+  revalidatePath("/admin/feedback");
+}
+
 export async function dismissTodo(id: string) {
   await requireAdmin();
   const admin = createAdminClient();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { approveTodo, dismissTodo } from "./actions";
+import { approveTodo, dismissTodo, archiveApprovedTodos } from "./actions";
 
 const PRIORITY_EMOJI: Record<string, string> = {
   critical: "🔴",
@@ -16,10 +16,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
   content: "📝",
 };
 const PRIORITY_ORDER: Record<string, number> = {
-  critical: 0,
-  high: 1,
-  medium: 2,
-  low: 3,
+  critical: 0, high: 1, medium: 2, low: 3,
 };
 
 type Todo = {
@@ -34,24 +31,38 @@ type Todo = {
   created_at: string;
 };
 
-export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
+type ArchivedTodo = {
+  id: string;
+  title: string;
+  priority: string | null;
+  category: string | null;
+  approved_at: string | null;
+  archived_at: string | null;
+};
+
+function byPriority(a: { priority: string | null }, b: { priority: string | null }) {
+  return (PRIORITY_ORDER[a.priority ?? "low"] ?? 3) - (PRIORITY_ORDER[b.priority ?? "low"] ?? 3);
+}
+
+export function TodoList({
+  initialTodos,
+  archivedTodos,
+}: {
+  initialTodos: Todo[];
+  archivedTodos: ArchivedTodo[];
+}) {
   const [todos, setTodos] = useState(initialTodos);
+  const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const unapproved = [...todos.filter((t) => !t.approved)].sort(
-    (a, b) => (PRIORITY_ORDER[a.priority ?? "low"] ?? 3) - (PRIORITY_ORDER[b.priority ?? "low"] ?? 3)
-  );
-  const approved = [...todos.filter((t) => t.approved)].sort(
-    (a, b) => (PRIORITY_ORDER[a.priority ?? "low"] ?? 3) - (PRIORITY_ORDER[b.priority ?? "low"] ?? 3)
-  );
+  const unapproved = [...todos.filter((t) => !t.approved)].sort(byPriority);
+  const approved = [...todos.filter((t) => t.approved)].sort(byPriority);
 
   function handleApprove(id: string) {
     startTransition(async () => {
       await approveTodo(id);
       setTodos((prev) =>
-        prev.map((t) =>
-          t.id === id ? { ...t, approved: true, approved_at: new Date().toISOString() } : t
-        )
+        prev.map((t) => t.id === id ? { ...t, approved: true, approved_at: new Date().toISOString() } : t)
       );
     });
   }
@@ -63,11 +74,10 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
     });
   }
 
-  function copyForClaude() {
+  async function copyForClaude() {
     const sections: Record<string, string[]> = { critical: [], high: [], medium: [], low: [] };
     for (const t of approved) {
-      const p = t.priority ?? "low";
-      sections[p]?.push(`• ${t.title}: ${t.description ?? ""}`);
+      sections[t.priority ?? "low"]?.push(`• ${t.title}: ${t.description ?? ""}`);
     }
     const date = new Date().toLocaleDateString("en-ZA");
     const lines = [
@@ -79,10 +89,19 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
       lines.push(`\n${PRIORITY_EMOJI[p]} ${p.toUpperCase()}`);
       lines.push(...items);
     }
-    navigator.clipboard.writeText(lines.join("\n"));
+    await navigator.clipboard.writeText(lines.join("\n"));
+
+    // Archive all approved todos — clears the list for the next run
+    startTransition(async () => {
+      await archiveApprovedTodos();
+      setTodos((prev) => prev.filter((t) => !t.approved));
+    });
+
+    setCopied(true);
+    setTimeout(() => setCopied(false), 3000);
   }
 
-  if (todos.length === 0) {
+  if (todos.length === 0 && archivedTodos.length === 0) {
     return (
       <div className="bg-white/5 border border-white/10 rounded-xl p-10 text-center">
         <p className="text-3xl mb-2">✅</p>
@@ -93,6 +112,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
 
   return (
     <div className="space-y-6">
+      {/* Pending approval */}
       {unapproved.length > 0 && (
         <div className="space-y-3">
           <p className="text-xs font-semibold text-white/40 uppercase tracking-wide">
@@ -111,11 +131,6 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
               </div>
               {t.description && (
                 <p className="text-sm text-white/70 leading-relaxed">{t.description}</p>
-              )}
-              {t.source_feedback_ids && t.source_feedback_ids.length > 0 && (
-                <p className="text-xs text-white/30">
-                  Based on {t.source_feedback_ids.length} feedback item{t.source_feedback_ids.length !== 1 ? "s" : ""}
-                </p>
               )}
               <div className="flex gap-2 pt-1">
                 <button
@@ -138,21 +153,26 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
         </div>
       )}
 
+      {/* Approved — ready to copy */}
       {approved.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-white/40 uppercase tracking-wide">
-              Approved ({approved.length})
+              Approved ({approved.length}) — ready to send
             </p>
             <button
               onClick={copyForClaude}
-              className="text-xs font-semibold text-[#E8621A] hover:text-[#ff8040] transition-colors"
+              disabled={pending}
+              className="text-xs font-semibold text-[#E8621A] hover:text-[#ff8040] transition-colors disabled:opacity-50"
             >
-              📋 Copy for Claude Code
+              {copied ? "✅ Copied!" : "📋 Copy for Claude Code"}
             </button>
           </div>
+          <p className="text-[11px] text-white/30">
+            Copying will move these to history and start a fresh list next run.
+          </p>
           {approved.map((t) => (
-            <div key={t.id} className="bg-white/5 border border-green-900/40 rounded-xl p-4 space-y-1.5 opacity-70">
+            <div key={t.id} className="bg-white/5 border border-green-900/40 rounded-xl p-4 space-y-1.5 opacity-80">
               <div className="flex items-start gap-2 flex-wrap">
                 <span className="text-base leading-none mt-0.5">
                   {PRIORITY_EMOJI[t.priority ?? "low"]} {CATEGORY_EMOJI[t.category ?? "bug"]}
@@ -164,6 +184,26 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
               </div>
               {t.description && (
                 <p className="text-xs text-white/50 leading-relaxed">{t.description}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* History */}
+      {archivedTodos.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-white/20 uppercase tracking-wide">
+            History (last {archivedTodos.length})
+          </p>
+          {archivedTodos.map((t) => (
+            <div key={t.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/3 opacity-40">
+              <span className="text-xs">{PRIORITY_EMOJI[t.priority ?? "low"]} {CATEGORY_EMOJI[t.category ?? "bug"]}</span>
+              <p className="text-xs text-white/60 flex-1 truncate">{t.title}</p>
+              {t.archived_at && (
+                <span className="text-[10px] text-white/30 shrink-0">
+                  {new Date(t.archived_at).toLocaleDateString("en-ZA")}
+                </span>
               )}
             </div>
           ))}

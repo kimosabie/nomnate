@@ -24,11 +24,18 @@ export default async function AdminFeedbackPage({
   const admin = createAdminClient();
   const { tab = "feedback", filter = "unreviewed" } = await searchParams;
 
-  const [{ data: todos }, { count: totalCount }, { count: unreviewedCount }] = await Promise.all([
+  const [{ data: todos }, { data: archivedTodos }, { count: totalCount }, { count: unreviewedCount }] = await Promise.all([
     admin
       .from("todo_items")
       .select("id, title, description, priority, category, source_feedback_ids, approved, approved_at, created_at")
+      .is("archived_at", null)
       .order("created_at", { ascending: false }),
+    admin
+      .from("todo_items")
+      .select("id, title, priority, category, approved_at, archived_at")
+      .not("archived_at", "is", null)
+      .order("archived_at", { ascending: false })
+      .limit(20),
     admin.from("feedback").select("id", { count: "exact", head: true }),
     admin.from("feedback").select("id", { count: "exact", head: true }).eq("reviewed", false),
   ]);
@@ -185,7 +192,7 @@ export default async function AdminFeedbackPage({
                 {pendingTodos} item{pendingTodos !== 1 ? "s" : ""} awaiting review
               </p>
             )}
-            <TodoList initialTodos={todos ?? []} />
+            <TodoList initialTodos={todos ?? []} archivedTodos={archivedTodos ?? []} />
           </>
         )}
       </div>
