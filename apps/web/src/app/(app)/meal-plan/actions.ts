@@ -698,8 +698,8 @@ export async function suggestForSlot(
       count: 1,
       familyMembers: familyMembersSlot,
     });
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "AI suggestion failed" };
+  } catch {
+    return { error: "AI suggestions are temporarily unavailable — please try again later." };
   }
 
   if (!suggestions.length) return { error: "No suggestion returned" };
