@@ -18,7 +18,7 @@ export function ManualTrigger() {
       } else if (json.ok) {
         setResult(`✅ Done — ${json.feedbackProcessed} feedback → ${json.todosCreated} todos`);
       } else {
-        setResult(`⚠️ ${json.error ?? "Unknown error"}`);
+        setResult(`⚠️ ${json.error ?? "Unknown error"}${json.detail ? `: ${json.detail}` : ""}`);
       }
     } catch (e) {
       setResult(`⚠️ ${e instanceof Error ? e.message : "Failed"}`);
