@@ -9,22 +9,33 @@ import type { FamilyMemberContext, SuggestedRecipe } from "@nomnate/types";
 import { currentWeekStart } from "./utils";
 
 const UNIT_ALIASES: Record<string, string> = {
+  // Weight
   gram: "g", grams: "g",
   kilogram: "kg", kilograms: "kg",
-  milliliter: "ml", milliliters: "ml", millilitre: "ml", millilitres: "ml",
-  liter: "l", liters: "l", litre: "l", litres: "l",
-  tablespoon: "tbsp", tablespoons: "tbsp",
-  teaspoon: "tsp", teaspoons: "tsp",
   ounce: "oz", ounces: "oz",
   pound: "lb", pounds: "lb",
+  // Volume
+  milliliter: "ml", milliliters: "ml", millilitre: "ml", millilitres: "ml",
+  liter: "l", liters: "l", litre: "l", litres: "l",
+  tablespoon: "tbsp", tablespoons: "tbsp", tbs: "tbsp", tbsps: "tbsp",
+  teaspoon: "tsp", teaspoons: "tsp", tsps: "tsp",
   cups: "cup",
+  // Count
   cloves: "clove",
   pieces: "piece",
   cans: "can",
   slices: "slice",
+  // Discard (no meaningful unit for shopping)
+  whole: "", leaves: "", leaf: "", pods: "", pod: "",
+  medium: "", large: "", small: "",
+  stalks: "", stalk: "", sprigs: "", sprig: "",
+  heads: "", head: "", bunches: "", bunch: "",
 };
 
-// Conversion factors to base units (ml and g)
+// Units that signal "no quantity" — item is just listed as needed
+const NO_QTY_UNITS = new Set(["to taste", "as needed", "for serving", "to garnish", "to season", "for greasing"]);
+
+// Conversion factors to base units
 const VOLUME_ML: Record<string, number> = { tsp: 5, tbsp: 15, cup: 240, ml: 1, l: 1000 };
 const WEIGHT_G: Record<string, number> = { g: 1, kg: 1000, oz: 28.35, lb: 453.6 };
 
@@ -40,50 +51,103 @@ function fromG(g: number): { qty: number; unit: string } {
   return { qty: Math.round(g), unit: "g" };
 }
 
+// Strip preparation notes from unit field ("tablespoon, for greasing" → "tablespoon")
+function cleanUnit(unit: string | null | undefined): string {
+  if (!unit) return "";
+  const stripped = unit.split(",")[0].trim().toLowerCase();
+  // If the entire unit is a no-qty signal, signal that upstream
+  if (NO_QTY_UNITS.has(unit.toLowerCase().trim())) return "__notaste__";
+  return UNIT_ALIASES[stripped] ?? stripped;
+}
+
+// Strip prep annotations from ingredient names:
+// "butter, softened"          → "butter"
+// "butter (for cooking)"      → "butter"
+// "baby potatoes, washed"     → "baby potatoes"
+// "Carrots, grated"           → "carrots"
+function normalizeIngredientName(name: string): string {
+  return name
+    .replace(/\s*\([^)]*\)/g, "")   // remove parenthetical notes
+    .replace(/,\s*.+$/, "")          // remove everything after first comma
+    .toLowerCase()
+    .trim();
+}
+
 type RawIng = { name: string; quantity: number | null; unit: string | null };
 type ConsolidatedItem = { ingredient_name: string; quantity: number | null; unit: string | null };
 
 function consolidateIngredients(ingredients: RawIng[]): ConsolidatedItem[] {
-  const groups = new Map<string, RawIng[]>();
+  // Group by normalised name
+  const groups = new Map<string, { displayName: string; items: RawIng[] }>();
   for (const ing of ingredients) {
-    const key = ing.name.toLowerCase().trim();
-    const group = groups.get(key) ?? [];
-    group.push(ing);
-    groups.set(key, group);
+    const key = normalizeIngredientName(ing.name);
+    if (!key) continue; // skip blank names
+    const existing = groups.get(key);
+    if (existing) {
+      existing.items.push(ing);
+    } else {
+      // Use the shortest clean display name as the label
+      groups.set(key, { displayName: key, items: [ing] });
+    }
   }
 
   const result: ConsolidatedItem[] = [];
-  for (const [, items] of groups) {
-    const name = items[0].name;
-    const normUnits = items.map((i) => normalizeUnit(i.unit));
 
-    // All same unit → sum directly
-    if (normUnits.every((u) => u === normUnits[0])) {
-      const total = items.reduce((s, i) => s + (i.quantity ?? 0), 0);
-      result.push({ ingredient_name: name, quantity: total || null, unit: normUnits[0] || null });
+  for (const [, { displayName, items }] of groups) {
+    const normUnits = items.map((i) => cleanUnit(i.unit));
+
+    // Filter out "to taste" entries for quantity purposes; if ALL are "to taste" → no quantity
+    const measuredItems = items.filter((_, idx) => normUnits[idx] !== "__notaste__");
+    const measuredUnits = normUnits.filter((u) => u !== "__notaste__");
+
+    if (measuredItems.length === 0) {
+      // Every entry is "to taste" / unmeasured
+      result.push({ ingredient_name: displayName, quantity: null, unit: null });
       continue;
     }
 
-    // All volume units → convert to ml, sum, reformat
-    if (normUnits.every((u) => u in VOLUME_ML)) {
-      const totalMl = items.reduce((s, i) => s + (i.quantity ?? 0) * (VOLUME_ML[normalizeUnit(i.unit)] ?? 1), 0);
+    // All same unit (including "")  → sum
+    if (measuredUnits.every((u) => u === measuredUnits[0])) {
+      const total = measuredItems.reduce((s, i) => s + (i.quantity ?? 0), 0);
+      result.push({
+        ingredient_name: displayName,
+        quantity: total || null,
+        unit: measuredUnits[0] || null,
+      });
+      continue;
+    }
+
+    // All volume → convert to ml, sum, reformat
+    if (measuredUnits.every((u) => u in VOLUME_ML)) {
+      const totalMl = measuredItems.reduce(
+        (s, i, idx) => s + (i.quantity ?? 0) * (VOLUME_ML[measuredUnits[idx]] ?? 1),
+        0
+      );
       const { qty, unit } = fromMl(totalMl);
-      result.push({ ingredient_name: name, quantity: qty, unit });
+      result.push({ ingredient_name: displayName, quantity: qty, unit });
       continue;
     }
 
-    // All weight units → convert to g, sum, reformat
-    if (normUnits.every((u) => u in WEIGHT_G)) {
-      const totalG = items.reduce((s, i) => s + (i.quantity ?? 0) * (WEIGHT_G[normalizeUnit(i.unit)] ?? 1), 0);
+    // All weight → convert to g, sum, reformat
+    if (measuredUnits.every((u) => u in WEIGHT_G)) {
+      const totalG = measuredItems.reduce(
+        (s, i, idx) => s + (i.quantity ?? 0) * (WEIGHT_G[measuredUnits[idx]] ?? 1),
+        0
+      );
       const { qty, unit } = fromG(totalG);
-      result.push({ ingredient_name: name, quantity: qty, unit });
+      result.push({ ingredient_name: displayName, quantity: qty, unit });
       continue;
     }
 
-    // Mixed or unmeasured (e.g. "to taste", "pinch") → keep item with most info
-    const withQty = items.filter((i) => i.quantity != null && i.unit);
-    const rep = withQty[0] ?? items.find((i) => i.quantity != null) ?? items[0];
-    result.push({ ingredient_name: name, quantity: rep.quantity, unit: normalizeUnit(rep.unit) || null });
+    // Mixed units → keep the entry with the most information
+    const withBoth = measuredItems.filter((i, idx) => i.quantity != null && measuredUnits[idx]);
+    const rep = withBoth[0] ?? measuredItems.find((i) => i.quantity != null) ?? measuredItems[0];
+    const repUnit = cleanUnit(rep.unit);
+    result.push({
+      ingredient_name: displayName,
+      quantity: rep.quantity,
+      unit: repUnit && repUnit !== "__notaste__" ? repUnit : null,
+    });
   }
 
   return result.sort((a, b) => a.ingredient_name.localeCompare(b.ingredient_name));
@@ -120,9 +184,7 @@ function buildFamilyMembers(
 }
 
 function normalizeUnit(unit: string | null | undefined): string {
-  if (!unit) return "";
-  const lower = unit.toLowerCase().trim();
-  return UNIT_ALIASES[lower] ?? lower;
+  return cleanUnit(unit).replace("__notaste__", "");
 }
 
 async function getFamilyRecipePool(
