@@ -253,6 +253,19 @@ export default async function RecipeDetailPage({
         )}
 
         {/* Instructions */}
+        {steps.length === 0 && recipe.source_url && (
+          <div className="bg-white rounded-[14px] border border-cream-border p-6 text-center space-y-2">
+            <p className="text-sm text-slate">Cooking instructions are available on the original recipe page.</p>
+            <a
+              href={recipe.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block text-sm font-semibold text-flame hover:text-flame-dark transition-colors"
+            >
+              View full recipe →
+            </a>
+          </div>
+        )}
         {steps.length > 0 && (
           <div className="bg-white rounded-[14px] border border-cream-border p-6">
             <p className="text-xs font-semibold text-slate uppercase tracking-wide mb-5">

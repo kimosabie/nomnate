@@ -21,6 +21,23 @@ export async function markReviewed(id: string, reviewed: boolean) {
   revalidatePath("/admin/feedback");
 }
 
+export async function deleteFeedback(id: string) {
+  await requireAdmin();
+  const admin = createAdminClient();
+  await admin.from("feedback").delete().eq("id", id);
+  revalidatePath("/admin/feedback");
+}
+
+export async function deleteTestFeedback() {
+  await requireAdmin();
+  const admin = createAdminClient();
+  await admin
+    .from("feedback")
+    .delete()
+    .or("message.ilike.test,message.ilike.test%,message.ilike.%testing%,message.ilike.%test1%,message.ilike.%test2%,message.ilike.testing email");
+  revalidatePath("/admin/feedback");
+}
+
 export async function approveTodo(id: string) {
   await requireAdmin();
   const admin = createAdminClient();

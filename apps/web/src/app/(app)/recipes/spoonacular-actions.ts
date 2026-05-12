@@ -5,6 +5,19 @@ import { createClient } from "@/lib/supabase/server";
 import { mapSpoonacularDiets, getNutrient } from "@nomnate/types";
 import type { SpoonacularRecipe } from "@nomnate/types";
 
+function stripHtml(html: string | null | undefined): string | null {
+  if (!html) return null;
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#?\w+;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim() || null;
+}
+
 async function addToFamilyLibrary(
   supabase: Awaited<ReturnType<typeof createClient>>,
   familyId: string,
@@ -37,6 +50,8 @@ export async function saveSpoonacularGlobally(
       .from("recipes")
       .insert({
         title: recipe.title,
+        description: stripHtml(recipe.summary),
+        instructions: stripHtml(recipe.instructions),
         source: "spoonacular" as const,
         external_id: externalId,
         source_url: `https://spoonacular.com/recipes/${recipe.title.toLowerCase().replace(/\s+/g, "-")}-${recipe.id}`,
@@ -102,6 +117,8 @@ export async function saveSpoonacularRecipe(
       .from("recipes")
       .insert({
         title: recipe.title,
+        description: stripHtml(recipe.summary),
+        instructions: stripHtml(recipe.instructions),
         source: "spoonacular" as const,
         external_id: externalId,
         source_url: `https://spoonacular.com/recipes/${recipe.title.toLowerCase().replace(/\s+/g, "-")}-${recipe.id}`,

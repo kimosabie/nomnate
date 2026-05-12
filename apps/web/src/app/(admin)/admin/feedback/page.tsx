@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ManualTrigger } from "./ManualTrigger";
 import { TodoList } from "./TodoList";
-import { markReviewed } from "./actions";
+import { markReviewed, deleteFeedback, deleteTestFeedback } from "./actions";
 
 const TYPE_EMOJI: Record<string, string> = {
   bug: "🐛",
@@ -93,8 +93,8 @@ export default async function AdminFeedbackPage({
 
         {tab === "feedback" && (
           <>
-            {/* Filter pills */}
-            <div className="flex gap-2 flex-wrap">
+            {/* Filter pills + bulk delete */}
+            <div className="flex items-center gap-2 flex-wrap">
               {[
                 { key: "unreviewed", label: `Unreviewed (${unreviewedCount ?? 0})` },
                 { key: "all", label: `All (${totalCount ?? 0})` },
@@ -113,6 +113,14 @@ export default async function AdminFeedbackPage({
                   {f.label}
                 </a>
               ))}
+              <form action={deleteTestFeedback} className="ml-auto">
+                <button
+                  type="submit"
+                  className="text-xs font-semibold px-3 py-1.5 rounded-full border border-red-900/40 text-red-500/60 hover:text-red-400 hover:border-red-500/40 transition-colors"
+                >
+                  🗑️ Delete test entries
+                </button>
+              </form>
             </div>
 
             {!items?.length ? (
@@ -161,23 +169,38 @@ export default async function AdminFeedbackPage({
                       <p className="text-xs text-white/30 font-mono truncate">{item.page_url}</p>
                     )}
 
-                    <form
-                      action={async () => {
-                        "use server";
-                        await markReviewed(item.id, !item.reviewed);
-                      }}
-                    >
-                      <button
-                        type="submit"
-                        className={`text-xs font-semibold px-3 py-1 rounded-full border transition-colors ${
-                          item.reviewed
-                            ? "border-white/10 text-white/30 hover:text-white/60"
-                            : "border-[#E8621A]/40 text-[#E8621A] hover:bg-[#E8621A]/10"
-                        }`}
+                    <div className="flex items-center gap-2">
+                      <form
+                        action={async () => {
+                          "use server";
+                          await markReviewed(item.id, !item.reviewed);
+                        }}
                       >
-                        {item.reviewed ? "Mark unreviewed" : "Mark reviewed"}
-                      </button>
-                    </form>
+                        <button
+                          type="submit"
+                          className={`text-xs font-semibold px-3 py-1 rounded-full border transition-colors ${
+                            item.reviewed
+                              ? "border-white/10 text-white/30 hover:text-white/60"
+                              : "border-[#E8621A]/40 text-[#E8621A] hover:bg-[#E8621A]/10"
+                          }`}
+                        >
+                          {item.reviewed ? "Mark unreviewed" : "Mark reviewed"}
+                        </button>
+                      </form>
+                      <form
+                        action={async () => {
+                          "use server";
+                          await deleteFeedback(item.id);
+                        }}
+                      >
+                        <button
+                          type="submit"
+                          className="text-xs font-semibold px-3 py-1 rounded-full border border-red-900/30 text-red-500/40 hover:text-red-400 hover:border-red-500/40 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </form>
+                    </div>
                   </div>
                 ))}
               </div>
