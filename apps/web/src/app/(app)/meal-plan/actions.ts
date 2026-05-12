@@ -24,6 +24,71 @@ const UNIT_ALIASES: Record<string, string> = {
   slices: "slice",
 };
 
+// Conversion factors to base units (ml and g)
+const VOLUME_ML: Record<string, number> = { tsp: 5, tbsp: 15, cup: 240, ml: 1, l: 1000 };
+const WEIGHT_G: Record<string, number> = { g: 1, kg: 1000, oz: 28.35, lb: 453.6 };
+
+function fromMl(ml: number): { qty: number; unit: string } {
+  if (ml >= 500) return { qty: Math.round(ml / 100) / 10, unit: "l" };
+  if (ml >= 30) return { qty: Math.round(ml), unit: "ml" };
+  if (ml >= 15) return { qty: Math.round((ml / 15) * 10) / 10, unit: "tbsp" };
+  return { qty: Math.round((ml / 5) * 10) / 10, unit: "tsp" };
+}
+
+function fromG(g: number): { qty: number; unit: string } {
+  if (g >= 900) return { qty: Math.round(g / 100) / 10, unit: "kg" };
+  return { qty: Math.round(g), unit: "g" };
+}
+
+type RawIng = { name: string; quantity: number | null; unit: string | null };
+type ConsolidatedItem = { ingredient_name: string; quantity: number | null; unit: string | null };
+
+function consolidateIngredients(ingredients: RawIng[]): ConsolidatedItem[] {
+  const groups = new Map<string, RawIng[]>();
+  for (const ing of ingredients) {
+    const key = ing.name.toLowerCase().trim();
+    const group = groups.get(key) ?? [];
+    group.push(ing);
+    groups.set(key, group);
+  }
+
+  const result: ConsolidatedItem[] = [];
+  for (const [, items] of groups) {
+    const name = items[0].name;
+    const normUnits = items.map((i) => normalizeUnit(i.unit));
+
+    // All same unit → sum directly
+    if (normUnits.every((u) => u === normUnits[0])) {
+      const total = items.reduce((s, i) => s + (i.quantity ?? 0), 0);
+      result.push({ ingredient_name: name, quantity: total || null, unit: normUnits[0] || null });
+      continue;
+    }
+
+    // All volume units → convert to ml, sum, reformat
+    if (normUnits.every((u) => u in VOLUME_ML)) {
+      const totalMl = items.reduce((s, i) => s + (i.quantity ?? 0) * (VOLUME_ML[normalizeUnit(i.unit)] ?? 1), 0);
+      const { qty, unit } = fromMl(totalMl);
+      result.push({ ingredient_name: name, quantity: qty, unit });
+      continue;
+    }
+
+    // All weight units → convert to g, sum, reformat
+    if (normUnits.every((u) => u in WEIGHT_G)) {
+      const totalG = items.reduce((s, i) => s + (i.quantity ?? 0) * (WEIGHT_G[normalizeUnit(i.unit)] ?? 1), 0);
+      const { qty, unit } = fromG(totalG);
+      result.push({ ingredient_name: name, quantity: qty, unit });
+      continue;
+    }
+
+    // Mixed or unmeasured (e.g. "to taste", "pinch") → keep item with most info
+    const withQty = items.filter((i) => i.quantity != null && i.unit);
+    const rep = withQty[0] ?? items.find((i) => i.quantity != null) ?? items[0];
+    result.push({ ingredient_name: name, quantity: rep.quantity, unit: normalizeUnit(rep.unit) || null });
+  }
+
+  return result.sort((a, b) => a.ingredient_name.localeCompare(b.ingredient_name));
+}
+
 function computeAge(dob: string): number {
   const birth = new Date(dob);
   const today = new Date();
@@ -454,29 +519,8 @@ export async function generateShoppingList(
 
   if (ingError) return ingError.message;
 
-  type Item = { ingredient_name: string; quantity: number | null; unit: string | null };
-  const map = new Map<string, Item>();
-  for (const ing of allIngredients ?? []) {
-    const normUnit = normalizeUnit(ing.unit);
-    const key = `${ing.name.toLowerCase().trim()}|${normUnit}`;
-    const existing = map.get(key);
-    if (existing) {
-      if (existing.quantity != null && ing.quantity != null) {
-        existing.quantity = existing.quantity + ing.quantity;
-      } else if (existing.quantity == null) {
-        existing.quantity = ing.quantity ?? null;
-      }
-    } else {
-      map.set(key, {
-        ingredient_name: ing.name,
-        quantity: ing.quantity ?? null,
-        unit: normUnit || null,
-      });
-    }
-  }
-
-  const items = [...map.values()].sort((a, b) =>
-    a.ingredient_name.localeCompare(b.ingredient_name)
+  const items = consolidateIngredients(
+    (allIngredients ?? []).map((i) => ({ name: i.name, quantity: i.quantity ?? null, unit: i.unit ?? null }))
   );
 
   // Delete any existing list(s) so we start fresh
