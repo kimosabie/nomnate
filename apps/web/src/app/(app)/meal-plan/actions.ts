@@ -61,6 +61,23 @@ function cleanUnit(unit: string | null | undefined): string {
   return UNIT_ALIASES[stripped] ?? stripped;
 }
 
+// Known compound ingredients that should always be split into individual items
+const COMPOUND_SPLITS: Record<string, string[]> = {
+  "salt and pepper": ["salt", "pepper"],
+  "salt & pepper": ["salt", "pepper"],
+  "salt and black pepper": ["salt", "black pepper"],
+  "salt and white pepper": ["salt", "white pepper"],
+};
+
+// Expand a raw ingredient into one or more raw ingredients, splitting compounds
+function expandIngredient(ing: RawIng): RawIng[] {
+  const lower = ing.name.toLowerCase().trim();
+  const parts = COMPOUND_SPLITS[lower];
+  if (!parts) return [ing];
+  // Each split part gets no quantity (they're always "to taste" in this context)
+  return parts.map((p) => ({ name: p, quantity: null, unit: null }));
+}
+
 // Returns null if the ingredient should be skipped entirely (serving suggestions etc.)
 function normalizeIngredientName(name: string): string | null {
   // Skip serving suggestions embedded in the name
@@ -78,9 +95,10 @@ type RawIng = { name: string; quantity: number | null; unit: string | null };
 type ConsolidatedItem = { ingredient_name: string; quantity: number | null; unit: string | null };
 
 function consolidateIngredients(ingredients: RawIng[]): ConsolidatedItem[] {
-  // Group by normalised name
+  // Expand compounds ("salt and pepper" → ["salt", "pepper"]) then group by normalised name
+  const expanded = ingredients.flatMap(expandIngredient);
   const groups = new Map<string, { displayName: string; items: RawIng[] }>();
-  for (const ing of ingredients) {
+  for (const ing of expanded) {
     const key = normalizeIngredientName(ing.name);
     if (!key) continue; // skip blank names
     const existing = groups.get(key);
