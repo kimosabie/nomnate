@@ -16,6 +16,10 @@ export default async function AppLayout({
 
   if (!user) redirect("/login");
 
+  if (process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL) {
+    redirect("/admin/dashboard");
+  }
+
   const { data: member } = await supabase
     .from("family_members")
     .select("name, family_id")

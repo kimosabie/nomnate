@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { redirect, notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const COUNTRY_LABELS: Record<string, string> = {
@@ -28,11 +26,6 @@ function relativeTime(dateStr: string | null): string {
 }
 
 export default async function AdminDashboardPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  if (!process.env.ADMIN_EMAIL || user.email !== process.env.ADMIN_EMAIL) notFound();
-
   const admin = createAdminClient();
 
   const [
@@ -122,24 +115,8 @@ export default async function AdminDashboardPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-[#0f0f0f] text-white">
+    <main className="bg-[#0f0f0f] text-white">
       <div className="max-w-5xl mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-display font-semibold text-white">Admin dashboard</h1>
-            <p className="text-xs text-white/40 mt-0.5">{user.email}</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/admin/feedback" className="text-xs text-white/40 hover:text-white transition-colors">
-              Feedback →
-            </Link>
-            <Link href="/dashboard" className="text-xs text-white/40 hover:text-white transition-colors">
-              ← App
-            </Link>
-          </div>
-        </div>
-
         {/* Stat cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {stats.map((s) => (
