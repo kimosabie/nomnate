@@ -30,6 +30,7 @@ const UNIT_ALIASES: Record<string, string> = {
   medium: "", large: "", small: "",
   stalks: "", stalk: "", sprigs: "", sprig: "",
   heads: "", head: "", bunches: "", bunch: "",
+  serving: "", servings: "",  // scraped serving-count artifacts
 };
 
 // Units that signal "no quantity" — item is just listed as needed
@@ -60,17 +61,17 @@ function cleanUnit(unit: string | null | undefined): string {
   return UNIT_ALIASES[stripped] ?? stripped;
 }
 
-// Strip prep annotations from ingredient names:
-// "butter, softened"          → "butter"
-// "butter (for cooking)"      → "butter"
-// "baby potatoes, washed"     → "baby potatoes"
-// "Carrots, grated"           → "carrots"
-function normalizeIngredientName(name: string): string {
+// Returns null if the ingredient should be skipped entirely (serving suggestions etc.)
+function normalizeIngredientName(name: string): string | null {
+  // Skip serving suggestions embedded in the name
+  if (/for serving|for garnish|to serve|to garnish/i.test(name)) return null;
+
   return name
-    .replace(/\s*\([^)]*\)/g, "")   // remove parenthetical notes
-    .replace(/,\s*.+$/, "")          // remove everything after first comma
+    .replace(/\s*\([^)]*\)/g, "")   // remove parenthetical notes: "butter (for cooking)" → "butter"
+    .replace(/,\s*.+$/, "")          // remove prep notes after comma: "butter, softened" → "butter"
+    .replace(/\s*\*\d+\s*$/, "")     // remove scaling artifacts: "water *2" → "water"
     .toLowerCase()
-    .trim();
+    .trim() || null;
 }
 
 type RawIng = { name: string; quantity: number | null; unit: string | null };
