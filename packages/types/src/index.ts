@@ -252,6 +252,8 @@ export interface MealSuggestionParams {
   excludeTitles?: string[];
   count?: number;
   familyMembers?: FamilyMemberContext[];
+  country?: string;
+  familyDietaryRequirements?: string[];
 }
 
 export interface SuggestedRecipe {

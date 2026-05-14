@@ -44,7 +44,7 @@ export async function updateFamilyCountry(
   if (!user) return "Not authenticated";
 
   const rawCountry = String(formData.get("country") ?? "");
-  if (!["ZA", "UK", "FR"].includes(rawCountry)) return "Invalid country";
+  if (!["ZA", "GB", "FR", "AU", "AE"].includes(rawCountry)) return "Invalid country";
 
   const { data: membership } = await supabase
     .from("family_members")

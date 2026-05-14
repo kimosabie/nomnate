@@ -264,11 +264,15 @@ export async function suggestWithAI(
 
   const { data: membership } = await supabase
     .from("family_members")
-    .select("family_id")
+    .select("family_id, families(country, dietary_requirements)")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
   if (!membership) return "No family found";
+
+  const familyRow = membership.families as { country?: string; dietary_requirements?: string[] } | null;
+  const familyCountry = familyRow?.country ?? undefined;
+  const familyDietaryRequirements = (familyRow?.dietary_requirements ?? []) as string[];
 
   const weekStart = currentWeekStart();
   const usedThisWeek = await getAIUsageThisWeek(membership.family_id);
@@ -349,6 +353,8 @@ export async function suggestWithAI(
       excludeTitles,
       count,
       familyMembers,
+      country: familyCountry,
+      familyDietaryRequirements,
     });
   } catch (err) {
     return err instanceof Error ? err.message : "AI suggestion failed — try again";
@@ -751,11 +757,15 @@ export async function suggestForSlot(
 
   const { data: membership } = await supabase
     .from("family_members")
-    .select("family_id")
+    .select("family_id, families(country, dietary_requirements)")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
   if (!membership) return { error: "No family found" };
+
+  const slotFamilyRow = membership.families as { country?: string; dietary_requirements?: string[] } | null;
+  const slotFamilyCountry = slotFamilyRow?.country ?? undefined;
+  const slotFamilyDietaryRequirements = (slotFamilyRow?.dietary_requirements ?? []) as string[];
 
   const usedThisWeek = await getAIUsageThisWeek(membership.family_id);
   if (FREE_AI_LIMIT - usedThisWeek <= 0) {
@@ -837,6 +847,8 @@ export async function suggestForSlot(
       excludeTitles,
       count: 1,
       familyMembers: familyMembersSlot,
+      country: slotFamilyCountry,
+      familyDietaryRequirements: slotFamilyDietaryRequirements,
     });
   } catch {
     return { error: "AI suggestions are temporarily unavailable — please try again later." };
