@@ -70,7 +70,7 @@ export default async function PrintPage() {
     items: items.filter((i) => i.effectiveStore === s.key),
   })).filter((g) => g.items.length > 0);
 
-  const LOCALE_MAP: Record<string, string> = { ZA: "en-ZA", UK: "en-GB", FR: "fr-FR" };
+  const LOCALE_MAP: Record<string, string> = { ZA: "en-ZA", GB: "en-GB", UK: "en-GB", FR: "fr-FR", AU: "en-AU", AE: "en-AE" };
   const weekLabel = new Date(currentWeekStart()).toLocaleDateString(LOCALE_MAP[country] ?? "en-ZA", {
     day: "numeric", month: "long", year: "numeric",
   });
