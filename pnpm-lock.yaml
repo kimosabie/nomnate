@@ -85,6 +85,9 @@ importers:
       '@nomnate/lib':
         specifier: workspace:*
         version: link:../../packages/lib
+      '@nomnate/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@nomnate/supabase':
         specifier: workspace:*
         version: link:../../packages/supabase
@@ -143,9 +146,18 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.55.0
         version: 0.55.1
+      '@nomnate/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@nomnate/types':
         specifier: workspace:*
         version: link:../types
+    devDependencies:
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
+  packages/shared:
     devDependencies:
       typescript:
         specifier: ^5.8.3

@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { buildMealSystemPrompt, type CountryCode, type Cuisine, type DietaryRequirement } from "@nomnate/shared";
 import type { FamilyMemberContext, MealSuggestionParams, SuggestedRecipe } from "@nomnate/types";
 import { DIET_TYPE_LABELS } from "@nomnate/types";
 
@@ -54,7 +55,18 @@ export async function suggestMeals(
     excludeTitles = [],
     count = 7,
     familyMembers = [],
+    country,
+    familyDietaryRequirements = [],
   } = params;
+
+  const systemPrompt = country
+    ? buildMealSystemPrompt({
+        country: country as CountryCode,
+        cuisinePreferences: cuisinePreferences as Cuisine[],
+        dietaryRequirements: familyDietaryRequirements as DietaryRequirement[],
+        familySize,
+      })
+    : undefined;
 
   const preferences =
     cuisinePreferences.length > 0
@@ -81,9 +93,11 @@ export async function suggestMeals(
     ? `Family composition:\n${memberLines.join("\n")}`
     : buildFallbackContext(familySize, dietaryRestrictions, dietTypes, calorieTarget);
 
-  const prompt = `You are a helpful meal planning assistant for a South African family.
+  const locationFallback = systemPrompt
+    ? ""
+    : "- Use ingredients commonly available in the family's region";
 
-Suggest ${count} dinner recipes for a family of ${familySize}.
+  const prompt = `${systemPrompt ? "" : "You are a helpful meal planning assistant.\n\n"}Suggest ${count} dinner recipes for a family of ${familySize}.
 ${familyContext}
 ${preferences}
 ${dislikes}
@@ -114,11 +128,12 @@ Rules:
 - unit can be null for countable items like "eggs"
 - calories_per_serving, protein_g, carbs_g, fat_g are estimates — provide reasonable values
 - Instructions should be practical and clear
-- Use ingredients commonly available in South Africa`;
+${locationFallback}`.trimEnd();
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 8192,
+    ...(systemPrompt ? { system: systemPrompt } : {}),
     messages: [{ role: "user", content: prompt }],
   });
 

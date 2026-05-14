@@ -118,10 +118,72 @@ const FR_STORES: StoreConfig[] = [
   },
 ];
 
+const AU_STORES: StoreConfig[] = [
+  {
+    key: "coles",
+    label: "Coles",
+    shopUrl: "https://www.coles.com.au/",
+    searchUrl: (q) => `https://www.coles.com.au/search?q=${encodeURIComponent(q)}`,
+    badgeBg: "bg-flame-light",
+    badgeText: "text-flame-dark",
+    selectBg: "#FDE8E0",
+  },
+  {
+    key: "woolworths_au",
+    label: "Woolworths AU",
+    shopUrl: "https://www.woolworths.com.au/",
+    searchUrl: (q) => `https://www.woolworths.com.au/shop/search/products?searchTerm=${encodeURIComponent(q)}`,
+    badgeBg: "bg-herb-light",
+    badgeText: "text-herb",
+    selectBg: "#E8F5E9",
+  },
+  {
+    key: "iga",
+    label: "IGA",
+    shopUrl: "https://www.iga.com.au/",
+    searchUrl: (q) => `https://www.iga.com.au/search/?q=${encodeURIComponent(q)}`,
+    badgeBg: "bg-sapphire-light",
+    badgeText: "text-sapphire",
+    selectBg: "#E6F1FB",
+  },
+];
+
+const AE_STORES: StoreConfig[] = [
+  {
+    key: "carrefour_ae",
+    label: "Carrefour UAE",
+    shopUrl: "https://www.carrefouruae.com/mafuae/en/c/FVEG",
+    searchUrl: (q) => `https://www.carrefouruae.com/mafuae/en/search?q=${encodeURIComponent(q)}`,
+    badgeBg: "bg-sapphire-light",
+    badgeText: "text-sapphire",
+    selectBg: "#E6F1FB",
+  },
+  {
+    key: "lulu",
+    label: "Lulu Hypermarket",
+    shopUrl: "https://www.luluhypermarket.com/en-ae/",
+    searchUrl: (q) => `https://www.luluhypermarket.com/en-ae/search/?q=${encodeURIComponent(q)}`,
+    badgeBg: "bg-herb-light",
+    badgeText: "text-herb",
+    selectBg: "#E8F5E9",
+  },
+  {
+    key: "spinneys",
+    label: "Spinneys",
+    shopUrl: "https://www.spinneys.com/en-ae/",
+    searchUrl: (q) => `https://www.spinneys.com/en-ae/catalogue/search/?q=${encodeURIComponent(q)}`,
+    badgeBg: "bg-turmeric-light",
+    badgeText: "text-turmeric-dark",
+    selectBg: "#FEF9EC",
+  },
+];
+
 export function getStoresByCountry(country: string | null | undefined): StoreConfig[] {
   switch (country) {
-    case "UK": return UK_STORES;
+    case "GB": return UK_STORES;
     case "FR": return FR_STORES;
+    case "AU": return AU_STORES;
+    case "AE": return AE_STORES;
     default: return ZA_STORES;
   }
 }
@@ -208,8 +270,11 @@ const PNP_TERMS = [
 
 // ZA: smart assignment. Non-ZA: first store in list (no term-based logic yet)
 export function assignStore(ingredientName: string, country?: string | null): StoreKey {
-  if (country && country !== "ZA") {
+  if (country && country !== "ZA" && country !== "UK") {
     return getStoresByCountry(country)[0]?.key ?? "checkers";
+  }
+  if (country === "UK") {
+    return getStoresByCountry("GB")[0]?.key ?? "checkers";
   }
   const name = ingredientName.toLowerCase();
   if (WOOLWORTHS_TERMS.some((t) => name.includes(t))) return "woolworths";
