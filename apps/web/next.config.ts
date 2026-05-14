@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 import withPWA from "next-pwa";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["100.111.16.99"],
+  allowedDevOrigins: ["100.111.16.99", "ocsdev"],
   turbopack: {},
 };
 
