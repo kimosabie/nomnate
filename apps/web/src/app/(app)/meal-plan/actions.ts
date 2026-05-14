@@ -1066,3 +1066,74 @@ export async function castVote(
   revalidatePath("/meal-plan");
   return null;
 }
+
+export async function pickWildcardMeal(): Promise<void> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: membership } = await supabase
+    .from("family_members")
+    .select("family_id")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (!membership) redirect("/onboarding");
+
+  const weekStart = currentWeekStart();
+
+  const { data: plan } = await supabase
+    .from("meal_plans")
+    .select("id")
+    .eq("family_id", membership.family_id)
+    .eq("week_start_date", weekStart)
+    .maybeSingle();
+
+  // No plan yet — send to meal plan page to generate one first
+  if (!plan) redirect("/meal-plan");
+
+  // Wednesday = day_of_week 2 (week starts Monday)
+  const { data: wedSlot } = await supabase
+    .from("meal_plan_slots")
+    .select("id, recipe_id")
+    .eq("meal_plan_id", plan.id)
+    .eq("day_of_week", 2)
+    .eq("option_number", 1)
+    .maybeSingle();
+
+  if (!wedSlot) redirect("/meal-plan");
+
+  // Recipes already in other slots this week (don't repeat them)
+  const { data: otherSlots } = await supabase
+    .from("meal_plan_slots")
+    .select("recipe_id")
+    .eq("meal_plan_id", plan.id)
+    .neq("id", wedSlot.id)
+    .not("recipe_id", "is", null);
+
+  const usedIds = new Set((otherSlots ?? []).map((s) => s.recipe_id as string));
+
+  // Family library (manual + global)
+  const [{ data: manual }, { data: global }] = await Promise.all([
+    supabase.from("recipes").select("id").eq("family_id", membership.family_id).eq("is_global", false),
+    supabase.from("family_recipes").select("recipe_id").eq("family_id", membership.family_id),
+  ]);
+
+  const pool = [
+    ...(manual ?? []).map((r) => r.id),
+    ...(global ?? []).map((fr) => fr.recipe_id as string),
+  ].filter((id) => !usedIds.has(id));
+
+  if (pool.length === 0) redirect("/meal-plan");
+
+  const picked = pool[Math.floor(Math.random() * pool.length)];
+
+  await supabase
+    .from("meal_plan_slots")
+    .update({ recipe_id: picked })
+    .eq("id", wedSlot.id);
+
+  revalidatePath("/meal-plan");
+  revalidatePath("/dashboard");
+  redirect("/meal-plan");
+}

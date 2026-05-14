@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { currentWeekStart } from "../meal-plan/utils";
+import { pickWildcardMeal } from "../meal-plan/actions";
 import { CopyCode } from "./CopyCode";
 import { InviteBanner } from "@/components/InviteBanner";
 import { InviteModal } from "@/components/InviteModal";
@@ -53,7 +54,7 @@ export default async function DashboardPage() {
 
   const { data: members } = await supabase
     .from("family_members")
-    .select("id, name, role, dietary_restrictions, allergies, diet_types, relationship, date_of_birth, age")
+    .select("id, user_id, name, role, dietary_restrictions, allergies, diet_types, relationship, date_of_birth, age")
     .eq("family_id", family.id)
     .order("joined_at");
 
@@ -81,6 +82,7 @@ export default async function DashboardPage() {
     .maybeSingle();
 
   let voteCounts: Record<string, number> = {};
+  const firstVoteAt: Record<string, string> = {};
   if (plan) {
     const { data: slots } = await supabase
       .from("meal_plan_slots")
@@ -91,11 +93,14 @@ export default async function DashboardPage() {
     if (slotIds.length > 0) {
       const { data: weekVotes } = await supabase
         .from("votes")
-        .select("member_id")
+        .select("member_id, created_at")
         .in("meal_plan_slot_id", slotIds);
 
       for (const v of weekVotes ?? []) {
         voteCounts[v.member_id] = (voteCounts[v.member_id] ?? 0) + 1;
+        // Track earliest vote per member to find first voter
+        const existing = firstVoteAt[v.member_id];
+        if (!existing || v.created_at < existing) firstVoteAt[v.member_id] = v.created_at;
       }
     }
   }
@@ -119,6 +124,7 @@ export default async function DashboardPage() {
   const memberIds = (members ?? []).map((m) => m.id);
   let monthlyChampionName = "—";
   let monthlyChampionVotes = 0;
+  const monthlyCounts: Record<string, number> = {};
 
   if (memberIds.length > 0) {
     const { data: monthVotes } = await supabase
@@ -127,7 +133,6 @@ export default async function DashboardPage() {
       .in("member_id", memberIds)
       .gte("created_at", monthStart.toISOString());
 
-    const monthlyCounts: Record<string, number> = {};
     for (const v of monthVotes ?? []) {
       monthlyCounts[v.member_id] = (monthlyCounts[v.member_id] ?? 0) + 1;
     }
@@ -138,7 +143,34 @@ export default async function DashboardPage() {
     }
   }
 
+  // First voter this week
+  const firstVoterId = Object.entries(firstVoteAt)
+    .sort((a, b) => a[1].localeCompare(b[1]))[0]?.[0];
+
+  // Monthly participation
+  const monthTotalVotes = Object.values(monthlyCounts).reduce((a, b) => a + b, 0);
+  const monthUniqueVoters = Object.keys(monthlyCounts).length;
+
+  // ── Chef of the Month — most recipes added to library this month ───────────
+  const { data: monthlyAdded } = await supabase
+    .from("family_recipes")
+    .select("added_by")
+    .eq("family_id", family.id)
+    .gte("added_at", monthStart.toISOString());
+
+  const chefCounts: Record<string, number> = {};
+  for (const r of monthlyAdded ?? []) {
+    if (r.added_by) chefCounts[r.added_by] = (chefCounts[r.added_by] ?? 0) + 1;
+  }
+  const topChefEntry = Object.entries(chefCounts).sort((a, b) => b[1] - a[1])[0];
+  const chefMember = topChefEntry
+    ? (members ?? []).find((m) => m.user_id === topChefEntry[0])
+    : null;
+  const chefOfMonthName = chefMember?.name ?? "—";
+  const chefOfMonthCount = topChefEntry?.[1] ?? 0;
+
   const wc = wildcardLabel();
+  const isWednesday = new Date().getUTCDay() === 3;
 
   return (
     <main className="min-h-screen bg-cream">
@@ -158,11 +190,24 @@ export default async function DashboardPage() {
             </p>
             <p className="text-[10px] uppercase text-white/80 tracking-wide font-medium mt-0.5">top voter</p>
           </div>
-          <div className="bg-turmeric rounded-[12px] p-3 text-center">
-            <p className="text-2xl mb-1">🎲</p>
-            <p className="text-sm font-display font-medium text-white leading-tight">{wc.label}</p>
-            <p className="text-[10px] uppercase text-white/80 tracking-wide font-medium mt-0.5">{wc.sub}</p>
-          </div>
+          {isWednesday ? (
+            <form action={pickWildcardMeal} className="contents">
+              <button
+                type="submit"
+                className="bg-turmeric rounded-[12px] p-3 text-center w-full hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+              >
+                <p className="text-2xl mb-1">🎲</p>
+                <p className="text-sm font-display font-medium text-white leading-tight">Spin!</p>
+                <p className="text-[10px] uppercase text-white/80 tracking-wide font-medium mt-0.5">wildcard day</p>
+              </button>
+            </form>
+          ) : (
+            <div className="bg-turmeric rounded-[12px] p-3 text-center">
+              <p className="text-2xl mb-1">🎲</p>
+              <p className="text-sm font-display font-medium text-white leading-tight">{wc.label}</p>
+              <p className="text-[10px] uppercase text-white/80 tracking-wide font-medium mt-0.5">{wc.sub}</p>
+            </div>
+          )}
         </div>
 
         {/* Family card */}
@@ -187,32 +232,50 @@ export default async function DashboardPage() {
         {/* First-visit invite modal */}
         <InviteModal code={family.invite_code} />
 
-        {/* Dinner Champion */}
-        <div className="bg-white rounded-[14px] border border-cream-border p-5 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-[12px] bg-turmeric-light flex items-center justify-center text-2xl shrink-0">
-            🏆
+        {/* Monthly stats — Dinner Champion + Chef of the Month */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white rounded-[14px] border border-cream-border p-4 flex flex-col gap-2">
+            <div className="w-10 h-10 rounded-[10px] bg-turmeric-light flex items-center justify-center text-xl shrink-0">🏆</div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold text-slate uppercase tracking-wide">Dinner Champion</p>
+              <p className="text-sm font-display font-medium text-charcoal truncate mt-0.5">
+                {monthlyChampionName}
+              </p>
+              <p className="text-xs text-slate mt-0.5">
+                {monthlyChampionVotes > 0
+                  ? `${monthlyChampionVotes} vote${monthlyChampionVotes !== 1 ? "s" : ""} this month`
+                  : "No votes yet"}
+              </p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-semibold text-slate uppercase tracking-wide">Dinner Champion</p>
-            <p className="text-base font-display font-medium text-charcoal truncate mt-0.5">
-              {monthlyChampionName}
-            </p>
-            <p className="text-xs text-slate mt-0.5">
-              {monthlyChampionVotes > 0
-                ? `${monthlyChampionVotes} vote${monthlyChampionVotes !== 1 ? "s" : ""} this month`
-                : "No votes yet this month"}
-            </p>
+          <div className="bg-white rounded-[14px] border border-cream-border p-4 flex flex-col gap-2">
+            <div className="w-10 h-10 rounded-[10px] bg-herb-light flex items-center justify-center text-xl shrink-0">👨‍🍳</div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold text-slate uppercase tracking-wide">Chef of the Month</p>
+              <p className="text-sm font-display font-medium text-charcoal truncate mt-0.5">
+                {chefOfMonthName}
+              </p>
+              <p className="text-xs text-slate mt-0.5">
+                {chefOfMonthCount > 0
+                  ? `${chefOfMonthCount} recipe${chefOfMonthCount !== 1 ? "s" : ""} added`
+                  : "No recipes added yet"}
+              </p>
+            </div>
           </div>
-          <p className="text-[10px] text-slate/60 text-right shrink-0">
-            {new Date().toLocaleString("en-ZA", { month: "long" })}
-          </p>
         </div>
 
         {/* Weekly leaderboard */}
         <div className="bg-white rounded-[14px] border border-cream-border p-5">
-          <h2 className="text-xs font-semibold text-slate uppercase tracking-wide mb-4">
-            This week's voters
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xs font-semibold text-slate uppercase tracking-wide">
+              This week's voters
+            </h2>
+            {monthTotalVotes > 0 && (
+              <p className="text-[10px] text-slate">
+                {monthUniqueVoters}/{members?.length ?? 0} voting this month
+              </p>
+            )}
+          </div>
           {ranked.every((m) => m.votes === 0) ? (
             <p className="text-sm text-slate text-center py-2">
               No votes cast yet — go pick your meals!
@@ -230,10 +293,13 @@ export default async function DashboardPage() {
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-charcoal truncate">
+                        <span className="text-sm font-medium text-charcoal truncate flex items-center gap-1">
                           {m.name ?? "Unnamed"}
                           {isMe && (
-                            <span className="ml-1.5 text-xs text-flame font-normal">you</span>
+                            <span className="text-xs text-flame font-normal">you</span>
+                          )}
+                          {m.id === firstVoterId && m.votes > 0 && (
+                            <span title="First to vote this week" className="text-xs">⚡</span>
                           )}
                         </span>
                         <span className="text-xs text-slate ml-2 shrink-0">
