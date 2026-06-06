@@ -3,7 +3,42 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { filterText } from "@/lib/contentFilter";
+import { SELECTABLE_COURSES, toCourse, type Course } from "@nomnate/types";
 import { getStoresByCountry } from "../shopping-list/storeUtils";
+
+export async function updateFamilyCourses(
+  _prevState: string | null,
+  formData: FormData
+): Promise<string | null> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return "Not authenticated";
+
+  // Always include 'main'; keep the canonical starter→main→dessert order.
+  const selected = new Set<Course>(
+    formData.getAll("courses").map(String).map(toCourse).filter((c): c is Course => c !== null)
+  );
+  selected.add("main");
+  const ordered = SELECTABLE_COURSES.filter((c) => selected.has(c));
+
+  const { data: membership } = await supabase
+    .from("family_members")
+    .select("family_id, role")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (!membership) return "No family found";
+  if (membership.role !== "admin") return "Only family admins can change this setting";
+
+  const { error } = await supabase
+    .from("families")
+    .update({ courses: ordered })
+    .eq("id", membership.family_id);
+
+  if (error) return error.message;
+  revalidatePath("/", "layout");
+  return null;
+}
 
 export async function updateFamilyName(
   _prevState: string | null,
