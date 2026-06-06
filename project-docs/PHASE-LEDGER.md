@@ -42,6 +42,7 @@ therefore a *retroactive thematic grouping* of the history:
 | P12 | chore: fix typecheck and lint gates across the monorepo (#1) | Repaired the standalone `pnpm typecheck` (3 pkgs) and `pnpm lint` (mobile/web) gates; all three gates green on `main`. | `ffe46ad` | 2026-06-06 |
 | P13 | fix: country dropdown on family registration (ZA/GB/FR/AU/AE) | Onboarding offered only 3 countries (`ZA`/`UK`/`FR`) and the wrong `UK` code; widened to the canonical 5 and removed dead `UK` branches. | `b4f587c` | 2026-06-06 |
 | P14 | fix: meal-plan swap picker shows the whole library (manual + saved global) | The swap/add picker queried only `recipes.family_id`, missing saved global-library recipes (which live in the `family_recipes` junction) — so a family with a 26-recipe library saw 0 options. Picker + empty-state count now combine both sources. | _pending_ | 2026-06-06 |
+| P15 | feat: clickable recipe search results + family rename + AI-Chef AU/AE | Library search results link to the `/recipes/[id]` detail page (B6); family admins can rename the family inline (B11); AI Chef store guidance completed for AU/AE incl. halal for AE (B14). | _pending_ | 2026-06-06 |
 
 ## Planned work streams (feedback backlog)
 
@@ -53,20 +54,20 @@ pending reconciliation.
 
 | ID | Work stream | Priority | Status (ledger truth) | Evidence |
 |----|-------------|----------|-----------------------|----------|
-| B1 | Fix country dropdown on family registration | 🔴 critical | In progress | P13 (`b4f587c`), pending merge |
+| B1 | Fix country dropdown on family registration | 🔴 critical | Shipped | P13 — merged in PR #2 |
 | B2 | Fix meal-swap option picker not loading | 🔴 critical | Shipped | P14 — picker now combines manual + saved global recipes |
 | B3 | Enforce single vote per user per day | 🟠 high | Shipped — archive pending | P9 (`dbdce3a`) |
 | B4 | Exclude selected meals from other days' suggestions | 🟠 high | Shipped — archive pending | P9 (`dbdce3a`) |
 | B5 | Localise recipe measurements to SA units | 🟠 high | Shipped — archive pending | P9 (`dbdce3a`) + P11 |
-| B6 | Recipe detail: dish summary + cooking method | 🟠 high | Mostly shipped (P2 `3cd952c`, P9 `dbdce3a`); **click-search-result→detail still open** (newest feedback 2026-06-06) | partial |
+| B6 | Recipe detail: dish summary + cooking method | 🟠 high | Shipped — library search results now link to detail (P15); external (unsaved) results still save-first | P2 `3cd952c`, P9 `dbdce3a`, P15 |
 | B7 | Nutritional data so calorie tracking works | 🟠 high | **Partial** — UI shipped P2 (`f9808e0`); data quality open | partial |
 | B8 | Structured daily course slots (starter/main/dessert) | 🟠 high | **Open** | not in git |
 | B9 | Auto-refresh daily options via AI after a selection | 🟡 medium | **Partial/Open** | P10 (`4143ab9`) excludes assigned meals only |
 | B10 | Preferred grocery-store selection UI (≤5) in Family Settings | 🟡 medium | **Partial** — `preferred_stores` wired P10 (`33ce624`); settings picker UI open | partial |
-| B11 | Family-name editing for family admins | 🟡 medium | **Open** — not yet approved in `todo_items` | not in git |
+| B11 | Family-name editing for family admins | 🟡 medium | Shipped | P15 — inline rename on `/family` for admins |
 | B12 | Party/braai event-planning section | 🟡 medium | **Open** | not in git |
 | B13 | Filter/flag test feedback submissions | 🟢 low | **Partial** — bulk delete exists (P10 `10889eb`); auto-filter open | partial |
-| B14 | AI Chef localisation for AU/AE (un-localised stores/guidance) | 🟡 medium | **Open** — discovered during P13; `GB` fixed, `AU`/`AE` fall back to ZA in `ai-chef-actions.ts` | P13 note |
+| B14 | AI Chef localisation for AU/AE (un-localised stores/guidance) | 🟡 medium | Shipped | P15 — AU/AE store names + guidance added (halal for AE) |
 
 ## Regeneration
 

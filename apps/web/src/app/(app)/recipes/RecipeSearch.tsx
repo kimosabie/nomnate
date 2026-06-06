@@ -253,27 +253,34 @@ function DBRecipeRow({
   const badge = sourceBadge(recipe.source, recipe.cuisine);
   return (
     <div className="flex items-center gap-3 rounded-[14px] border border-cream-border bg-cream p-3">
-      {recipe.image_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={recipe.image_url} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0" />
-      ) : (
-        <div className="w-14 h-14 rounded-xl bg-flame-light shrink-0" />
-      )}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-charcoal truncate">{recipe.title}</p>
-        <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-          <p className="text-xs text-slate">
-            {[recipe.prep_time ? `${recipe.prep_time} min` : null, recipe.cuisine]
-              .filter(Boolean)
-              .join(" · ")}
+      <Link
+        href={`/recipes/${recipe.id}`}
+        className="flex items-center gap-3 flex-1 min-w-0 group"
+      >
+        {recipe.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={recipe.image_url} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0" />
+        ) : (
+          <div className="w-14 h-14 rounded-xl bg-flame-light shrink-0" />
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-charcoal truncate group-hover:text-flame transition-colors">
+            {recipe.title}
           </p>
-          {badge && (
-            <span className="text-xs bg-slate/10 text-slate font-medium px-2 py-0.5 rounded-full">
-              {badge}
-            </span>
-          )}
+          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+            <p className="text-xs text-slate">
+              {[recipe.prep_time ? `${recipe.prep_time} min` : null, recipe.cuisine]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+            {badge && (
+              <span className="text-xs bg-slate/10 text-slate font-medium px-2 py-0.5 rounded-full">
+                {badge}
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      </Link>
       <AddButton
         inLibrary={isSaved}
         isSaving={isSaving}
