@@ -20,7 +20,7 @@ export default async function MealPlanPage() {
 
   const { data: membership } = await supabase
     .from("family_members")
-    .select("id, family_id")
+    .select("id, family_id, role")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -212,6 +212,8 @@ export default async function MealPlanPage() {
           slots={slotsData}
           initialVotes={votes}
           memberId={membership.id}
+          planId={plan.id}
+          isAdmin={membership.role === "admin"}
           weekStart={weekStart}
           recipes={familyRecipes}
           aiRemaining={aiRemaining}

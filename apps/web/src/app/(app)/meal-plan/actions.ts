@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { suggestMeals } from "@nomnate/lib/claude";
 import { searchRecipes } from "@nomnate/lib/spoonacular";
 import type { FamilyMemberContext, SuggestedRecipe } from "@nomnate/types";
+import { toCourse } from "@nomnate/types";
 import { currentWeekStart } from "./utils";
 
 const UNIT_ALIASES: Record<string, string> = {
@@ -225,6 +226,56 @@ async function getFamilyRecipePool(
       course: (fr.recipe as { course: string | null } | null)?.course ?? null,
     })),
   ];
+}
+
+type PoolRecipe = { id: string; is_favourite: boolean; course: string | null };
+type NewSlotRow = {
+  meal_plan_id: string;
+  day_of_week: number;
+  course: string;
+  option_number: number;
+  recipe_id: string | null;
+  status: "suggested";
+};
+
+function shuffleIds<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Distinct recipe ids eligible for a course (favourites first), augmented with
+// unclassified recipes when the exact-course pool is thin (<3). Re-shuffled per call.
+function courseCandidateIds(pool: PoolRecipe[], course: string): string[] {
+  let cands = pool.filter((r) => r.course === course);
+  if (cands.length < 3) {
+    const have = new Set(cands.map((c) => c.id));
+    cands = [...cands, ...pool.filter((r) => r.course == null && !have.has(r.id))];
+  }
+  const favs = shuffleIds(cands.filter((c) => c.is_favourite).map((c) => c.id));
+  const others = shuffleIds(cands.filter((c) => !c.is_favourite).map((c) => c.id));
+  return [...favs, ...others];
+}
+
+// Build the option slot rows for one (day, course): up to 3 distinct dishes from
+// the course's candidates (a thin pool just yields fewer options; none yields a
+// single empty slot so the course still shows with an "add recipe" prompt).
+function courseSlotRows(planId: string, day: number, course: string, pool: PoolRecipe[]): NewSlotRow[] {
+  const ids = courseCandidateIds(pool, course);
+  if (ids.length === 0) {
+    return [{ meal_plan_id: planId, day_of_week: day, course, option_number: 1, recipe_id: null, status: "suggested" }];
+  }
+  return ids.slice(0, Math.min(3, ids.length)).map((recipe_id, i) => ({
+    meal_plan_id: planId,
+    day_of_week: day,
+    course,
+    option_number: i + 1,
+    recipe_id,
+    status: "suggested" as const,
+  }));
 }
 
 async function fetchImageByTitle(title: string): Promise<string | null> {
@@ -497,29 +548,6 @@ export async function generatePlan(
   // Fetch family recipe pool (manual + global-in-library), with course tags
   const recipes = await getFamilyRecipePool(supabase, membership.family_id);
 
-  // Fisher-Yates shuffle
-  const shuffle = <T>(arr: T[]): T[] => {
-    const a = [...arr];
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  };
-
-  // Candidate recipe ids for a course: exact-course matches (favourites first),
-  // augmented with unclassified recipes when the course pool is thin (<3).
-  const candidatesForCourse = (course: string): string[] => {
-    let cands = recipes.filter((r) => r.course === course);
-    if (cands.length < 3) {
-      const have = new Set(cands.map((c) => c.id));
-      cands = [...cands, ...recipes.filter((r) => r.course == null && !have.has(r.id))];
-    }
-    const favs = shuffle(cands.filter((c) => c.is_favourite).map((c) => c.id));
-    const others = shuffle(cands.filter((c) => !c.is_favourite).map((c) => c.id));
-    return [...favs, ...others];
-  };
-
   // Create the meal plan — handle race condition where another member beat us here
   const { data: plan, error: planError } = await supabase
     .from("meal_plans")
@@ -531,49 +559,11 @@ export async function generatePlan(
     return planError.message;
   }
 
-  // For each day × each configured course, create 3 distinct options drawn from
-  // that course's candidates (a refilling reshuffled queue keeps a day's options
-  // distinct). A course with no candidates gets one empty slot so it still shows.
-  const slots: {
-    meal_plan_id: string;
-    day_of_week: number;
-    course: string;
-    option_number: number;
-    recipe_id: string | null;
-    status: "suggested";
-  }[] = [];
-
+  // For each day × each configured course, build that course's option slots.
+  const slots: NewSlotRow[] = [];
   for (let d = 0; d < 7; d++) {
     for (const course of courses) {
-      const ids = candidatesForCourse(course);
-      if (ids.length === 0) {
-        slots.push({ meal_plan_id: plan.id, day_of_week: d, course, option_number: 1, recipe_id: null, status: "suggested" });
-        continue;
-      }
-      let queue: string[] = [];
-      const draw = (used: Set<string>): string => {
-        if (queue.length === 0) queue = shuffle([...ids]);
-        const k = queue.findIndex((id) => !used.has(id));
-        if (k !== -1) return queue.splice(k, 1)[0];
-        queue = shuffle([...ids]);
-        return queue.shift()!;
-      };
-      // Up to 3 options, but never repeat the same dish as a "choice" — a thin
-      // course pool (e.g. one dessert) just shows that many options.
-      const optionCount = Math.min(3, ids.length);
-      const used = new Set<string>();
-      for (let opt = 1; opt <= optionCount; opt++) {
-        const recipeId = draw(used);
-        used.add(recipeId);
-        slots.push({
-          meal_plan_id: plan.id,
-          day_of_week: d,
-          course,
-          option_number: opt,
-          recipe_id: recipeId,
-          status: "suggested",
-        });
-      }
+      slots.push(...courseSlotRows(plan.id, d, course, recipes));
     }
   }
 
@@ -583,6 +573,129 @@ export async function generatePlan(
   if (slotsError) return slotsError.message;
 
   redirect("/meal-plan");
+}
+
+type ClientSlot = {
+  id: string;
+  day_of_week: number;
+  course: string;
+  option_number: number;
+  status: "suggested" | "voted" | "confirmed";
+  recipe: SlotRecipe | null;
+};
+
+// Verify the caller is an admin of the plan's family. Returns the family id or an error.
+async function authoriseCourseEdit(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  planId: string
+): Promise<{ error: string } | { familyId: string }> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: membership } = await supabase
+    .from("family_members")
+    .select("family_id, role")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (!membership) return { error: "No family found" };
+  if (membership.role !== "admin") return { error: "Only family admins can change the plan layout" };
+
+  const { data: plan } = await supabase
+    .from("meal_plans")
+    .select("id, family_id")
+    .eq("id", planId)
+    .maybeSingle();
+  if (!plan || plan.family_id !== membership.family_id) return { error: "Not authorized" };
+
+  return { familyId: membership.family_id };
+}
+
+// Opt a single day into a course (Starter/Dessert) — creates that day's option
+// slots from the course-filtered library. Idempotent; admin-only; main is implicit.
+export async function addCourseToDay(
+  planId: string,
+  day: number,
+  course: string
+): Promise<{ error: string } | { slots: ClientSlot[] }> {
+  const c = toCourse(course);
+  if (!c || c === "main") return { error: "That course can't be added" };
+
+  const supabase = await createClient();
+  const auth = await authoriseCourseEdit(supabase, planId);
+  if ("error" in auth) return auth;
+
+  // Idempotent — if the course already exists for the day, do nothing
+  const { data: existing } = await supabase
+    .from("meal_plan_slots")
+    .select("id")
+    .eq("meal_plan_id", planId)
+    .eq("day_of_week", day)
+    .eq("course", c)
+    .limit(1);
+  if (existing && existing.length > 0) return { slots: [] };
+
+  const pool = await getFamilyRecipePool(supabase, auth.familyId);
+  const rows = courseSlotRows(planId, day, c, pool);
+  const { data: inserted, error } = await supabase
+    .from("meal_plan_slots")
+    .insert(rows)
+    .select("id, day_of_week, course, option_number, status, recipe_id");
+  if (error || !inserted) return { error: error?.message ?? "Failed to add course" };
+
+  const recipeIds = [...new Set(inserted.map((s) => s.recipe_id).filter(Boolean))] as string[];
+  const recipeById = new Map<string, SlotRecipe>();
+  if (recipeIds.length > 0) {
+    const { data: recipeRows } = await supabase
+      .from("recipes")
+      .select("id, title, image_url, prep_time, cuisine")
+      .in("id", recipeIds);
+    for (const r of recipeRows ?? []) recipeById.set(r.id, r as SlotRecipe);
+  }
+
+  revalidatePath("/meal-plan");
+  return {
+    slots: inserted.map((s) => ({
+      id: s.id,
+      day_of_week: s.day_of_week,
+      course: s.course,
+      option_number: s.option_number,
+      status: s.status as ClientSlot["status"],
+      recipe: s.recipe_id ? (recipeById.get(s.recipe_id) ?? null) : null,
+    })),
+  };
+}
+
+// Remove a course (Starter/Dessert) from a single day. Admin-only; main can't be
+// removed. Votes on the removed slots are deleted (the caller confirms first).
+export async function removeCourseFromDay(
+  planId: string,
+  day: number,
+  course: string
+): Promise<{ error: string } | { removedSlotIds: string[] }> {
+  const c = toCourse(course);
+  if (!c || c === "main") return { error: "The main course can't be removed" };
+
+  const supabase = await createClient();
+  const auth = await authoriseCourseEdit(supabase, planId);
+  if ("error" in auth) return auth;
+
+  const { data: slotRows } = await supabase
+    .from("meal_plan_slots")
+    .select("id")
+    .eq("meal_plan_id", planId)
+    .eq("day_of_week", day)
+    .eq("course", c);
+  const ids = (slotRows ?? []).map((s) => s.id);
+  if (ids.length === 0) return { removedSlotIds: [] };
+
+  // Defensive: clear any votes first in case the FK isn't cascading.
+  await supabase.from("votes").delete().in("meal_plan_slot_id", ids);
+  const { error } = await supabase.from("meal_plan_slots").delete().in("id", ids);
+  if (error) return { error: error.message };
+
+  revalidatePath("/meal-plan");
+  return { removedSlotIds: ids };
 }
 
 export async function generateShoppingList(
