@@ -599,24 +599,25 @@ export async function generateShoppingList(
     .maybeSingle();
   if (!plan) return "No meal plan for this week";
 
-  // For each day, use the confirmed option first, then the lowest option_number with a recipe
+  // For each (day, course), use the confirmed option first, then the lowest option_number with a recipe
   const { data: allSlots } = await supabase
     .from("meal_plan_slots")
-    .select("day_of_week, option_number, recipe_id, status")
+    .select("day_of_week, course, option_number, recipe_id, status")
     .eq("meal_plan_id", plan.id)
     .not("recipe_id", "is", null)
     .order("day_of_week")
     .order("option_number");
 
-  // Pick one recipe per day (confirmed > option 1 > first available)
-  const dayMap = new Map<number, string>();
+  // Pick one recipe per (day, course) (confirmed > lowest option_number > first available)
+  const pickMap = new Map<string, string>();
   for (const s of allSlots ?? []) {
-    const existing = dayMap.get(s.day_of_week);
+    const key = `${s.day_of_week}|${s.course}`;
+    const existing = pickMap.get(key);
     if (!existing || s.status === "confirmed") {
-      dayMap.set(s.day_of_week, s.recipe_id as string);
+      pickMap.set(key, s.recipe_id as string);
     }
   }
-  const recipeIds = [...new Set(dayMap.values())];
+  const recipeIds = [...new Set(pickMap.values())];
   if (recipeIds.length === 0) return "No recipes in this week's plan";
 
   const { data: allIngredients, error: ingError } = await supabase
@@ -708,7 +709,7 @@ export async function assignRecipeToSlot(
   // Verify slot belongs to this user's family
   const { data: slot } = await supabase
     .from("meal_plan_slots")
-    .select("id, meal_plan_id, day_of_week, meal_plans(family_id)")
+    .select("id, meal_plan_id, day_of_week, course, meal_plans(family_id)")
     .eq("id", slotId)
     .single();
   if (!slot) return { error: "Slot not found" };
@@ -743,13 +744,14 @@ export async function assignRecipeToSlot(
   if (error) return { error: error.message };
 
   // Auto-reshuffle from the library (no AI): refresh this day's other suggested,
-  // unvoted options and drop the chosen recipe from other days' options.
+  // unvoted options of the same course and drop the chosen recipe from other days.
   const changed = await reshuffleAfterAssign(
     supabase,
     membership.family_id,
     slot.meal_plan_id as string,
     slotId,
     slot.day_of_week as number,
+    (slot.course as string) ?? "main",
     recipeId
   );
 
@@ -760,6 +762,7 @@ export async function assignRecipeToSlot(
 type PlanSlot = {
   id: string;
   day_of_week: number;
+  course: string;
   option_number: number;
   recipe_id: string | null;
   status: string;
@@ -767,15 +770,17 @@ type PlanSlot = {
 
 // When a recipe is picked for a slot, keep the daily options fresh without
 // spending an AI call: re-roll the same day's other suggested+unvoted options
-// from the family library and replace the chosen recipe wherever it appears as
-// an option on other days. Returns the slots whose recipe changed so the client
-// can update in place. Best-effort — never blocks the assignment it follows.
+// *of the same course* from the family library and replace the chosen recipe
+// wherever it appears as an option of that course on other days. Returns the
+// slots whose recipe changed so the client can update in place. Best-effort —
+// never blocks the assignment it follows.
 async function reshuffleAfterAssign(
   supabase: Awaited<ReturnType<typeof createClient>>,
   familyId: string,
   planId: string,
   assignedSlotId: string,
   assignedDay: number,
+  assignedCourse: string,
   assignedRecipeId: string
 ): Promise<ChangedSlot[]> {
   const libraryIds = (await getFamilyRecipePool(supabase, familyId)).map((r) => r.id);
@@ -783,7 +788,7 @@ async function reshuffleAfterAssign(
 
   const { data: slotData } = await supabase
     .from("meal_plan_slots")
-    .select("id, day_of_week, option_number, recipe_id, status")
+    .select("id, day_of_week, course, option_number, recipe_id, status")
     .eq("meal_plan_id", planId);
   const slots = (slotData ?? []) as PlanSlot[];
   if (slots.length === 0) return [];
@@ -795,8 +800,12 @@ async function reshuffleAfterAssign(
     .in("meal_plan_slot_id", slots.map((s) => s.id));
   const votedSlotIds = new Set((voteRows ?? []).map((v) => v.meal_plan_slot_id));
 
+  // Only ever touch slots of the same course as the one just assigned.
   const isRerollable = (s: PlanSlot) =>
-    s.id !== assignedSlotId && s.status === "suggested" && !votedSlotIds.has(s.id);
+    s.id !== assignedSlotId &&
+    s.course === assignedCourse &&
+    s.status === "suggested" &&
+    !votedSlotIds.has(s.id);
 
   // (a) other options on the assigned day; (b) the chosen recipe wherever else it appears
   const targets = slots.filter(

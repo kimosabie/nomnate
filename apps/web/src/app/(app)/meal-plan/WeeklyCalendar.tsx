@@ -2,11 +2,15 @@
 
 import { useMemo, useState, useEffect, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { COURSE_LABELS, type Course } from "@nomnate/types";
 import { castVote, removeFromSlot, assignRecipeToSlot, suggestForSlot } from "./actions";
 
 const DAY_NAMES = [
   "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
 ];
+
+// Render order for course sections within a day
+const COURSE_RENDER_ORDER = ["starter", "main", "dessert", "side"] as const;
 
 const VOTE_CONFIG = {
   love: {
@@ -46,6 +50,7 @@ export type RecipeData = {
 export type SlotData = {
   id: string;
   day_of_week: number;
+  course: string;
   option_number: number;
   status: "suggested" | "voted" | "confirmed";
   recipe: RecipeData | null;
@@ -239,15 +244,15 @@ export function WeeklyCalendar({
     setAiRemaining((n) => Math.max(0, n - 1));
   }
 
-  // Days where this member has already cast a vote (for the single-vote-per-day rule)
-  const myVotedDays = useMemo(() => {
-    const days = new Set<number>();
+  // (day|course) combos where this member has already voted (single-vote-per-course rule)
+  const myVotedDayCourses = useMemo(() => {
+    const set = new Set<string>();
     for (const slot of slots) {
       if (votes.some((v) => v.meal_plan_slot_id === slot.id && v.member_id === memberId)) {
-        days.add(slot.day_of_week);
+        set.add(`${slot.day_of_week}|${slot.course}`);
       }
     }
-    return days;
+    return set;
   }, [votes, slots, memberId]);
 
   // Group slots by day_of_week
@@ -285,16 +290,16 @@ export function WeeklyCalendar({
       {dayGroups.map((daySlots) => {
         const dow = daySlots[0].day_of_week;
 
-        // Find the leading option (highest score, or confirmed)
-        const confirmedSlot = daySlots.find((s) => s.status === "confirmed");
-        const slotScores = daySlots.map((s) => ({
-          id: s.id,
-          score: scoreOf(votes.filter((v) => v.meal_plan_slot_id === s.id)),
-        }));
-        const maxScore = Math.max(...slotScores.map((s) => s.score));
-        const leadingSlotId =
-          confirmedSlot?.id ??
-          (maxScore > 0 ? (slotScores.find((s) => s.score === maxScore)?.id ?? null) : null);
+        // Group the day's slots by course (starter → main → dessert → side)
+        const courseGroups = COURSE_RENDER_ORDER
+          .map((course) => ({
+            course,
+            courseSlots: daySlots
+              .filter((s) => s.course === course)
+              .sort((a, b) => a.option_number - b.option_number),
+          }))
+          .filter((g) => g.courseSlots.length > 0);
+        const multiCourse = courseGroups.length > 1;
 
         return (
           <div
@@ -309,9 +314,28 @@ export function WeeklyCalendar({
               <span className="text-xs text-slate">{dayDate(weekStart, dow)}</span>
             </div>
 
-            {/* Option cards */}
-            <div className="divide-y divide-[#F5D5C0]/60">
-              {daySlots.map((slot) => {
+            {courseGroups.map(({ course, courseSlots }) => {
+              // Leading option within this course (highest score, or confirmed)
+              const confirmedSlot = courseSlots.find((s) => s.status === "confirmed");
+              const slotScores = courseSlots.map((s) => ({
+                id: s.id,
+                score: scoreOf(votes.filter((v) => v.meal_plan_slot_id === s.id)),
+              }));
+              const maxScore = Math.max(...slotScores.map((s) => s.score));
+              const leadingSlotId =
+                confirmedSlot?.id ??
+                (maxScore > 0 ? (slotScores.find((s) => s.score === maxScore)?.id ?? null) : null);
+
+              return (
+                <div key={course}>
+                  {multiCourse && (
+                    <div className="px-4 pt-2.5 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-flame-dark">
+                      {COURSE_LABELS[course as Course] ?? course}
+                    </div>
+                  )}
+                  {/* Option cards */}
+                  <div className="divide-y divide-[#F5D5C0]/60">
+                    {courseSlots.map((slot) => {
                 const recipe = slotRecipes.get(slot.id) ?? null;
                 const slotVotes = votes.filter((v) => v.meal_plan_slot_id === slot.id);
                 const myVote = slotVotes.find((v) => v.member_id === memberId)?.value ?? null;
@@ -322,7 +346,7 @@ export function WeeklyCalendar({
                 const isLeading = leadingSlotId === slot.id && recipe !== null;
                 const isConfirmed = slot.status === "confirmed";
                 const iVotedThisSlot = votes.some((v) => v.meal_plan_slot_id === slot.id && v.member_id === memberId);
-                const dayAlreadyVoted = myVotedDays.has(dow) && !iVotedThisSlot;
+                const dayAlreadyVoted = myVotedDayCourses.has(`${dow}|${slot.course}`) && !iVotedThisSlot;
 
                 return (
                   <div
@@ -520,7 +544,10 @@ export function WeeklyCalendar({
                   </div>
                 );
               })}
-            </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         );
       })}

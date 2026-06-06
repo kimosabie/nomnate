@@ -126,7 +126,7 @@ export default async function MealPlanPage() {
         .maybeSingle(),
       supabase
         .from("meal_plan_slots")
-        .select("id, day_of_week, option_number, status, recipe_id")
+        .select("id, day_of_week, course, option_number, status, recipe_id")
         .eq("meal_plan_id", plan.id)
         .order("day_of_week")
         .order("option_number"),
@@ -185,6 +185,7 @@ export default async function MealPlanPage() {
   const slotsData: SlotData[] = slots.map((s) => ({
     id: s.id,
     day_of_week: s.day_of_week,
+    course: s.course,
     option_number: s.option_number,
     status: s.status as SlotData["status"],
     recipe: s.recipe_id ? (recipeMap.get(s.recipe_id) ?? null) : null,

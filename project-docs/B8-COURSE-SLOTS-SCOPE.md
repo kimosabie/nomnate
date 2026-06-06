@@ -62,3 +62,12 @@ Source feedback: *"Need to setup the week in the meal plan and allow for the adm
 
 ## Effort (rough)
 B8.1 small–medium · B8.2 small · B8.3 large · B8.4 medium. Recommend shipping B8.1+B8.2 first (safe, invisible until opt-in), then B8.3 behind the family's course config.
+
+## B8.3 sub-steps (the large phase, split for incremental shipping)
+
+- **B8.3a — Course-aware plumbing + UI grouping (zero behaviour change).** ✅ *shipped*
+  Slots carry `course` through the page → `WeeklyCalendar` (grouped day → course → options, heading only when >1 course); single-vote rule → per (day, course); shopping winner → per (day, course); P17 reshuffle scoped to the assigned slot's course. Provably identical while every slot is `main`.
+- **B8.3b — Course-aware generation.** `generatePlan` creates 3 course-filtered option slots per day × each family-default course (P16 distinct draw; fallback for thin pools; course-filter the reshuffle pool too). First visible behaviour, gated by the B8.2 family setting.
+- **B8.3c — Per-day opt-in (headline UX).** `addCourseToDay` / `removeCourseFromDay` actions (course-filtered fill; vote-guard + confirm on remove; `main` non-removable) + admin-only "➕ Add starter / Add dessert" controls in `WeeklyCalendar`.
+
+> Deferred to B8.4: course-aware AI suggest, enforce "no dessert in a main slot", and course-filtering the reshuffle pool so a re-roll never injects a wrong-course recipe.
