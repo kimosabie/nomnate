@@ -685,15 +685,17 @@ export async function removeFromSlot(slotId: string): Promise<string | null> {
   return null;
 }
 
+export type ChangedSlot = { slotId: string; recipe: SlotRecipe | null };
+
 export async function assignRecipeToSlot(
   slotId: string,
   recipeId: string
-): Promise<string | null> {
+): Promise<{ error: string } | { changed: ChangedSlot[] }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return "Not authenticated";
+  if (!user) return { error: "Not authenticated" };
 
   const { data: membership } = await supabase
     .from("family_members")
@@ -701,17 +703,17 @@ export async function assignRecipeToSlot(
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
-  if (!membership) return "No family found";
+  if (!membership) return { error: "No family found" };
 
   // Verify slot belongs to this user's family
   const { data: slot } = await supabase
     .from("meal_plan_slots")
-    .select("id, meal_plans(family_id)")
+    .select("id, meal_plan_id, day_of_week, meal_plans(family_id)")
     .eq("id", slotId)
     .single();
-  if (!slot) return "Slot not found";
+  if (!slot) return { error: "Slot not found" };
   const slotFamilyId = (slot.meal_plans as { family_id: string } | null)?.family_id;
-  if (slotFamilyId !== membership.family_id) return "Not authorized";
+  if (slotFamilyId !== membership.family_id) return { error: "Not authorized" };
 
   // Verify recipe is accessible to this family
   const { data: recipe } = await supabase
@@ -719,7 +721,7 @@ export async function assignRecipeToSlot(
     .select("id, is_global, family_id")
     .eq("id", recipeId)
     .maybeSingle();
-  if (!recipe) return "Recipe not found";
+  if (!recipe) return { error: "Recipe not found" };
 
   if (recipe.is_global) {
     const { data: libEntry } = await supabase
@@ -728,9 +730,9 @@ export async function assignRecipeToSlot(
       .eq("recipe_id", recipeId)
       .eq("family_id", membership.family_id)
       .maybeSingle();
-    if (!libEntry) return "Recipe not in your library";
+    if (!libEntry) return { error: "Recipe not in your library" };
   } else if (recipe.family_id !== membership.family_id) {
-    return "Recipe not found";
+    return { error: "Recipe not found" };
   }
 
   const { error } = await supabase
@@ -738,9 +740,135 @@ export async function assignRecipeToSlot(
     .update({ recipe_id: recipeId })
     .eq("id", slotId);
 
-  if (error) return error.message;
+  if (error) return { error: error.message };
+
+  // Auto-reshuffle from the library (no AI): refresh this day's other suggested,
+  // unvoted options and drop the chosen recipe from other days' options.
+  const changed = await reshuffleAfterAssign(
+    supabase,
+    membership.family_id,
+    slot.meal_plan_id as string,
+    slotId,
+    slot.day_of_week as number,
+    recipeId
+  );
+
   revalidatePath("/meal-plan");
-  return null;
+  return { changed };
+}
+
+type PlanSlot = {
+  id: string;
+  day_of_week: number;
+  option_number: number;
+  recipe_id: string | null;
+  status: string;
+};
+
+// When a recipe is picked for a slot, keep the daily options fresh without
+// spending an AI call: re-roll the same day's other suggested+unvoted options
+// from the family library and replace the chosen recipe wherever it appears as
+// an option on other days. Returns the slots whose recipe changed so the client
+// can update in place. Best-effort — never blocks the assignment it follows.
+async function reshuffleAfterAssign(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  familyId: string,
+  planId: string,
+  assignedSlotId: string,
+  assignedDay: number,
+  assignedRecipeId: string
+): Promise<ChangedSlot[]> {
+  const libraryIds = (await getFamilyRecipePool(supabase, familyId)).map((r) => r.id);
+  if (libraryIds.length === 0) return [];
+
+  const { data: slotData } = await supabase
+    .from("meal_plan_slots")
+    .select("id, day_of_week, option_number, recipe_id, status")
+    .eq("meal_plan_id", planId);
+  const slots = (slotData ?? []) as PlanSlot[];
+  if (slots.length === 0) return [];
+
+  // Don't disturb slots that already have votes.
+  const { data: voteRows } = await supabase
+    .from("votes")
+    .select("meal_plan_slot_id")
+    .in("meal_plan_slot_id", slots.map((s) => s.id));
+  const votedSlotIds = new Set((voteRows ?? []).map((v) => v.meal_plan_slot_id));
+
+  const isRerollable = (s: PlanSlot) =>
+    s.id !== assignedSlotId && s.status === "suggested" && !votedSlotIds.has(s.id);
+
+  // (a) other options on the assigned day; (b) the chosen recipe wherever else it appears
+  const targets = slots.filter(
+    (s) => isRerollable(s) && (s.day_of_week === assignedDay || s.recipe_id === assignedRecipeId)
+  );
+  if (targets.length === 0) return [];
+
+  const shuffled = [...libraryIds];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  let cursor = 0;
+  const nextPick = (excluded: Set<string>): string | null => {
+    for (let n = 0; n < shuffled.length; n++) {
+      const cand = shuffled[(cursor + n) % shuffled.length];
+      if (!excluded.has(cand)) {
+        cursor = (cursor + n + 1) % shuffled.length;
+        return cand;
+      }
+    }
+    return null;
+  };
+
+  const slotsByDay = new Map<number, PlanSlot[]>();
+  for (const s of slots) {
+    const arr = slotsByDay.get(s.day_of_week) ?? [];
+    arr.push(s);
+    slotsByDay.set(s.day_of_week, arr);
+  }
+  const targetsByDay = new Map<number, PlanSlot[]>();
+  for (const t of targets) {
+    const arr = targetsByDay.get(t.day_of_week) ?? [];
+    arr.push(t);
+    targetsByDay.set(t.day_of_week, arr);
+  }
+
+  const newRecipeBySlot = new Map<string, string>();
+  for (const [day, dayTargets] of targetsByDay) {
+    // Keep within-day distinctness and never reintroduce the just-chosen recipe.
+    const kept = new Set<string>([assignedRecipeId]);
+    const targetIds = new Set(dayTargets.map((t) => t.id));
+    for (const s of slotsByDay.get(day) ?? []) {
+      if (!targetIds.has(s.id) && s.recipe_id) kept.add(s.recipe_id);
+    }
+    const picked = new Set<string>();
+    for (const t of dayTargets) {
+      const pick = nextPick(new Set<string>([...kept, ...picked]));
+      if (pick) {
+        newRecipeBySlot.set(t.id, pick);
+        picked.add(pick);
+      }
+    }
+  }
+  if (newRecipeBySlot.size === 0) return [];
+
+  await Promise.all(
+    [...newRecipeBySlot.entries()].map(([sid, rid]) =>
+      supabase.from("meal_plan_slots").update({ recipe_id: rid }).eq("id", sid)
+    )
+  );
+
+  const { data: recipeRows } = await supabase
+    .from("recipes")
+    .select("id, title, image_url, prep_time, cuisine")
+    .in("id", [...new Set(newRecipeBySlot.values())]);
+  const recipeById = new Map((recipeRows ?? []).map((r) => [r.id, r as SlotRecipe]));
+
+  return [...newRecipeBySlot.entries()].map(([sid, rid]) => ({
+    slotId: sid,
+    recipe: recipeById.get(rid) ?? null,
+  }));
 }
 
 type SlotRecipe = {

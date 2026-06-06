@@ -202,11 +202,20 @@ export function WeeklyCalendar({
     const prev = slotRecipes.get(slotId) ?? null;
     setSlotRecipes((m) => new Map(m).set(slotId, recipe));
     setLoadingSlotId(slotId);
-    const error = await assignRecipeToSlot(slotId, recipe.id);
+    const result = await assignRecipeToSlot(slotId, recipe.id);
     setLoadingSlotId(null);
-    if (error) {
+    if ("error" in result) {
       setSlotRecipes((m) => new Map(m).set(slotId, prev));
-      setSlotError(error);
+      setSlotError(result.error);
+      return;
+    }
+    // Apply the library reshuffle (this day's other options + de-duped other days)
+    if (result.changed.length > 0) {
+      setSlotRecipes((m) => {
+        const next = new Map(m);
+        for (const c of result.changed) next.set(c.slotId, c.recipe);
+        return next;
+      });
     }
   }
 

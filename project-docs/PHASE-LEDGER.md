@@ -44,6 +44,7 @@ therefore a *retroactive thematic grouping* of the history:
 | P14 | fix: meal-plan swap picker shows the whole library (manual + saved global) | The swap/add picker queried only `recipes.family_id`, missing saved global-library recipes (which live in the `family_recipes` junction) — so a family with a 26-recipe library saw 0 options. Picker + empty-state count now combine both sources. | _pending_ | 2026-06-06 |
 | P15 | feat: clickable recipe search results + family rename + AI-Chef AU/AE | Library search results link to the `/recipes/[id]` detail page (B6); family admins can rename the family inline (B11); AI Chef store guidance completed for AU/AE incl. halal for AE (B14). | _pending_ | 2026-06-06 |
 | P16 | fix: filter test feedback from triage + distinct daily meal options | Obvious test submissions ("test", "tes3", …) are quarantined (marked reviewed) so they never reach AI triage or the review queue (B13); `generatePlan` now guarantees each day's 3 options are distinct (B9, partial). | _pending_ | 2026-06-06 |
+| P17 | feat: auto-reshuffle meal options from the library on selection | Assigning a recipe to a slot now re-rolls that day's other suggested/unvoted options from the family library and drops the chosen recipe from other days' options (no AI, votes preserved); changed slots returned so the client updates live (B9 complete). | _pending_ | 2026-06-06 |
 
 ## Planned work streams (feedback backlog)
 
@@ -63,7 +64,7 @@ pending reconciliation.
 | B6 | Recipe detail: dish summary + cooking method | 🟠 high | Shipped — library search results now link to detail (P15); external (unsaved) results still save-first | P2 `3cd952c`, P9 `dbdce3a`, P15 |
 | B7 | Nutritional data so calorie tracking works | 🟠 high | **Partial** — UI shipped P2 (`f9808e0`); data quality open | partial |
 | B8 | Structured daily course slots (starter/main/dessert) | 🟠 high | **Open** | not in git |
-| B9 | Auto-refresh daily options via AI after a selection | 🟡 medium | **Partial** — distinct daily options shipped (P16); dynamic AI re-roll after a selection **deferred** (conflicts with the 5/week AI cap + needs client/server slot-sync — product decision) | P10 (`4143ab9`), P16 |
+| B9 | Auto-refresh daily options after a selection | 🟡 medium | Shipped | P16 (distinct daily options) + P17 (library auto-reshuffle on selection — chosen over AI re-roll to avoid the 5/week cap; votes preserved) |
 | B10 | Preferred grocery-store selection UI (≤5) in Family Settings | 🟡 medium | Shipped | `StorePreferencesForm` on `/family` — admin-gated, country-filtered, keeps ≥1; all countries already ≤5 stores |
 | B11 | Family-name editing for family admins | 🟡 medium | Shipped | P15 — inline rename on `/family` for admins |
 | B12 | Party/braai event-planning section | 🟡 medium | **Open** | not in git |
