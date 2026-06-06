@@ -52,7 +52,7 @@ export default async function AdminFeedbackPage({
   const { data: items } = await feedbackQuery;
 
   const userIds = [...new Set((items ?? []).map((i) => i.user_id).filter(Boolean))];
-  let nameMap: Record<string, string> = {};
+  const nameMap: Record<string, string> = {};
   if (userIds.length > 0) {
     const { data: members } = await admin
       .from("family_members")

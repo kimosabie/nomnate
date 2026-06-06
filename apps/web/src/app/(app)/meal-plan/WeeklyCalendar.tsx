@@ -473,7 +473,6 @@ export function WeeklyCalendar({
                           value={pickerSearch}
                           onChange={(e) => setPickerSearch(e.target.value)}
                           className="w-full px-3 py-2 text-sm border border-cream-border rounded-xl bg-white text-charcoal placeholder:text-slate focus:outline-none focus:ring-2 focus:ring-flame focus:border-transparent"
-                          // eslint-disable-next-line jsx-a11y/no-autofocus
                           autoFocus
                         />
 

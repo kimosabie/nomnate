@@ -18,6 +18,9 @@ export function InstallPrompt() {
       /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as unknown as { MSStream?: unknown }).MSStream;
 
     if (isIOS) {
+      // navigator-based detection is browser-only, so it runs after mount
+      // rather than during render to avoid an SSR hydration mismatch.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMode("ios");
       return;
     }

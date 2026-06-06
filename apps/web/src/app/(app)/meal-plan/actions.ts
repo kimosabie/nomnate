@@ -202,10 +202,6 @@ function buildFamilyMembers(
   }));
 }
 
-function normalizeUnit(unit: string | null | undefined): string {
-  return cleanUnit(unit).replace("__notaste__", "");
-}
-
 async function getFamilyRecipePool(
   supabase: Awaited<ReturnType<typeof createClient>>,
   familyId: string

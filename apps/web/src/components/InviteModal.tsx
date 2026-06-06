@@ -9,7 +9,10 @@ export function InviteModal({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    // localStorage is browser-only, so this must run after mount rather than
+    // during render (which would cause an SSR hydration mismatch).
     if (!localStorage.getItem(STORAGE_KEY)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOpen(true);
       localStorage.setItem(STORAGE_KEY, "1");
     }

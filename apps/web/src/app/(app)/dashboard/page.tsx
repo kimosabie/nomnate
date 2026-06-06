@@ -13,7 +13,7 @@ function computeStreak(voteDates: Set<number>): number {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
   // If not voted today, we still count yesterday as the streak start
-  let cursor = voteDates.has(today.getTime())
+  const cursor = voteDates.has(today.getTime())
     ? today.getTime()
     : today.getTime() - DAY_MS;
   let streak = 0;
@@ -81,7 +81,7 @@ export default async function DashboardPage() {
     .eq("week_start_date", currentWeekStart())
     .maybeSingle();
 
-  let voteCounts: Record<string, number> = {};
+  const voteCounts: Record<string, number> = {};
   const firstVoteAt: Record<string, string> = {};
   if (plan) {
     const { data: slots } = await supabase
@@ -268,7 +268,7 @@ export default async function DashboardPage() {
         <div className="bg-white rounded-[14px] border border-cream-border p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xs font-semibold text-slate uppercase tracking-wide">
-              This week's voters
+              This week&apos;s voters
             </h2>
             {monthTotalVotes > 0 && (
               <p className="text-[10px] text-slate">

@@ -3,11 +3,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Verify your email — NomNate" };
 
-export default function VerifyEmailPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ email?: string }>;
-}) {
+export default function VerifyEmailPage() {
   return (
     <div className="text-center space-y-4">
       <div className="w-14 h-14 rounded-[14px] bg-flame-light flex items-center justify-center text-3xl mx-auto">

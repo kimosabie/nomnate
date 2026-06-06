@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type FeedbackType = "bug" | "idea" | "feedback";
@@ -12,16 +12,13 @@ export function FeedbackFab() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pageUrl, setPageUrl] = useState("");
-
-  useEffect(() => {
-    setPageUrl(window.location.pathname);
-  }, [open]);
 
   async function handleSubmit() {
     if (!message.trim() || submitting) return;
     setSubmitting(true);
     setError(null);
+
+    const pageUrl = window.location.pathname;
 
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -59,7 +56,7 @@ export function FeedbackFab() {
         message: message.trim(),
         pageUrl,
         userName: member?.name ?? undefined,
-        familyName: (member?.families as any)?.name ?? undefined,
+        familyName: (member?.families as { name: string } | null)?.name ?? undefined,
       })
     })
 
