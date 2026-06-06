@@ -33,16 +33,22 @@ export type ChefResponse = {
   error: string | null;
 };
 
+const COUNTRY_NAMES: Record<string, string> = {
+  ZA: "South Africa",
+  GB: "the United Kingdom",
+  FR: "France",
+};
+
 const COUNTRY_STORES: Record<string, string> = {
   ZA: "Woolworths, Pick n Pay, and Checkers Sixty60",
-  UK: "Waitrose, Sainsbury's, and M&S Food",
+  GB: "Waitrose, Sainsbury's, and M&S Food",
   FR: "Auchan, Carrefour, Monoprix, and Lidl",
 };
 
 const COUNTRY_STORE_GUIDANCE: Record<string, string> = {
   ZA: `  → Use SA product names and brands (e.g. "Woolworths free-range chicken", "PnP free-range eggs")
   → Suggest Sixty60 for quick delivery of staples`,
-  UK: `  → Suggest UK equivalents for SA ingredients
+  GB: `  → Suggest UK equivalents for SA ingredients
   → e.g. "boerewors available at Woolworths UK or make your own with pork/beef mince"
   → Note SA products available at UK stores (Woolworths UK stocks boerewors, biltong, rooibos)`,
   FR: `  → Suggest French equivalents for SA ingredients
@@ -59,7 +65,7 @@ function buildSystemPrompt(country: string): string {
 
 Always suggest South African recipes and embrace SA food culture regardless of which country this family lives in.
 
-This family shops in ${country === "ZA" ? "South Africa" : country === "UK" ? "the United Kingdom" : "France"}. Suggest ingredients available at their local stores (${stores}):
+This family shops in ${COUNTRY_NAMES[country] ?? "South Africa"}. Suggest ingredients available at their local stores (${stores}):
 ${storeGuidance}
 
 When a user first messages you:

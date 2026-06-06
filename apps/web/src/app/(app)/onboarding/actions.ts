@@ -31,7 +31,7 @@ export async function createFamily(
   if (!dn.value) return "Your name is required";
   const displayName = dn.value;
 
-  const country = ["ZA", "UK", "FR"].includes(rawCountry) ? rawCountry : "ZA";
+  const country = ["ZA", "GB", "FR", "AU", "AE"].includes(rawCountry) ? rawCountry : "ZA";
 
   // SELECT policy includes created_by = auth.uid(), so RETURNING is safe here
   const { data: family, error } = await supabase

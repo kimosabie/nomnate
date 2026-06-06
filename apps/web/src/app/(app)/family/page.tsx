@@ -81,7 +81,7 @@ export default async function FamilySettingsPage() {
             <CountryForm currentCountry={family?.country ?? "ZA"} />
           ) : (
             <p className="text-sm font-medium text-charcoal">
-              {family?.country === "GB" || family?.country === "UK" ? "🇬🇧 United Kingdom" : family?.country === "FR" ? "🇫🇷 France" : family?.country === "AU" ? "🇦🇺 Australia" : family?.country === "AE" ? "🇦🇪 UAE" : "🇿🇦 South Africa"}
+              {family?.country === "GB" ? "🇬🇧 United Kingdom" : family?.country === "FR" ? "🇫🇷 France" : family?.country === "AU" ? "🇦🇺 Australia" : family?.country === "AE" ? "🇦🇪 UAE" : "🇿🇦 South Africa"}
             </p>
           )}
         </div>
