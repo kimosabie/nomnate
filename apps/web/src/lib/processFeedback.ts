@@ -20,6 +20,18 @@ type TodoItem = {
   feedback_summary: string;
 };
 
+// Obvious test/throwaway submissions (e.g. "test", "test2", "tes3", "testing email",
+// "this is a test msg") shouldn't be triaged into todos or sit in the review queue.
+// Conservative on purpose — short messages only — so real feedback is never dropped.
+function isTestFeedback(message: string): boolean {
+  const m = message.trim().toLowerCase();
+  if (m.length === 0) return true;
+  if (/^tes(t(ing)?)?[\s\d]*$/.test(m)) return true; // test, tes3, test2, testing
+  if (/^test(ing)?\b/.test(m) && m.length <= 25) return true; // "testing email", "test msg"
+  if (/^(this is a test|test message|test feedback|ignore this)\b/.test(m)) return true;
+  return false;
+}
+
 const PRIORITY_EMOJI: Record<string, string> = {
   critical: "🔴",
   high: "🟠",
@@ -51,7 +63,23 @@ export async function processFeedback(): Promise<DailyBriefResult> {
   if (feedbackError) return { error: feedbackError.message };
   if (!feedback || feedback.length === 0) return { message: "No new feedback" };
 
-  const rows = feedback as FeedbackRow[];
+  const allRows = feedback as FeedbackRow[];
+
+  // Quarantine obvious test submissions: mark them reviewed so they neither reach
+  // the AI triage nor linger in the admin review queue (not deleted — recoverable).
+  const testRows = allRows.filter((r) => isTestFeedback(r.message));
+  const rows = allRows.filter((r) => !isTestFeedback(r.message));
+
+  if (testRows.length > 0) {
+    await supabase
+      .from("feedback")
+      .update({ reviewed: true })
+      .in("id", testRows.map((f) => f.id));
+  }
+
+  if (rows.length === 0) {
+    return { ok: true, feedbackProcessed: testRows.length, todosCreated: 0 };
+  }
 
   const userIds = [...new Set(rows.map((r) => r.user_id).filter(Boolean))] as string[];
   const nameMap: Record<string, string> = {};

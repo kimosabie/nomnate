@@ -534,20 +534,29 @@ export async function generatePlan(
       slots.push({ meal_plan_id: plan.id, day_of_week: d, option_number: 1, recipe_id: null, status: "suggested" });
     }
   } else {
-    // Build a pool that's large enough for 21 picks (7 days × 3 options)
-    const needed = 7 * 3;
-    const pool: string[] = [];
-    while (pool.length < needed) {
-      pool.push(...shuffle([...allIds]));
-    }
-    let idx = 0;
+    // Draw from a refilling, reshuffled queue so each day's 3 options are distinct
+    // (the same recipe never appears twice in one day) and repeats are spread out.
+    let queue: string[] = [];
+    const draw = (usedToday: Set<string>): string => {
+      if (queue.length === 0) queue = shuffle([...allIds]);
+      // prefer a recipe not already shown today
+      const k = queue.findIndex((id) => !usedToday.has(id));
+      if (k !== -1) return queue.splice(k, 1)[0];
+      // whole queue is already used today (library smaller than 3) — refill and take any
+      queue = shuffle([...allIds]);
+      return queue.shift()!;
+    };
+
     for (let d = 0; d < 7; d++) {
+      const usedToday = new Set<string>();
       for (let opt = 1; opt <= 3; opt++) {
+        const recipeId = draw(usedToday);
+        usedToday.add(recipeId);
         slots.push({
           meal_plan_id: plan.id,
           day_of_week: d,
           option_number: opt,
-          recipe_id: pool[idx++],
+          recipe_id: recipeId,
           status: "suggested",
         });
       }
