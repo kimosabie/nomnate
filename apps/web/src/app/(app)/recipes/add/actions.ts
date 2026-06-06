@@ -58,7 +58,7 @@ export async function addManualRecipe(
     (DIET_TYPES as readonly string[]).includes(d)
   );
 
-  let ingredients: Array<{ name: string; quantity: number | null; unit: string | null }> = [];
+  const ingredients: Array<{ name: string; quantity: number | null; unit: string | null }> = [];
   try {
     const raw = JSON.parse(String(formData.get("ingredients_json") ?? "[]"));
     if (Array.isArray(raw)) {

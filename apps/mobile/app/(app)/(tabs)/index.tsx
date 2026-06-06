@@ -186,7 +186,7 @@ export default function MealPlanScreen() {
             <Text style={styles.emptyEmoji}>📅</Text>
             <Text style={styles.emptyTitle}>No meal plan yet</Text>
             <Text style={styles.emptyText}>
-              Open the NomNate web app to generate this week's meal plan.
+              Open the NomNate web app to generate this week&apos;s meal plan.
             </Text>
           </View>
         ) : daySlots.length === 0 ? (

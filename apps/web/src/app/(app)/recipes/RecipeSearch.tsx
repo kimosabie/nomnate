@@ -8,9 +8,8 @@ import {
   saveMealDBRecipe,
 } from "./actions";
 import { saveSpoonacularRecipe } from "./spoonacular-actions";
-import type { SearchState, RecipeCard, ExternalResult } from "./actions";
+import type { SearchState, RecipeCard } from "./actions";
 import type { SpoonacularRecipe } from "@nomnate/types";
-import type { MealDBMeal } from "@nomnate/lib/themealdb";
 
 const QUICK_FILTERS = [
   { key: "sa_classics", label: "🇿🇦 SA Classics" },
@@ -140,7 +139,7 @@ export function RecipeSearch() {
           <p className="text-xs font-medium text-slate uppercase tracking-wide">
             {searchState.externalResults.length} found online
           </p>
-          {searchState.externalResults.map((ext, i) => {
+          {searchState.externalResults.map((ext) => {
             if (ext.source === "spoonacular") {
               const key = `spoon_${ext.recipe.id}`;
               return (
@@ -194,7 +193,7 @@ export function RecipeSearch() {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-charcoal">Ask our AI Chef</p>
             <p className="text-xs text-slate mt-0.5 leading-relaxed">
-              Tell the AI Chef what you're in the mood for and it'll create a custom recipe for your family.
+              Tell the AI Chef what you&apos;re in the mood for and it&apos;ll create a custom recipe for your family.
             </p>
             <div className="flex flex-wrap gap-1.5 mt-2.5 mb-3">
               {["Keto dinner for 4", "SA braai sides", "Vegetarian under 30min", "Kids will eat it"].map((s) => (
