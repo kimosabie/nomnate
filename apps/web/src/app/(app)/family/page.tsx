@@ -3,8 +3,10 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CountryForm } from "./CountryForm";
 import { FamilyNameForm } from "./FamilyNameForm";
+import { CoursePreferencesForm } from "./CoursePreferencesForm";
 import { StorePreferencesForm } from "./StorePreferencesForm";
 import { getStoresByCountry } from "../shopping-list/storeUtils";
+import { COURSE_LABELS, type Course } from "@nomnate/types";
 
 export default async function FamilySettingsPage() {
   const supabase = await createClient();
@@ -13,7 +15,7 @@ export default async function FamilySettingsPage() {
 
   const { data: membership } = await supabase
     .from("family_members")
-    .select("family_id, role, name, families(name, invite_code, country, created_at, preferred_stores)")
+    .select("family_id, role, name, families(name, invite_code, country, created_at, preferred_stores, courses)")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -25,6 +27,7 @@ export default async function FamilySettingsPage() {
     country: string;
     created_at: string;
     preferred_stores: string[];
+    courses: string[];
   } | null;
 
   const memberCount = await supabase
@@ -88,6 +91,31 @@ export default async function FamilySettingsPage() {
             <p className="text-sm font-medium text-charcoal">
               {family?.country === "GB" ? "🇬🇧 United Kingdom" : family?.country === "FR" ? "🇫🇷 France" : family?.country === "AU" ? "🇦🇺 Australia" : family?.country === "AE" ? "🇦🇪 UAE" : "🇿🇦 South Africa"}
             </p>
+          )}
+        </div>
+
+        {/* Meal courses */}
+        <div className="bg-white rounded-[14px] border border-cream-border p-6 space-y-3">
+          <div>
+            <p className="text-xs font-semibold text-slate uppercase tracking-wide mb-1">Meal courses</p>
+            <p className="text-xs text-slate">
+              The default courses planned for each day. You can still add a starter or dessert to individual days in the meal plan.
+              {!isAdmin && " Only the family admin can change this."}
+            </p>
+          </div>
+          {isAdmin ? (
+            <CoursePreferencesForm current={family?.courses ?? ["main"]} />
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {(family?.courses?.length ? family.courses : ["main"]).map((c) => (
+                <span
+                  key={c}
+                  className="px-3 py-1 rounded-full text-xs font-semibold border border-cream-border text-slate bg-white"
+                >
+                  {COURSE_LABELS[c as Course] ?? c}
+                </span>
+              ))}
+            </div>
           )}
         </div>
 
