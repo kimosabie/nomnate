@@ -7,6 +7,7 @@ import { searchMealDB, getSAMeals, lookupMealDB, extractIngredients } from "@nom
 import type { MealDBMeal, MealDBListItem } from "@nomnate/lib/themealdb";
 import { checkRateLimit } from "@/lib/rateLimit";
 import type { SpoonacularRecipe } from "@nomnate/types";
+import { courseFromMealDBCategory, courseFromTitle } from "@nomnate/types";
 import { saveSpoonacularGlobally } from "./spoonacular-actions";
 
 
@@ -308,6 +309,7 @@ export async function saveMealDBRecipe(
         source_attribution: "Recipe from TheMealDB (themealdb.com) — Community contributed",
         image_url: meal.strMealThumb ?? null,
         cuisine: meal.strCategory ?? meal.strArea ?? null,
+        course: courseFromMealDBCategory(meal.strCategory) ?? courseFromTitle(meal.strMeal ?? partialTitle ?? ""),
         instructions: meal.strInstructions ?? null,
         is_global: true,
         created_by: user.id,

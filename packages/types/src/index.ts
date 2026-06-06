@@ -282,6 +282,7 @@ export interface SpoonacularRecipe {
   servings: number;
   cuisines: string[];
   diets: string[];
+  dishTypes?: string[];
   instructions: string;
   summary?: string;
   extendedIngredients: Array<{
@@ -297,6 +298,71 @@ export interface SpoonacularRecipe {
       unit: string;
     }>;
   };
+}
+
+// ─── Courses (B8) ─────────────────────────────────────────────────────────────
+
+export type Course = "starter" | "main" | "dessert" | "side";
+
+export const COURSE_TYPES: Course[] = ["starter", "main", "dessert", "side"];
+
+export const COURSE_LABELS: Record<Course, string> = {
+  starter: "Starter",
+  main: "Main",
+  dessert: "Dessert",
+  side: "Side",
+};
+
+// Courses a family can opt a day into. `main` is always present and `side` is an
+// internal classification target, so neither is user-selectable here.
+export const SELECTABLE_COURSES: Course[] = ["starter", "main", "dessert"];
+
+function isCourse(value: string): value is Course {
+  return (COURSE_TYPES as string[]).includes(value);
+}
+
+// Map Spoonacular `dishTypes` (e.g. "dessert", "main course", "side dish",
+// "appetizer", "soup", "salad") to a course. Returns null when nothing matches.
+export function courseFromSpoonacularDishTypes(dishTypes: string[]): Course | null {
+  const set = new Set(dishTypes.map((d) => d.toLowerCase().trim()));
+  if (set.has("dessert")) return "dessert";
+  if (["appetizer", "starter", "antipasti", "antipasto", "soup", "salad", "hor d'oeuvre"].some((t) => set.has(t)))
+    return "starter";
+  if (set.has("side dish")) return "side";
+  if (["main course", "main dish", "lunch", "dinner"].some((t) => set.has(t))) return "main";
+  return null;
+}
+
+// Map TheMealDB `strCategory` to a course (Dessert/Starter/Side are explicit
+// categories; meat/pasta/seafood/veg categories are mains; Breakfast isn't a course).
+export function courseFromMealDBCategory(category: string | null | undefined): Course | null {
+  if (!category) return null;
+  const c = category.toLowerCase().trim();
+  if (c === "dessert") return "dessert";
+  if (c === "starter") return "starter";
+  if (c === "side") return "side";
+  if (c === "breakfast") return null;
+  return "main";
+}
+
+// Last-resort heuristic from a recipe title — for AI recipes / backfill where no
+// source metadata exists. Returns null (caller defaults to "main") when unsure.
+export function courseFromTitle(title: string): Course | null {
+  const t = title.toLowerCase();
+  if (
+    /\b(cake|pudding|tart|pie|ice ?cream|brownie|cookie|cheesecake|malva|koeksister|dessert|trifle|mousse|custard|crumble|doughnut|donut|muffin|cupcake|fudge|baklava)\b/.test(t)
+  )
+    return "dessert";
+  if (/\b(salad|soup|starter|appetiser|appetizer|samoosa|samosa|spring roll|bruschetta|dip|canap)\b/.test(t))
+    return "starter";
+  return null;
+}
+
+// Coerce an arbitrary string (e.g. a form value) to a Course, or null.
+export function toCourse(value: string | null | undefined): Course | null {
+  if (!value) return null;
+  const v = value.toLowerCase().trim();
+  return isCourse(v) ? v : null;
 }
 
 // ─── Spoonacular diet mapping ─────────────────────────────────────────────────

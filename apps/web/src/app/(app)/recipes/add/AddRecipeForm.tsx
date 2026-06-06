@@ -2,7 +2,7 @@
 
 import { useActionState, useRef, useState } from "react";
 import { addManualRecipe } from "./actions";
-import { DIET_TYPES, DIET_TYPE_LABELS, CUISINES } from "@nomnate/types";
+import { DIET_TYPES, DIET_TYPE_LABELS, CUISINES, SELECTABLE_COURSES, COURSE_LABELS } from "@nomnate/types";
 
 const inputClass =
   "w-full px-4 py-2.5 border border-cream-border rounded-xl text-sm text-charcoal placeholder:text-slate focus:outline-none focus:ring-2 focus:ring-flame focus:border-transparent";
@@ -117,6 +117,17 @@ export function AddRecipeForm() {
               ))}
             </select>
           </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-slate">Course</label>
+            <select name="course" defaultValue="main" className={inputClass}>
+              {SELECTABLE_COURSES.map((c) => (
+                <option key={c} value={c}>{COURSE_LABELS[c]}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <label className="text-xs font-medium text-slate">Servings</label>
             <input name="servings" type="number" min={1} max={100} placeholder="4" className={inputClass} />
