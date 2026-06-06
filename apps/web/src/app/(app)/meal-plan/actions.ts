@@ -205,21 +205,25 @@ function buildFamilyMembers(
 async function getFamilyRecipePool(
   supabase: Awaited<ReturnType<typeof createClient>>,
   familyId: string
-): Promise<Array<{ id: string; is_favourite: boolean }>> {
+): Promise<Array<{ id: string; is_favourite: boolean; course: string | null }>> {
   const [{ data: manual }, { data: global }] = await Promise.all([
     supabase
       .from("recipes")
-      .select("id, is_favourite")
+      .select("id, is_favourite, course")
       .eq("family_id", familyId)
       .eq("is_global", false),
     supabase
       .from("family_recipes")
-      .select("recipe_id, is_favourite")
+      .select("recipe_id, is_favourite, recipe:recipes(course)")
       .eq("family_id", familyId),
   ]);
   return [
-    ...(manual ?? []),
-    ...(global ?? []).map((fr) => ({ id: fr.recipe_id, is_favourite: fr.is_favourite })),
+    ...((manual ?? []) as Array<{ id: string; is_favourite: boolean; course: string | null }>),
+    ...(global ?? []).map((fr) => ({
+      id: fr.recipe_id,
+      is_favourite: fr.is_favourite,
+      course: (fr.recipe as { course: string | null } | null)?.course ?? null,
+    })),
   ];
 }
 
@@ -470,11 +474,14 @@ export async function generatePlan(
 
   const { data: membership } = await supabase
     .from("family_members")
-    .select("family_id")
+    .select("family_id, families(courses)")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
   if (!membership) return "No family found";
+
+  const familyCourses = (membership.families as { courses?: string[] } | null)?.courses;
+  const courses = familyCourses && familyCourses.length > 0 ? familyCourses : ["main"];
 
   const weekStart = currentWeekStart();
 
@@ -487,11 +494,8 @@ export async function generatePlan(
     .maybeSingle();
   if (existing) redirect("/meal-plan");
 
-  // Fetch family recipe pool (manual + global-in-library)
+  // Fetch family recipe pool (manual + global-in-library), with course tags
   const recipes = await getFamilyRecipePool(supabase, membership.family_id);
-
-  const favIds = recipes.filter((r) => r.is_favourite).map((r) => r.id);
-  const otherIds = recipes.filter((r) => !r.is_favourite).map((r) => r.id);
 
   // Fisher-Yates shuffle
   const shuffle = <T>(arr: T[]): T[] => {
@@ -503,9 +507,18 @@ export async function generatePlan(
     return a;
   };
 
-  const shuffledFavs = shuffle(favIds);
-  const shuffledOther = shuffle(otherIds);
-  const allIds = [...shuffledFavs, ...shuffledOther];
+  // Candidate recipe ids for a course: exact-course matches (favourites first),
+  // augmented with unclassified recipes when the course pool is thin (<3).
+  const candidatesForCourse = (course: string): string[] => {
+    let cands = recipes.filter((r) => r.course === course);
+    if (cands.length < 3) {
+      const have = new Set(cands.map((c) => c.id));
+      cands = [...cands, ...recipes.filter((r) => r.course == null && !have.has(r.id))];
+    }
+    const favs = shuffle(cands.filter((c) => c.is_favourite).map((c) => c.id));
+    const others = shuffle(cands.filter((c) => !c.is_favourite).map((c) => c.id));
+    return [...favs, ...others];
+  };
 
   // Create the meal plan — handle race condition where another member beat us here
   const { data: plan, error: planError } = await supabase
@@ -518,43 +531,44 @@ export async function generatePlan(
     return planError.message;
   }
 
-  // For each of 7 days, create 3 options — pick without replacement across the pool,
-  // cycling back if the library is smaller than 21.
+  // For each day × each configured course, create 3 distinct options drawn from
+  // that course's candidates (a refilling reshuffled queue keeps a day's options
+  // distinct). A course with no candidates gets one empty slot so it still shows.
   const slots: {
     meal_plan_id: string;
     day_of_week: number;
+    course: string;
     option_number: number;
     recipe_id: string | null;
     status: "suggested";
   }[] = [];
 
-  if (allIds.length === 0) {
-    // No recipes yet — create empty slots (1 option per day to keep it simple)
-    for (let d = 0; d < 7; d++) {
-      slots.push({ meal_plan_id: plan.id, day_of_week: d, option_number: 1, recipe_id: null, status: "suggested" });
-    }
-  } else {
-    // Draw from a refilling, reshuffled queue so each day's 3 options are distinct
-    // (the same recipe never appears twice in one day) and repeats are spread out.
-    let queue: string[] = [];
-    const draw = (usedToday: Set<string>): string => {
-      if (queue.length === 0) queue = shuffle([...allIds]);
-      // prefer a recipe not already shown today
-      const k = queue.findIndex((id) => !usedToday.has(id));
-      if (k !== -1) return queue.splice(k, 1)[0];
-      // whole queue is already used today (library smaller than 3) — refill and take any
-      queue = shuffle([...allIds]);
-      return queue.shift()!;
-    };
-
-    for (let d = 0; d < 7; d++) {
-      const usedToday = new Set<string>();
-      for (let opt = 1; opt <= 3; opt++) {
-        const recipeId = draw(usedToday);
-        usedToday.add(recipeId);
+  for (let d = 0; d < 7; d++) {
+    for (const course of courses) {
+      const ids = candidatesForCourse(course);
+      if (ids.length === 0) {
+        slots.push({ meal_plan_id: plan.id, day_of_week: d, course, option_number: 1, recipe_id: null, status: "suggested" });
+        continue;
+      }
+      let queue: string[] = [];
+      const draw = (used: Set<string>): string => {
+        if (queue.length === 0) queue = shuffle([...ids]);
+        const k = queue.findIndex((id) => !used.has(id));
+        if (k !== -1) return queue.splice(k, 1)[0];
+        queue = shuffle([...ids]);
+        return queue.shift()!;
+      };
+      // Up to 3 options, but never repeat the same dish as a "choice" — a thin
+      // course pool (e.g. one dessert) just shows that many options.
+      const optionCount = Math.min(3, ids.length);
+      const used = new Set<string>();
+      for (let opt = 1; opt <= optionCount; opt++) {
+        const recipeId = draw(used);
+        used.add(recipeId);
         slots.push({
           meal_plan_id: plan.id,
           day_of_week: d,
+          course,
           option_number: opt,
           recipe_id: recipeId,
           status: "suggested",
@@ -783,7 +797,14 @@ async function reshuffleAfterAssign(
   assignedCourse: string,
   assignedRecipeId: string
 ): Promise<ChangedSlot[]> {
-  const libraryIds = (await getFamilyRecipePool(supabase, familyId)).map((r) => r.id);
+  // Re-roll only from recipes of the same course (augmented with unclassified
+  // recipes when that course pool is thin) so we never inject a wrong-course dish.
+  const pool = await getFamilyRecipePool(supabase, familyId);
+  let libraryIds = pool.filter((r) => r.course === assignedCourse).map((r) => r.id);
+  if (libraryIds.length < 3) {
+    const have = new Set(libraryIds);
+    libraryIds = [...libraryIds, ...pool.filter((r) => r.course == null && !have.has(r.id)).map((r) => r.id)];
+  }
   if (libraryIds.length === 0) return [];
 
   const { data: slotData } = await supabase
