@@ -2,8 +2,8 @@
 
 import { useMemo, useState, useEffect, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { COURSE_LABELS, type Course } from "@nomnate/types";
-import { castVote, removeFromSlot, assignRecipeToSlot, suggestForSlot } from "./actions";
+import { COURSE_LABELS, SELECTABLE_COURSES, type Course } from "@nomnate/types";
+import { castVote, removeFromSlot, assignRecipeToSlot, suggestForSlot, addCourseToDay, removeCourseFromDay } from "./actions";
 
 const DAY_NAMES = [
   "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
@@ -83,9 +83,11 @@ function scoreOf(votes: VoteData[]): number {
 }
 
 export function WeeklyCalendar({
-  slots,
+  slots: initialSlots,
   initialVotes,
   memberId,
+  planId,
+  isAdmin,
   weekStart,
   recipes: initialRecipes,
   aiRemaining: initialAiRemaining,
@@ -93,18 +95,22 @@ export function WeeklyCalendar({
   slots: SlotData[];
   initialVotes: VoteData[];
   memberId: string;
+  planId: string;
+  isAdmin: boolean;
   weekStart: string;
   recipes: RecipeData[];
   aiRemaining: number;
 }) {
   const supabase = useMemo(() => createClient(), []);
 
+  const [slots, setSlots] = useState<SlotData[]>(initialSlots);
   const [votes, setVotes] = useState<VoteData[]>(initialVotes);
   const [voteError, setVoteError] = useState<string | null>(null);
 
   const [slotRecipes, setSlotRecipes] = useState<Map<string, RecipeData | null>>(
-    () => new Map(slots.map((s) => [s.id, s.recipe]))
+    () => new Map(initialSlots.map((s) => [s.id, s.recipe]))
   );
+  const [courseBusy, setCourseBusy] = useState<string | null>(null);
 
   const [allRecipes, setAllRecipes] = useState<RecipeData[]>(initialRecipes);
   const [aiRemaining, setAiRemaining] = useState(initialAiRemaining);
@@ -244,6 +250,42 @@ export function WeeklyCalendar({
     setAiRemaining((n) => Math.max(0, n - 1));
   }
 
+  async function handleAddCourse(day: number, course: Course) {
+    setSlotError(null);
+    setCourseBusy(`${day}|${course}`);
+    const result = await addCourseToDay(planId, day, course);
+    setCourseBusy(null);
+    if ("error" in result) {
+      setSlotError(result.error);
+      return;
+    }
+    if (result.slots.length > 0) {
+      setSlots((prev) => [...prev, ...result.slots]);
+      setSlotRecipes((m) => {
+        const next = new Map(m);
+        for (const s of result.slots) next.set(s.id, s.recipe);
+        return next;
+      });
+    }
+  }
+
+  async function handleRemoveCourse(day: number, course: Course) {
+    if (!window.confirm(`Remove the ${COURSE_LABELS[course].toLowerCase()} for this day? Any votes on it will be lost.`)) {
+      return;
+    }
+    setSlotError(null);
+    setCourseBusy(`${day}|${course}`);
+    const result = await removeCourseFromDay(planId, day, course);
+    setCourseBusy(null);
+    if ("error" in result) {
+      setSlotError(result.error);
+      return;
+    }
+    const removed = new Set(result.removedSlotIds);
+    setSlots((prev) => prev.filter((s) => !removed.has(s.id)));
+    setVotes((prev) => prev.filter((v) => !removed.has(v.meal_plan_slot_id)));
+  }
+
   // (day|course) combos where this member has already voted (single-vote-per-course rule)
   const myVotedDayCourses = useMemo(() => {
     const set = new Set<string>();
@@ -329,8 +371,20 @@ export function WeeklyCalendar({
               return (
                 <div key={course}>
                   {multiCourse && (
-                    <div className="px-4 pt-2.5 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-flame-dark">
-                      {COURSE_LABELS[course as Course] ?? course}
+                    <div className="flex items-center justify-between px-4 pt-2.5 pb-0.5">
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-flame-dark">
+                        {COURSE_LABELS[course as Course] ?? course}
+                      </span>
+                      {isAdmin && course !== "main" && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCourse(dow, course as Course)}
+                          disabled={courseBusy === `${dow}|${course}`}
+                          className="text-[11px] text-slate hover:text-red-500 disabled:opacity-50"
+                        >
+                          Remove
+                        </button>
+                      )}
                     </div>
                   )}
                   {/* Option cards */}
@@ -548,6 +602,27 @@ export function WeeklyCalendar({
                 </div>
               );
             })}
+
+            {isAdmin && (() => {
+              const present = new Set(courseGroups.map((g) => g.course));
+              const addable = SELECTABLE_COURSES.filter((c) => c !== "main" && !present.has(c));
+              if (addable.length === 0) return null;
+              return (
+                <div className="flex flex-wrap gap-3 px-4 py-2.5 border-t border-[#F5D5C0]/60">
+                  {addable.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => handleAddCourse(dow, c)}
+                      disabled={courseBusy === `${dow}|${c}`}
+                      className="text-xs font-semibold text-flame hover:text-flame-dark disabled:opacity-50"
+                    >
+                      {courseBusy === `${dow}|${c}` ? "Adding…" : `＋ Add ${COURSE_LABELS[c].toLowerCase()}`}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         );
       })}
