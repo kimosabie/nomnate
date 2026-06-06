@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { DIET_TYPES } from "@nomnate/types";
+import { DIET_TYPES, toCourse } from "@nomnate/types";
 import { filterText } from "@/lib/contentFilter";
 
 export async function addManualRecipe(
@@ -57,6 +57,8 @@ export async function addManualRecipe(
   const dietTypes = rawDietTypes.filter((d) =>
     (DIET_TYPES as readonly string[]).includes(d)
   );
+
+  const course = toCourse(formData.get("course") as string | null) ?? "main";
 
   const ingredients: Array<{ name: string; quantity: number | null; unit: string | null }> = [];
   try {
@@ -116,6 +118,7 @@ export async function addManualRecipe(
       title,
       description,
       cuisine,
+      course,
       prep_time: prepTime,
       cook_time: cookTime,
       servings,

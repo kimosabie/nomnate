@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { mapSpoonacularDiets, getNutrient } from "@nomnate/types";
+import { mapSpoonacularDiets, getNutrient, courseFromSpoonacularDishTypes, courseFromTitle } from "@nomnate/types";
 import type { SpoonacularRecipe } from "@nomnate/types";
 
 function stripHtml(html: string | null | undefined): string | null {
@@ -60,6 +60,7 @@ export async function saveSpoonacularGlobally(
         prep_time: recipe.readyInMinutes ?? null,
         servings: recipe.servings ?? null,
         cuisine: recipe.cuisines?.[0] ?? null,
+        course: courseFromSpoonacularDishTypes(recipe.dishTypes ?? []) ?? courseFromTitle(recipe.title),
         diet_types: mapSpoonacularDiets(recipe.diets ?? []),
         calories_per_serving: getNutrient(nutrients, "Calories"),
         protein_g: getNutrient(nutrients, "Protein"),
@@ -127,6 +128,7 @@ export async function saveSpoonacularRecipe(
         prep_time: recipe.readyInMinutes ?? null,
         servings: recipe.servings ?? null,
         cuisine: recipe.cuisines?.[0] ?? null,
+        course: courseFromSpoonacularDishTypes(recipe.dishTypes ?? []) ?? courseFromTitle(recipe.title),
         diet_types: mapSpoonacularDiets(recipe.diets ?? []),
         calories_per_serving: getNutrient(nutrients, "Calories"),
         protein_g: getNutrient(nutrients, "Protein"),

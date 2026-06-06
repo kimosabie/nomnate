@@ -17,6 +17,7 @@ export type Database = {
       families: {
         Row: {
           country: string
+          courses: string[]
           created_at: string
           created_by: string
           id: string
@@ -26,6 +27,7 @@ export type Database = {
         }
         Insert: {
           country?: string
+          courses?: string[]
           created_at?: string
           created_by: string
           id?: string
@@ -35,6 +37,7 @@ export type Database = {
         }
         Update: {
           country?: string
+          courses?: string[]
           created_at?: string
           created_by?: string
           id?: string
@@ -216,6 +219,7 @@ export type Database = {
       }
       meal_plan_slots: {
         Row: {
+          course: string
           day_of_week: number
           id: string
           meal_plan_id: string
@@ -224,6 +228,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          course?: string
           day_of_week: number
           id?: string
           meal_plan_id: string
@@ -232,6 +237,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          course?: string
           day_of_week?: number
           id?: string
           meal_plan_id?: string
@@ -421,6 +427,7 @@ export type Database = {
           calories_per_serving: number | null
           carbs_g: number | null
           cook_time: number | null
+          course: string | null
           created_at: string
           created_by: string | null
           cuisine: string | null
@@ -449,6 +456,7 @@ export type Database = {
           calories_per_serving?: number | null
           carbs_g?: number | null
           cook_time?: number | null
+          course?: string | null
           created_at?: string
           created_by?: string | null
           cuisine?: string | null
@@ -477,6 +485,7 @@ export type Database = {
           calories_per_serving?: number | null
           carbs_g?: number | null
           cook_time?: number | null
+          course?: string | null
           created_at?: string
           created_by?: string | null
           cuisine?: string | null

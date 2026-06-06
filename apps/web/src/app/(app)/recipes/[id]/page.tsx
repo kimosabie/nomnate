@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { DIET_TYPE_LABELS } from "@nomnate/types";
+import { DIET_TYPE_LABELS, COURSE_LABELS, type Course } from "@nomnate/types";
 
 function toMetric(
   quantity: number | null,
@@ -100,7 +100,7 @@ export default async function RecipeDetailPage({
   // access is controlled by RLS (global readable + family_id readable to members)
   const { data: recipe } = await supabase
     .from("recipes")
-    .select("id, title, description, image_url, image_attribution, prep_time, cook_time, servings, cuisine, source, source_url, source_attribution, instructions, diet_types, calories_per_serving, protein_g, carbs_g, fat_g, is_global, family_id")
+    .select("id, title, description, image_url, image_attribution, prep_time, cook_time, servings, cuisine, course, source, source_url, source_attribution, instructions, diet_types, calories_per_serving, protein_g, carbs_g, fat_g, is_global, family_id")
     .eq("id", id)
     .maybeSingle();
 
@@ -151,8 +151,16 @@ export default async function RecipeDetailPage({
 
         {/* Meta */}
         <div className="bg-white rounded-[14px] border border-cream-border p-6">
-          {(recipe.prep_time || recipe.cook_time || recipe.servings || steps.length > 0) && (
+          {(recipe.prep_time || recipe.cook_time || recipe.servings || recipe.course || steps.length > 0) && (
             <div className="flex flex-wrap gap-6">
+              {recipe.course && (
+                <div>
+                  <p className="text-xs text-slate mb-0.5">Course</p>
+                  <p className="text-sm font-semibold text-charcoal">
+                    {COURSE_LABELS[recipe.course as Course] ?? recipe.course}
+                  </p>
+                </div>
+              )}
               {recipe.prep_time && (
                 <div>
                   <p className="text-xs text-slate mb-0.5">Prep time</p>
