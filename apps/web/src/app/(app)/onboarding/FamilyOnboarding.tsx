@@ -11,8 +11,10 @@ const labelClass = "block text-sm font-medium text-charcoal mb-1";
 
 const COUNTRIES = [
   { code: "ZA", label: "South Africa", flag: "🇿🇦" },
-  { code: "UK", label: "United Kingdom", flag: "🇬🇧" },
+  { code: "GB", label: "United Kingdom", flag: "🇬🇧" },
   { code: "FR", label: "France", flag: "🇫🇷" },
+  { code: "AU", label: "Australia", flag: "🇦🇺" },
+  { code: "AE", label: "UAE", flag: "🇦🇪" },
 ];
 
 export function FamilyOnboarding() {

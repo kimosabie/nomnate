@@ -270,11 +270,8 @@ const PNP_TERMS = [
 
 // ZA: smart assignment. Non-ZA: first store in list (no term-based logic yet)
 export function assignStore(ingredientName: string, country?: string | null): StoreKey {
-  if (country && country !== "ZA" && country !== "UK") {
+  if (country && country !== "ZA") {
     return getStoresByCountry(country)[0]?.key ?? "checkers";
-  }
-  if (country === "UK") {
-    return getStoresByCountry("GB")[0]?.key ?? "checkers";
   }
   const name = ingredientName.toLowerCase();
   if (WOOLWORTHS_TERMS.some((t) => name.includes(t))) return "woolworths";
