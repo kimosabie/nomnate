@@ -40,7 +40,8 @@ therefore a *retroactive thematic grouping* of the history:
 | P10 | feat: todo history + exclude assigned meals from AI suggestions | Family store preferences (`preferred_stores`), admin route-group split, daily-brief/todo workflow, per-item feedback delete. | `4143ab9` | 2026-05-12 |
 | P11 | fix: add AU/AE/GB locales to shopping list print view LOCALE_MAP | Localisation for the expat pilot (ZA/GB/FR/AU/AE): `@nomnate/shared` prompts, per-country stores, locale-aware dates; gamification dashboard polish folded in (`a5a8c1f`). | `6612ab6` | 2026-05-14 |
 | P12 | chore: fix typecheck and lint gates across the monorepo (#1) | Repaired the standalone `pnpm typecheck` (3 pkgs) and `pnpm lint` (mobile/web) gates; all three gates green on `main`. | `ffe46ad` | 2026-06-06 |
-| P13 | fix: country dropdown on family registration (ZA/GB/FR/AU/AE) | Onboarding offered only 3 countries (`ZA`/`UK`/`FR`) and the wrong `UK` code; widened to the canonical 5 and removed dead `UK` branches. **Status: on branch `fix/country-dropdown-onboarding`, pending merge.** | `b4f587c` | 2026-06-06 |
+| P13 | fix: country dropdown on family registration (ZA/GB/FR/AU/AE) | Onboarding offered only 3 countries (`ZA`/`UK`/`FR`) and the wrong `UK` code; widened to the canonical 5 and removed dead `UK` branches. | `b4f587c` | 2026-06-06 |
+| P14 | fix: meal-plan swap picker shows the whole library (manual + saved global) | The swap/add picker queried only `recipes.family_id`, missing saved global-library recipes (which live in the `family_recipes` junction) — so a family with a 26-recipe library saw 0 options. Picker + empty-state count now combine both sources. | _pending_ | 2026-06-06 |
 
 ## Planned work streams (feedback backlog)
 
@@ -53,7 +54,7 @@ pending reconciliation.
 | ID | Work stream | Priority | Status (ledger truth) | Evidence |
 |----|-------------|----------|-----------------------|----------|
 | B1 | Fix country dropdown on family registration | 🔴 critical | In progress | P13 (`b4f587c`), pending merge |
-| B2 | Fix meal-swap option picker not loading | 🔴 critical | **Open** | not addressed in git |
+| B2 | Fix meal-swap option picker not loading | 🔴 critical | Shipped | P14 — picker now combines manual + saved global recipes |
 | B3 | Enforce single vote per user per day | 🟠 high | Shipped — archive pending | P9 (`dbdce3a`) |
 | B4 | Exclude selected meals from other days' suggestions | 🟠 high | Shipped — archive pending | P9 (`dbdce3a`) |
 | B5 | Localise recipe measurements to SA units | 🟠 high | Shipped — archive pending | P9 (`dbdce3a`) + P11 |
