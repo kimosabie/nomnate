@@ -63,7 +63,7 @@ pending reconciliation.
 | B5 | Localise recipe measurements to SA units | 🟠 high | Shipped — archive pending | P9 (`dbdce3a`) + P11 |
 | B6 | Recipe detail: dish summary + cooking method | 🟠 high | Shipped — library search results now link to detail (P15); external (unsaved) results still save-first | P2 `3cd952c`, P9 `dbdce3a`, P15 |
 | B7 | Nutritional data so calorie tracking works | 🟠 high | **Partial** — UI shipped P2 (`f9808e0`); data quality open | partial |
-| B8 | Structured daily course slots (starter/main/dessert) | 🟠 high | **In progress** — B8.1 shipped (#5), B8.2 done; B8.3 (the big one) + B8.4 remain | [B8-COURSE-SLOTS-SCOPE.md](./B8-COURSE-SLOTS-SCOPE.md) |
+| B8 | Structured daily course slots (starter/main/dessert) | 🟠 high | **In progress** — B8.1 (#5), B8.2 (#6), B8.3a (#7) shipped; B8.3b done; B8.3c + B8.4 remain | [B8-COURSE-SLOTS-SCOPE.md](./B8-COURSE-SLOTS-SCOPE.md) |
 | B9 | Auto-refresh daily options after a selection | 🟡 medium | Shipped | P16 (distinct daily options) + P17 (library auto-reshuffle on selection — chosen over AI re-roll to avoid the 5/week cap; votes preserved) |
 | B10 | Preferred grocery-store selection UI (≤5) in Family Settings | 🟡 medium | Shipped | `StorePreferencesForm` on `/family` — admin-gated, country-filtered, keeps ≥1; all countries already ≤5 stores |
 | B11 | Family-name editing for family admins | 🟡 medium | Shipped | P15 — inline rename on `/family` for admins |
