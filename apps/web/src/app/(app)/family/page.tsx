@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CountryForm } from "./CountryForm";
+import { FamilyNameForm } from "./FamilyNameForm";
 import { StorePreferencesForm } from "./StorePreferencesForm";
 import { getStoresByCountry } from "../shopping-list/storeUtils";
 
@@ -56,7 +57,11 @@ export default async function FamilySettingsPage() {
           <p className="text-xs font-semibold text-slate uppercase tracking-wide">Your family</p>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-base font-semibold text-charcoal">{family?.name ?? "—"}</p>
+              {isAdmin ? (
+                <FamilyNameForm currentName={family?.name ?? ""} />
+              ) : (
+                <p className="text-base font-semibold text-charcoal">{family?.name ?? "—"}</p>
+              )}
               <p className="text-xs text-slate mt-0.5">{memberCount} member{memberCount !== 1 ? "s" : ""}</p>
             </div>
             {family?.invite_code && (

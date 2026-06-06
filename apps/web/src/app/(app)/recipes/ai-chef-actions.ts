@@ -37,12 +37,16 @@ const COUNTRY_NAMES: Record<string, string> = {
   ZA: "South Africa",
   GB: "the United Kingdom",
   FR: "France",
+  AU: "Australia",
+  AE: "the UAE",
 };
 
 const COUNTRY_STORES: Record<string, string> = {
   ZA: "Woolworths, Pick n Pay, and Checkers Sixty60",
   GB: "Waitrose, Sainsbury's, and M&S Food",
   FR: "Auchan, Carrefour, Monoprix, and Lidl",
+  AU: "Coles, Woolworths, and IGA",
+  AE: "Carrefour, Lulu Hypermarket, and Spinneys",
 };
 
 const COUNTRY_STORE_GUIDANCE: Record<string, string> = {
@@ -54,6 +58,12 @@ const COUNTRY_STORE_GUIDANCE: Record<string, string> = {
   FR: `  → Suggest French equivalents for SA ingredients
   → e.g. "use merguez sausage as a boerewors alternative from Carrefour"
   → Note any SA imports available (rooibos at Monoprix, biltong at specialist stores)`,
+  AU: `  → Suggest Australian equivalents for SA ingredients
+  → e.g. "boerewors and biltong available at SA specialty stores like South African Shop, or make boerewors with beef/pork mince"
+  → Note SA imports (rooibos, Mrs Ball's chutney) stocked at Coles/Woolworths or SA delis`,
+  AE: `  → Keep all suggestions halal — no pork or pork products (no bacon, ham, regular sausages); suggest beef bacon, chicken sausage, or lamb alternatives
+  → Suggest UAE equivalents for SA ingredients (Spinneys stocks SA imports like boerewors-style beef sausage, biltong, rooibos)
+  → Carrefour and Lulu carry a wide international range for expat cooking`,
 };
 
 function buildSystemPrompt(country: string): string {

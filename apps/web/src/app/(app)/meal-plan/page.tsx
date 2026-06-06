@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { WeeklyCalendar } from "./WeeklyCalendar";
-import type { SlotData, VoteData } from "./WeeklyCalendar";
+import type { SlotData, VoteData, RecipeData } from "./WeeklyCalendar";
 import { GeneratePlanButton } from "./GeneratePlanButton";
 import { GenerateShoppingListButton } from "./GenerateShoppingListButton";
 import { AISuggestButton } from "./AISuggestButton";
@@ -44,15 +44,20 @@ export default async function MealPlanPage() {
     .maybeSingle();
 
   if (!plan) {
-    const [{ count: savedCount }, aiUsed] = await Promise.all([
+    const [{ count: manualCount }, { count: globalCount }, aiUsed] = await Promise.all([
       supabase
         .from("recipes")
         .select("id", { count: "exact", head: true })
+        .eq("family_id", membership.family_id)
+        .eq("is_global", false),
+      supabase
+        .from("family_recipes")
+        .select("recipe_id", { count: "exact", head: true })
         .eq("family_id", membership.family_id),
       getAIUsageThisWeek(membership.family_id),
     ]);
 
-    const count = savedCount ?? 0;
+    const count = (manualCount ?? 0) + (globalCount ?? 0);
     const aiRemaining = FREE_AI_LIMIT - aiUsed;
 
     return (
@@ -105,8 +110,13 @@ export default async function MealPlanPage() {
     );
   }
 
-  const [aiUsed, { data: existingList }, { data: rawSlots }, { data: familyRecipes }] =
-    await Promise.all([
+  const [
+    aiUsed,
+    { data: existingList },
+    { data: rawSlots },
+    { data: manualRecipes },
+    { data: globalLinks },
+  ] = await Promise.all([
       getAIUsageThisWeek(membership.family_id),
       supabase
         .from("shopping_lists")
@@ -120,13 +130,34 @@ export default async function MealPlanPage() {
         .eq("meal_plan_id", plan.id)
         .order("day_of_week")
         .order("option_number"),
+      // Manual (family-scoped) recipes
       supabase
         .from("recipes")
-        .select("id, title, image_url, prep_time, cuisine")
+        .select("id, title, image_url, prep_time, cuisine, is_favourite")
         .eq("family_id", membership.family_id)
+        .eq("is_global", false)
         .order("is_favourite", { ascending: false })
         .order("title"),
+      // Saved global-library recipes via the family_recipes junction
+      supabase
+        .from("family_recipes")
+        .select("is_favourite, recipe:recipes(id, title, image_url, prep_time, cuisine)")
+        .eq("family_id", membership.family_id)
+        .order("added_at", { ascending: false }),
     ]);
+
+  // The swap picker draws from the whole library: manual recipes + saved global
+  // recipes (which live in the family_recipes junction, not on recipes.family_id).
+  type LibRow = RecipeData & { is_favourite: boolean | null };
+  const familyRecipes: RecipeData[] = [
+    ...((manualRecipes ?? []) as LibRow[]),
+    ...(globalLinks ?? []).map((l) => ({
+      ...(l.recipe as RecipeData),
+      is_favourite: l.is_favourite,
+    })),
+  ]
+    .sort((a, b) => Number(b.is_favourite) - Number(a.is_favourite))
+    .map(({ is_favourite: _fav, ...r }) => r);
 
   const aiRemaining = FREE_AI_LIMIT - aiUsed;
 
@@ -181,7 +212,7 @@ export default async function MealPlanPage() {
           initialVotes={votes}
           memberId={membership.id}
           weekStart={weekStart}
-          recipes={familyRecipes ?? []}
+          recipes={familyRecipes}
           aiRemaining={aiRemaining}
         />
 

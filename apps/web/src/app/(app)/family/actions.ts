@@ -2,7 +2,39 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { filterText } from "@/lib/contentFilter";
 import { getStoresByCountry } from "../shopping-list/storeUtils";
+
+export async function updateFamilyName(
+  _prevState: string | null,
+  formData: FormData
+): Promise<string | null> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return "Not authenticated";
+
+  const fn = filterText(String(formData.get("familyName") ?? ""), 80);
+  if (fn.error) return fn.error;
+  if (!fn.value) return "Family name is required";
+
+  const { data: membership } = await supabase
+    .from("family_members")
+    .select("family_id, role")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (!membership) return "No family found";
+  if (membership.role !== "admin") return "Only family admins can change this setting";
+
+  const { error } = await supabase
+    .from("families")
+    .update({ name: fn.value })
+    .eq("id", membership.family_id);
+
+  if (error) return error.message;
+  revalidatePath("/", "layout");
+  return null;
+}
 
 export async function updatePreferredStores(
   _prevState: string | null,
