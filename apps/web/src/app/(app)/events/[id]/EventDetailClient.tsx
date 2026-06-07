@@ -9,9 +9,11 @@ import {
   addDishFromRecipe,
   removeDish,
   generateEventMenu,
+  getEventShoppingList,
   type EventRow,
   type EventDish,
 } from "../actions";
+import type { ConsolidatedItem } from "@/lib/ingredients";
 
 export type EventLibraryRecipe = { id: string; title: string; course: string | null };
 
@@ -53,6 +55,27 @@ export function EventDetailClient({
   const [addCourse, setAddCourse] = useState<string>("main");
   const [search, setSearch] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [shopping, setShopping] = useState<ConsolidatedItem[] | null>(null);
+  const [shoppingBusy, setShoppingBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  function shoppingText(items: ConsolidatedItem[]): string {
+    return (
+      `🛒 ${event.name} — shopping list (${event.guest_count} guests)\n\n` +
+      items
+        .map((i) => `• ${[i.quantity, i.unit].filter(Boolean).join(" ")} ${i.ingredient_name}`.trim())
+        .join("\n")
+    );
+  }
+
+  async function handleShoppingList() {
+    setError(null);
+    setShoppingBusy(true);
+    const result = await getEventShoppingList(event.id);
+    setShoppingBusy(false);
+    if ("error" in result) return setError(result.error);
+    setShopping(result.items);
+  }
 
   async function handleGenerate() {
     setError(null);
@@ -261,6 +284,64 @@ export function EventDetailClient({
           </div>
         )}
       </div>
+
+      {/* Shopping list */}
+      {dishes.length > 0 && (
+        <div className="bg-white rounded-[14px] border border-cream-border p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-charcoal">Shopping list</p>
+            <button
+              onClick={handleShoppingList}
+              disabled={shoppingBusy}
+              className="text-xs font-semibold text-flame hover:text-flame-dark disabled:opacity-50"
+            >
+              {shoppingBusy ? "Building…" : shopping ? "Refresh" : `Build for ${event.guest_count} guests`}
+            </button>
+          </div>
+
+          {shopping && (
+            shopping.length === 0 ? (
+              <p className="text-xs text-slate">No ingredients found for this menu.</p>
+            ) : (
+              <>
+                <p className="text-xs text-slate">Scaled to {event.guest_count} guests.</p>
+                <div className="divide-y divide-cream-border">
+                  {shopping.map((i, idx) => (
+                    <div key={idx} className="flex items-center gap-2 py-1.5 text-sm">
+                      <span className="text-charcoal flex-1 capitalize">{i.ingredient_name}</span>
+                      {(i.quantity != null || i.unit) && (
+                        <span className="text-slate text-xs shrink-0">
+                          {[i.quantity, i.unit].filter(Boolean).join(" ")}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(shoppingText(shopping));
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    className="flex-1 py-2 rounded-full bg-flame hover:bg-flame-dark text-white text-xs font-semibold transition-colors"
+                  >
+                    {copied ? "✓ Copied" : "Copy list"}
+                  </button>
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(shoppingText(shopping))}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-2 rounded-full border border-[#25D366] text-[#25D366] text-xs font-semibold text-center transition-colors"
+                  >
+                    💬 WhatsApp
+                  </a>
+                </div>
+              </>
+            )
+          )}
+        </div>
+      )}
     </div>
   );
 }
