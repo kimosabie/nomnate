@@ -124,7 +124,7 @@ async function fetchImageByTitle(title: string): Promise<string | null> {
     return null;
   }
 }
-import { FREE_AI_LIMIT } from "./constants";
+import { FREE_AI_LIMIT, AI_WEEK_OPTIONS_PER_DAY } from "./constants";
 import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function getAIUsageThisWeek(familyId: string): Promise<number> {
@@ -409,19 +409,26 @@ export async function planWeekWithAI(): Promise<string | null> {
       plan = created;
       const newSlots: NewSlotRow[] = [];
       for (let d = 0; d < 7; d++)
-        for (let opt = 1; opt <= 3; opt++)
+        for (let opt = 1; opt <= AI_WEEK_OPTIONS_PER_DAY; opt++)
           newSlots.push({ meal_plan_id: plan.id, day_of_week: d, course: "main", option_number: opt, recipe_id: null, status: "suggested" });
       await supabase.from("meal_plan_slots").insert(newSlots);
     }
   }
 
-  // Empty main option slots (no recipe → no votes); cap at 21
+  // Empty main option slots (no recipe → no votes), capped to N options per day
   const { data: emptyMain } = await supabase
     .from("meal_plan_slots")
     .select("id, day_of_week, option_number")
     .eq("meal_plan_id", plan.id).eq("course", "main").is("recipe_id", null)
     .order("day_of_week").order("option_number");
-  const targets = (emptyMain ?? []).slice(0, 21);
+  const perDayCount = new Map<number, number>();
+  const targets: { id: string; day_of_week: number; option_number: number }[] = [];
+  for (const s of emptyMain ?? []) {
+    const n = perDayCount.get(s.day_of_week) ?? 0;
+    if (n >= AI_WEEK_OPTIONS_PER_DAY) continue;
+    perDayCount.set(s.day_of_week, n + 1);
+    targets.push(s);
+  }
   if (targets.length === 0) return "Your week's mains are already planned.";
 
   // Family context (preferences only — never PII)
