@@ -37,7 +37,8 @@ export function AppNav({ initials, inviteCode, isAdmin }: { initials: string; in
           </span>
         </Link>
 
-        <nav className="flex items-center flex-1 min-w-0">
+        {/* Horizontally scrollable on small screens so the links never overflow the bar */}
+        <nav className="flex items-center flex-1 min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {LINKS.map(({ href, label }) => {
             const isActive =
               pathname === href ||
@@ -46,7 +47,7 @@ export function AppNav({ initials, inviteCode, isAdmin }: { initials: string; in
               <Link
                 key={href}
                 href={href}
-                className={`px-2.5 py-1.5 rounded-full text-[13px] font-medium transition-colors whitespace-nowrap ${
+                className={`shrink-0 px-2.5 py-1.5 rounded-full text-[13px] font-medium transition-colors whitespace-nowrap ${
                   isActive
                     ? "text-flame"
                     : "text-slate hover:text-charcoal"
