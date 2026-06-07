@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { COURSE_LABELS, SELECTABLE_COURSES, type Course } from "@nomnate/types";
 import { castVote, removeFromSlot, assignRecipeToSlot, suggestForSlot, addCourseToDay, removeCourseFromDay } from "./actions";
 import { addLogEntryFromRecipe } from "../food-log/actions";
+import { FREE_AI_LIMIT } from "./constants";
 
 const DAY_NAMES = [
   "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
@@ -590,7 +591,7 @@ export function WeeklyCalendar({
                                 AI suggest for this slot
                               </p>
                               <p className="text-xs text-slate">
-                                {aiRemaining} of 5 remaining this week
+                                {aiRemaining} of {FREE_AI_LIMIT} remaining this week
                               </p>
                             </div>
                           </button>

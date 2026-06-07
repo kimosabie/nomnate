@@ -33,7 +33,7 @@ export default function TermsOfService() {
       <ul>
         <li>
           <strong>Free</strong> — includes family meal planning, recipe library, voting, shopping
-          lists, and up to <strong>5 AI meal suggestions per week</strong>.
+          lists, and up to <strong>7 AI meal suggestions per week</strong>.
         </li>
         <li>
           <strong>Premium (R79/month)</strong> — unlimited AI suggestions, priority support, and

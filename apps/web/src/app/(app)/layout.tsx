@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppNav } from "@/components/AppNav";
 import { FeedbackFab } from "@/components/FeedbackFab";
+import { isAdmin } from "@/lib/admin";
 
 export default async function AppLayout({
   children,
@@ -44,11 +45,9 @@ export default async function AppLayout({
         .single()
     : { data: null };
 
-  const isAdmin = !!process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL;
-
   return (
     <div className="min-h-screen flex flex-col">
-      <AppNav initials={initials} inviteCode={family?.invite_code ?? null} isAdmin={isAdmin} />
+      <AppNav initials={initials} inviteCode={family?.invite_code ?? null} isAdmin={isAdmin(user.email)} />
       <div className="flex-1">{children}</div>
       <FeedbackFab />
       <footer className="border-t border-cream-border mt-4 pb-20 print:hidden">

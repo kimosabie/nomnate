@@ -35,7 +35,7 @@ export function AISuggestButton({
             Asking Claude…
           </span>
         ) : exhausted ? (
-          "5/5 AI suggestions used · Upgrade for unlimited"
+          `${FREE_AI_LIMIT}/${FREE_AI_LIMIT} AI suggestions used · Upgrade for unlimited`
         ) : (
           <>
             ✨ Suggest with AI
