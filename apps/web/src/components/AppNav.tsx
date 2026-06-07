@@ -11,6 +11,7 @@ const LINKS = [
   { href: "/meal-plan", label: "Meal plan" },
   { href: "/shopping-list", label: "Shopping" },
   { href: "/food-log", label: "Diary" },
+  { href: "/events", label: "Events" },
 ];
 
 export function AppNav({ initials, inviteCode, isAdmin }: { initials: string; inviteCode: string | null; isAdmin?: boolean }) {
