@@ -366,6 +366,154 @@ export async function suggestWithAI(
   redirect("/meal-plan");
 }
 
+// Plan the whole week with AI in one tap: fills every empty MAIN option slot
+// across the 7 days with fresh AI mains, for a single AI use. Recipes are saved
+// global (NOT added to family_recipes) so the operation stays one use.
+export async function planWeekWithAI(): Promise<string | null> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return "Not authenticated";
+
+  const { data: membership } = await supabase
+    .from("family_members")
+    .select("family_id, families(country, dietary_requirements)")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (!membership) return "No family found";
+  const famRow = membership.families as { country?: string; dietary_requirements?: string[] } | null;
+  const familyCountry = famRow?.country ?? undefined;
+  const familyDietaryRequirements = (famRow?.dietary_requirements ?? []) as string[];
+
+  // A whole-week plan costs ONE AI use
+  const used = await getAIUsageThisWeek(membership.family_id);
+  if (FREE_AI_LIMIT - used <= 0) {
+    return `You've used all ${FREE_AI_LIMIT} AI suggestions for this week. Upgrade to Premium for unlimited.`;
+  }
+  const burstOk = await checkRateLimit(supabase, user.id, "ai_week_plan", 2, 60);
+  if (!burstOk) return "Too many requests — wait a moment before trying again.";
+
+  const weekStart = currentWeekStart();
+  let { data: plan } = await supabase
+    .from("meal_plans").select("id")
+    .eq("family_id", membership.family_id).eq("week_start_date", weekStart).maybeSingle();
+  if (!plan) {
+    const { data: created, error } = await supabase
+      .from("meal_plans").insert({ family_id: membership.family_id, week_start_date: weekStart }).select("id").single();
+    if (error || !created) {
+      const { data: again } = await supabase
+        .from("meal_plans").select("id").eq("family_id", membership.family_id).eq("week_start_date", weekStart).maybeSingle();
+      if (!again) return error?.message ?? "Failed to create the meal plan";
+      plan = again;
+    } else {
+      plan = created;
+      const newSlots: NewSlotRow[] = [];
+      for (let d = 0; d < 7; d++)
+        for (let opt = 1; opt <= 3; opt++)
+          newSlots.push({ meal_plan_id: plan.id, day_of_week: d, course: "main", option_number: opt, recipe_id: null, status: "suggested" });
+      await supabase.from("meal_plan_slots").insert(newSlots);
+    }
+  }
+
+  // Empty main option slots (no recipe → no votes); cap at 21
+  const { data: emptyMain } = await supabase
+    .from("meal_plan_slots")
+    .select("id, day_of_week, option_number")
+    .eq("meal_plan_id", plan.id).eq("course", "main").is("recipe_id", null)
+    .order("day_of_week").order("option_number");
+  const targets = (emptyMain ?? []).slice(0, 21);
+  if (targets.length === 0) return "Your week's mains are already planned.";
+
+  // Family context (preferences only — never PII)
+  const { data: members } = await supabase
+    .from("family_members")
+    .select("relationship, age, date_of_birth, dietary_restrictions, cuisine_preferences, ingredient_dislikes, liked_ingredients, diet_types, daily_calorie_target, allergies")
+    .eq("family_id", membership.family_id);
+  const dedupe = (key: "cuisine_preferences" | "ingredient_dislikes" | "liked_ingredients" | "dietary_restrictions") =>
+    [...new Set((members ?? []).flatMap((m) => (m[key] as string[]) ?? []))];
+  const familySize = members?.length ?? 1;
+  const familyMembers = buildFamilyMembers(members ?? []);
+
+  // Exclude library + already-assigned titles
+  const [{ data: manualTitles }, { data: globalLinks }, { data: assignedRows }] = await Promise.all([
+    supabase.from("recipes").select("title").eq("family_id", membership.family_id).eq("is_global", false),
+    supabase.from("family_recipes").select("recipe:recipes(title)").eq("family_id", membership.family_id),
+    supabase.from("meal_plan_slots").select("recipes(title)").eq("meal_plan_id", plan.id).not("recipe_id", "is", null),
+  ]);
+  const exclude = [
+    ...(manualTitles ?? []).map((r) => r.title),
+    ...(globalLinks ?? []).map((l) => (l.recipe as { title: string } | null)?.title ?? "").filter(Boolean),
+    ...(assignedRows ?? []).map((s) => (s.recipes as { title: string } | null)?.title ?? "").filter(Boolean),
+  ];
+
+  // Generate enough mains, batched (token limits) — still ONE budget use
+  const generated: SuggestedRecipe[] = [];
+  while (generated.length < targets.length) {
+    const batch = Math.min(7, targets.length - generated.length);
+    let recipes: SuggestedRecipe[];
+    try {
+      recipes = await suggestMeals({
+        familySize,
+        dietaryRestrictions: dedupe("dietary_restrictions"),
+        cuisinePreferences: dedupe("cuisine_preferences"),
+        ingredientDislikes: dedupe("ingredient_dislikes"),
+        likedIngredients: dedupe("liked_ingredients"),
+        excludeTitles: exclude,
+        count: batch,
+        familyMembers,
+        country: familyCountry,
+        familyDietaryRequirements,
+        course: "main",
+      });
+    } catch {
+      break;
+    }
+    if (!recipes.length) break;
+    for (const r of recipes) { generated.push(r); exclude.push(r.title); }
+  }
+  if (generated.length === 0) return "AI suggestions are temporarily unavailable — please try again later.";
+
+  // Save each as a global AI recipe (NOT in family_recipes → the plan stays one
+  // use) and assign to an empty main slot.
+  let assigned = 0;
+  for (let i = 0; i < generated.length && i < targets.length; i++) {
+    const g = generated[i];
+    const { data: saved } = await supabase
+      .from("recipes")
+      .insert({
+        title: g.title,
+        source: "ai" as const,
+        source_attribution: `AI-generated recipe by Claude (Anthropic). Inspired by traditional ${g.cuisine} cooking.`,
+        instructions: g.instructions,
+        prep_time: g.prep_time,
+        cuisine: g.cuisine,
+        course: "main",
+        calories_per_serving: g.calories_per_serving ?? null,
+        protein_g: g.protein_g ?? null,
+        carbs_g: g.carbs_g ?? null,
+        fat_g: g.fat_g ?? null,
+        nutrition_estimated: true,
+        is_global: true,
+        created_by: user.id,
+      })
+      .select("id")
+      .single();
+    if (!saved) continue;
+    if (g.ingredients.length > 0) {
+      await supabase.from("recipe_ingredients").insert(
+        g.ingredients.map((ing) => ({ recipe_id: saved.id, name: ing.name, quantity: ing.quantity ?? null, unit: ing.unit || null }))
+      );
+    }
+    await supabase.from("meal_plan_slots").update({ recipe_id: saved.id }).eq("id", targets[i].id);
+    assigned++;
+  }
+  if (assigned === 0) return "Failed to save the AI plan — please try again.";
+
+  await logAiUsage(supabase, membership.family_id, "week_plan");
+  revalidatePath("/meal-plan");
+  return null;
+}
+
 export async function generatePlan(
   _prev: string | null,
   _formData: FormData
