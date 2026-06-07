@@ -130,15 +130,27 @@ import { checkRateLimit } from "@/lib/rateLimit";
 export async function getAIUsageThisWeek(familyId: string): Promise<number> {
   const supabase = await createClient();
   const weekStart = currentWeekStart();
-  // Count AI recipes added to this family's library this week
-  const { data } = await supabase
-    .from("family_recipes")
-    .select("recipe:recipes!inner(source)")
+  // Count AI operations logged for this family this week (B15 ledger)
+  const { count } = await supabase
+    .from("ai_usage")
+    .select("id", { count: "exact", head: true })
     .eq("family_id", familyId)
-    .gte("added_at", weekStart + "T00:00:00.000Z");
-  return (data ?? []).filter(
-    (r) => (r.recipe as { source: string } | null)?.source === "ai"
-  ).length;
+    .gte("created_at", weekStart + "T00:00:00.000Z");
+  return count ?? 0;
+}
+
+// Charge AI usage against the weekly budget. `units` lets a multi-recipe
+// generation log several slot-equivalent uses; a week-plan logs one.
+async function logAiUsage(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  familyId: string,
+  kind: "slot" | "week_plan",
+  units = 1
+): Promise<void> {
+  if (units <= 0) return;
+  await supabase
+    .from("ai_usage")
+    .insert(Array.from({ length: units }, () => ({ family_id: familyId, kind })));
 }
 
 export async function suggestWithAI(
@@ -168,7 +180,7 @@ export async function suggestWithAI(
   const remaining = FREE_AI_LIMIT - usedThisWeek;
 
   if (remaining <= 0) {
-    return "You've used all 5 AI suggestions for this week. Upgrade to Premium for unlimited.";
+    return `You've used all ${FREE_AI_LIMIT} AI suggestions for this week. Upgrade to Premium for unlimited.`;
   }
 
   // Burst limit: 2 AI suggestion calls per hour prevents rapid-fire abuse
@@ -295,6 +307,9 @@ export async function suggestWithAI(
   }
 
   if (savedIds.length === 0) return "Failed to save AI recipes — try again";
+
+  // Charge the weekly AI budget (one use per generated recipe — preserves prior behaviour)
+  await logAiUsage(supabase, membership.family_id, "slot", savedIds.length);
 
   // Create or update the meal plan
   const { data: existingPlan } = await supabase
@@ -894,7 +909,7 @@ export async function suggestForSlot(
 
   const usedThisWeek = await getAIUsageThisWeek(membership.family_id);
   if (FREE_AI_LIMIT - usedThisWeek <= 0) {
-    return { error: "You've used all 5 AI suggestions for this week" };
+    return { error: `You've used all ${FREE_AI_LIMIT} AI suggestions for this week` };
   }
 
   const burstOk = await checkRateLimit(supabase, user.id, "ai_suggest", 2, 60);
@@ -1031,6 +1046,9 @@ export async function suggestForSlot(
     .eq("id", slotId);
 
   if (updateError) return { error: updateError.message };
+
+  // Charge one AI use against the weekly budget (B15 ledger)
+  await logAiUsage(supabase, membership.family_id, "slot");
 
   revalidatePath("/meal-plan");
   return {
