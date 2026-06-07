@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { COURSE_LABELS, SELECTABLE_COURSES, type Course } from "@nomnate/types";
 import { castVote, removeFromSlot, assignRecipeToSlot, suggestForSlot, addCourseToDay, removeCourseFromDay } from "./actions";
+import { addLogEntryFromRecipe } from "../food-log/actions";
 
 const DAY_NAMES = [
   "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
@@ -112,6 +113,8 @@ export function WeeklyCalendar({
     () => new Map(initialSlots.map((s) => [s.id, s.recipe]))
   );
   const [courseBusy, setCourseBusy] = useState<string | null>(null);
+  const [loggingRecipeId, setLoggingRecipeId] = useState<string | null>(null);
+  const [logMessage, setLogMessage] = useState<string | null>(null);
 
   const [allRecipes, setAllRecipes] = useState<RecipeData[]>(initialRecipes);
   const [aiRemaining, setAiRemaining] = useState(initialAiRemaining);
@@ -287,6 +290,20 @@ export function WeeklyCalendar({
     setVotes((prev) => prev.filter((v) => !removed.has(v.meal_plan_slot_id)));
   }
 
+  async function handleLog(recipeId: string) {
+    setSlotError(null);
+    setLoggingRecipeId(recipeId);
+    const today = new Date().toISOString().slice(0, 10);
+    const result = await addLogEntryFromRecipe({ recipeId, date: today, mealType: "dinner", servings: 1 });
+    setLoggingRecipeId(null);
+    if ("error" in result) {
+      setSlotError(result.error);
+      return;
+    }
+    setLogMessage(`Logged “${result.entry.label}” to today's diary`);
+    setTimeout(() => setLogMessage(null), 2500);
+  }
+
   // (day|course) combos where this member has already voted (single-vote-per-course rule)
   const myVotedDayCourses = useMemo(() => {
     const set = new Set<string>();
@@ -331,6 +348,12 @@ export function WeeklyCalendar({
       {(voteError || slotError) && (
         <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">
           {voteError || slotError}
+        </p>
+      )}
+
+      {logMessage && (
+        <p className="text-sm text-herb-dark bg-herb/10 px-4 py-3 rounded-xl">
+          🍽 {logMessage}
         </p>
       )}
 
@@ -466,6 +489,14 @@ export function WeeklyCalendar({
                           </div>
 
                           <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => recipe && handleLog(recipe.id)}
+                              disabled={loggingRecipeId === recipe?.id}
+                              className="p-1 rounded-md text-xs text-slate hover:text-herb hover:bg-herb/10 transition-colors disabled:opacity-50"
+                              title="Log to today's diary"
+                            >
+                              🍽
+                            </button>
                             <button
                               onClick={() => {
                                 setSlotError(null);
