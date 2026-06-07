@@ -70,6 +70,7 @@ pending reconciliation.
 | B12 | Party/braai event-planning section | 🟡 medium | **Shipped** — B12.1 (#15), B12.2 (#16), B12.3 (#17), B12.4 done | [B12-EVENTS-SCOPE.md](./B12-EVENTS-SCOPE.md) |
 | B13 | Filter/flag test feedback submissions | 🟢 low | Shipped | P16 — triage auto-quarantines test submissions (bulk delete already existed, P10 `10889eb`) |
 | B14 | AI Chef localisation for AU/AE (un-localised stores/guidance) | 🟡 medium | Shipped | P15 — AU/AE store names + guidance added (halal for AE) |
+| B15 | AI "plan my whole week" (new feedback 2026-06-07) | 🟡 medium | **In progress** — B15.1 (ai_usage ledger) done; B15.2 (plan-my-week action+button) remains | [B15-AI-WEEK-PLANNER-SCOPE.md](./B15-AI-WEEK-PLANNER-SCOPE.md) |
 
 ## Regeneration
 

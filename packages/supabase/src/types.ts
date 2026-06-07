@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage: {
+        Row: {
+          created_at: string
+          family_id: string
+          id: string
+          kind: string
+        }
+        Insert: {
+          created_at?: string
+          family_id: string
+          id?: string
+          kind?: string
+        }
+        Update: {
+          created_at?: string
+          family_id?: string
+          id?: string
+          kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           created_at: string
