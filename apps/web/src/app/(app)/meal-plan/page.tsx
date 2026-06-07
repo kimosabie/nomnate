@@ -133,7 +133,7 @@ export default async function MealPlanPage() {
       // Manual (family-scoped) recipes
       supabase
         .from("recipes")
-        .select("id, title, image_url, prep_time, cuisine, is_favourite")
+        .select("id, title, image_url, prep_time, cuisine, course, is_favourite")
         .eq("family_id", membership.family_id)
         .eq("is_global", false)
         .order("is_favourite", { ascending: false })
@@ -141,7 +141,7 @@ export default async function MealPlanPage() {
       // Saved global-library recipes via the family_recipes junction
       supabase
         .from("family_recipes")
-        .select("is_favourite, recipe:recipes(id, title, image_url, prep_time, cuisine)")
+        .select("is_favourite, recipe:recipes(id, title, image_url, prep_time, cuisine, course)")
         .eq("family_id", membership.family_id)
         .order("added_at", { ascending: false }),
     ]);
@@ -169,7 +169,7 @@ export default async function MealPlanPage() {
     recipeIds.length > 0
       ? supabase
           .from("recipes")
-          .select("id, title, image_url, prep_time, cuisine")
+          .select("id, title, image_url, prep_time, cuisine, course")
           .in("id", recipeIds)
       : Promise.resolve({ data: [] }),
     slotIds.length > 0
