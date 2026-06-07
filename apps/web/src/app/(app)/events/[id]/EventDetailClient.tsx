@@ -8,6 +8,7 @@ import {
   deleteEvent,
   addDishFromRecipe,
   removeDish,
+  generateEventMenu,
   type EventRow,
   type EventDish,
 } from "../actions";
@@ -51,6 +52,16 @@ export function EventDetailClient({
 
   const [addCourse, setAddCourse] = useState<string>("main");
   const [search, setSearch] = useState("");
+  const [generating, setGenerating] = useState(false);
+
+  async function handleGenerate() {
+    setError(null);
+    setGenerating(true);
+    const result = await generateEventMenu(event.id);
+    setGenerating(false);
+    if ("error" in result) return setError(result.error);
+    setDishes((prev) => [...prev, ...result.dishes]);
+  }
 
   const groups = COURSE_ORDER
     .map((c) => ({ course: c, items: dishes.filter((d) => d.course === c) }))
@@ -166,6 +177,22 @@ export function EventDetailClient({
       </div>
 
       {error && <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">{error}</p>}
+
+      {/* AI menu generator */}
+      <div className="rounded-[14px] border border-cream-border bg-gradient-to-br from-flame-light to-turmeric-light p-4 flex items-center gap-3">
+        <span className="text-2xl shrink-0">🤖</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-charcoal">Generate a menu with AI</p>
+          <p className="text-xs text-slate">A themed spread for {event.guest_count} guests — salads, mains &amp; dessert.</p>
+        </div>
+        <button
+          onClick={handleGenerate}
+          disabled={generating}
+          className="bg-flame hover:bg-flame-dark disabled:opacity-60 text-white font-semibold px-4 py-2 rounded-full text-xs transition-colors shrink-0"
+        >
+          {generating ? "Generating…" : dishes.length > 0 ? "Add more" : "Generate"}
+        </button>
+      </div>
 
       {/* Menu */}
       {groups.length === 0 ? (

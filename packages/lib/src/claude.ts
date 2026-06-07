@@ -24,6 +24,77 @@ function buildMemberLines(members: FamilyMemberContext[]): string[] {
   });
 }
 
+export type EventMenuDish = SuggestedRecipe & { course: string; servings: number };
+
+// Generate a themed event menu (braai/party/dinner) spanning courses. Each dish
+// is a full recipe so it can be saved + costed into a shopping list.
+export async function suggestEventMenu(params: {
+  eventType: string;
+  guests: number;
+  country?: string;
+  cuisinePreferences?: string[];
+  dietaryRequirements?: string[];
+}): Promise<EventMenuDish[]> {
+  const systemPrompt = params.country
+    ? buildMealSystemPrompt({
+        country: params.country as CountryCode,
+        cuisinePreferences: (params.cuisinePreferences ?? []) as Cuisine[],
+        dietaryRequirements: (params.dietaryRequirements ?? []) as DietaryRequirement[],
+        familySize: params.guests,
+      })
+    : undefined;
+
+  const themeMap: Record<string, string> = {
+    braai: "South African braai (barbecue)",
+    party: "party / gathering with crowd-pleasers",
+    dinner: "dinner party",
+    other: "gathering",
+  };
+  const theme = themeMap[params.eventType] ?? "gathering";
+
+  const prompt = `${systemPrompt ? "" : "You are a helpful meal planning assistant.\n\n"}Plan a ${theme} menu for ${params.guests} guests. Include a balanced spread: 1-2 salads or sides, 1-2 main dishes, and 1 dessert (5-6 dishes total). Give each dish a sensible servings count.
+
+Return ONLY a valid JSON array, no other text:
+[
+  {
+    "course": "side" | "starter" | "main" | "dessert",
+    "title": "Dish name",
+    "cuisine": "e.g. South African",
+    "servings": 8,
+    "prep_time": 30,
+    "calories_per_serving": 450,
+    "protein_g": 20,
+    "carbs_g": 40,
+    "fat_g": 18,
+    "instructions": "Clear step-by-step instructions...",
+    "ingredients": [{ "name": "ingredient name", "quantity": 2, "unit": "cups" }]
+  }
+]
+
+Rules:
+- course must be one of: side, starter, main, dessert
+- quantity can be null (e.g. "salt to taste"); unit can be null for countable items
+- nutrition values are per-serving estimates`;
+
+  const message = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 8192,
+    ...(systemPrompt ? { system: systemPrompt } : {}),
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const text = message.content[0]?.type === "text" ? message.content[0].text : "";
+  const jsonMatch = text.match(/\[[\s\S]*\]/);
+  if (!jsonMatch) throw new Error("AI returned an unexpected response — try again");
+
+  const parsed = JSON.parse(jsonMatch[0]) as EventMenuDish[];
+  const validCourses = new Set(["side", "starter", "main", "dessert"]);
+  return parsed
+    .filter((d) => d && typeof d.title === "string" && validCourses.has(d.course))
+    .slice(0, 8)
+    .map((d) => ({ ...d, servings: typeof d.servings === "number" && d.servings > 0 ? Math.round(d.servings) : 8 }));
+}
+
 // Cheap per-serving nutrition estimate (Haiku) — fallback when Spoonacular can't
 // estimate. Sends only the dish title + ingredient names (no PII). Returns null on failure.
 export async function estimateNutrition(input: {
