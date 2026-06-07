@@ -8,6 +8,7 @@ import type { MealDBMeal, MealDBListItem } from "@nomnate/lib/themealdb";
 import { checkRateLimit } from "@/lib/rateLimit";
 import type { SpoonacularRecipe } from "@nomnate/types";
 import { courseFromMealDBCategory, courseFromTitle } from "@nomnate/types";
+import { estimateRecipeNutrition } from "@/lib/nutrition";
 import { saveSpoonacularGlobally } from "./spoonacular-actions";
 
 
@@ -299,6 +300,13 @@ export async function saveMealDBRecipe(
     }
     if (!meal) return "Recipe not found";
 
+    // TheMealDB carries no nutrition — estimate it (Spoonacular → AI fallback).
+    const ingredients = extractIngredients(meal);
+    const nutrition = await estimateRecipeNutrition(
+      meal.strMeal ?? partialTitle ?? "",
+      ingredients.map((i) => i.name)
+    );
+
     const { data: saved, error } = await supabase
       .from("recipes")
       .insert({
@@ -311,6 +319,11 @@ export async function saveMealDBRecipe(
         cuisine: meal.strCategory ?? meal.strArea ?? null,
         course: courseFromMealDBCategory(meal.strCategory) ?? courseFromTitle(meal.strMeal ?? partialTitle ?? ""),
         instructions: meal.strInstructions ?? null,
+        calories_per_serving: nutrition?.calories_per_serving ?? null,
+        protein_g: nutrition?.protein_g ?? null,
+        carbs_g: nutrition?.carbs_g ?? null,
+        fat_g: nutrition?.fat_g ?? null,
+        nutrition_estimated: nutrition != null,
         is_global: true,
         created_by: user.id,
       })
@@ -320,7 +333,6 @@ export async function saveMealDBRecipe(
     if (error || !saved) return error?.message ?? "Failed to save recipe";
     recipeId = saved.id;
 
-    const ingredients = extractIngredients(meal);
     if (ingredients.length > 0) {
       await supabase.from("recipe_ingredients").insert(
         ingredients.map((ing) => ({

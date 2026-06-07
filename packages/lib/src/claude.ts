@@ -24,6 +24,35 @@ function buildMemberLines(members: FamilyMemberContext[]): string[] {
   });
 }
 
+// Cheap per-serving nutrition estimate (Haiku) — fallback when Spoonacular can't
+// estimate. Sends only the dish title + ingredient names (no PII). Returns null on failure.
+export async function estimateNutrition(input: {
+  title: string;
+  ingredients?: string[];
+}): Promise<{ calories_per_serving: number; protein_g: number | null; carbs_g: number | null; fat_g: number | null } | null> {
+  const ing = input.ingredients?.length ? `\nIngredients: ${input.ingredients.join(", ")}.` : "";
+  const prompt = `Estimate the per-serving nutrition for this dish. Reply ONLY with compact JSON {"calories":N,"protein_g":N,"carbs_g":N,"fat_g":N} as integers (grams for macros).\nDish: ${input.title}.${ing}`;
+  try {
+    const msg = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 100,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const text = msg.content[0].type === "text" ? msg.content[0].text : "";
+    const json = JSON.parse(text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, ""));
+    if (typeof json.calories !== "number") return null;
+    const intOrNull = (v: unknown) => (typeof v === "number" ? Math.round(v) : null);
+    return {
+      calories_per_serving: Math.round(json.calories),
+      protein_g: intOrNull(json.protein_g),
+      carbs_g: intOrNull(json.carbs_g),
+      fat_g: intOrNull(json.fat_g),
+    };
+  } catch {
+    return null;
+  }
+}
+
 function buildFallbackContext(
   familySize: number,
   dietaryRestrictions: string[],
