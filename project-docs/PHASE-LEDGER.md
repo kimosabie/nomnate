@@ -62,7 +62,7 @@ pending reconciliation.
 | B4 | Exclude selected meals from other days' suggestions | 🟠 high | Shipped — archive pending | P9 (`dbdce3a`) |
 | B5 | Localise recipe measurements to SA units | 🟠 high | Shipped — archive pending | P9 (`dbdce3a`) + P11 |
 | B6 | Recipe detail: dish summary + cooking method | 🟠 high | Shipped — library search results now link to detail (P15); external (unsaved) results still save-first | P2 `3cd952c`, P9 `dbdce3a`, P15 |
-| B7 | Nutritional data so calorie tracking works | 🟠 high | **Scoped** — phased plan (B7.1–B7.4: nutrition fill → food-log backend → diary UI → quick-log); B7.1 in progress | [B7-NUTRITION-TRACKING-SCOPE.md](./B7-NUTRITION-TRACKING-SCOPE.md) |
+| B7 | Nutritional data so calorie tracking works | 🟠 high | **In progress** — B7.1 shipped (#11); B7.2 done; B7.3 (diary UI) + B7.4 (quick-log) remain | [B7-NUTRITION-TRACKING-SCOPE.md](./B7-NUTRITION-TRACKING-SCOPE.md) |
 | B8 | Structured daily course slots (starter/main/dessert) | 🟠 high | **Shipped** — B8.1 (#5), B8.2 (#6), B8.3a (#7), B8.3b (#8), B8.3c (#9), B8.4 done | [B8-COURSE-SLOTS-SCOPE.md](./B8-COURSE-SLOTS-SCOPE.md) |
 | B9 | Auto-refresh daily options after a selection | 🟡 medium | Shipped | P16 (distinct daily options) + P17 (library auto-reshuffle on selection — chosen over AI re-roll to avoid the 5/week cap; votes preserved) |
 | B10 | Preferred grocery-store selection UI (≤5) in Family Settings | 🟡 medium | Shipped | `StorePreferencesForm` on `/family` — admin-gated, country-filtered, keeps ≥1; all countries already ≤5 stores |

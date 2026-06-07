@@ -118,6 +118,69 @@ export type Database = {
           },
         ]
       }
+      food_log_entries: {
+        Row: {
+          calories: number | null
+          carbs_g: number | null
+          created_at: string
+          family_member_id: string
+          fat_g: number | null
+          id: string
+          label: string
+          logged_date: string
+          meal_type: string | null
+          nutrition_estimated: boolean
+          protein_g: number | null
+          recipe_id: string | null
+          servings: number
+        }
+        Insert: {
+          calories?: number | null
+          carbs_g?: number | null
+          created_at?: string
+          family_member_id: string
+          fat_g?: number | null
+          id?: string
+          label: string
+          logged_date: string
+          meal_type?: string | null
+          nutrition_estimated?: boolean
+          protein_g?: number | null
+          recipe_id?: string | null
+          servings?: number
+        }
+        Update: {
+          calories?: number | null
+          carbs_g?: number | null
+          created_at?: string
+          family_member_id?: string
+          fat_g?: number | null
+          id?: string
+          label?: string
+          logged_date?: string
+          meal_type?: string | null
+          nutrition_estimated?: boolean
+          protein_g?: number | null
+          recipe_id?: string | null
+          servings?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "food_log_entries_family_member_id_fkey"
+            columns: ["family_member_id"]
+            isOneToOne: false
+            referencedRelation: "family_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "food_log_entries_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedback: {
         Row: {
           ai_category: string | null
