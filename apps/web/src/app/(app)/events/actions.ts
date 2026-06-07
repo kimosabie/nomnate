@@ -6,6 +6,7 @@ import { filterText } from "@/lib/contentFilter";
 import { toCourse } from "@nomnate/types";
 import { suggestEventMenu } from "@nomnate/lib/claude";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { consolidateIngredients, type RawIng, type ConsolidatedItem } from "@/lib/ingredients";
 
 export type EventRow = {
   id: string;
@@ -313,6 +314,62 @@ export async function generateEventMenu(
 
   revalidatePath(`/events/${eventId}`);
   return { dishes: created };
+}
+
+// Consolidated shopping list for an event, with each recipe's ingredients scaled
+// from its own serving size up to the event's guest count.
+export async function getEventShoppingList(
+  eventId: string
+): Promise<{ error: string } | { items: ConsolidatedItem[]; guestCount: number }> {
+  const supabase = await createClient();
+  const ctx = await resolveFamily(supabase);
+  if (!ctx) return { error: "No family found" };
+
+  const { data: event } = await supabase
+    .from("events")
+    .select("id, family_id, guest_count")
+    .eq("id", eventId)
+    .maybeSingle();
+  if (!event || event.family_id !== ctx.familyId) return { error: "Event not found" };
+  const guestCount = event.guest_count;
+
+  const { data: dishes } = await supabase
+    .from("event_dishes")
+    .select("recipe_id")
+    .eq("event_id", eventId)
+    .not("recipe_id", "is", null);
+  const dishRecipeIds = (dishes ?? []).map((d) => d.recipe_id as string);
+  if (dishRecipeIds.length === 0) return { items: [], guestCount };
+
+  const uniqueIds = [...new Set(dishRecipeIds)];
+  const [{ data: recipes }, { data: ingredients }] = await Promise.all([
+    supabase.from("recipes").select("id, servings").in("id", uniqueIds),
+    supabase.from("recipe_ingredients").select("recipe_id, name, quantity, unit").in("recipe_id", uniqueIds),
+  ]);
+
+  const servingsById = new Map((recipes ?? []).map((r) => [r.id, r.servings && r.servings > 0 ? r.servings : 4]));
+  const ingsByRecipe = new Map<string, RawIng[]>();
+  for (const ing of ingredients ?? []) {
+    const arr = ingsByRecipe.get(ing.recipe_id) ?? [];
+    arr.push({ name: ing.name, quantity: ing.quantity, unit: ing.unit });
+    ingsByRecipe.set(ing.recipe_id, arr);
+  }
+
+  // One dish at a time (so the same recipe added twice is counted twice), scaling
+  // each recipe's quantities by guests / its own servings.
+  const scaled: RawIng[] = [];
+  for (const recipeId of dishRecipeIds) {
+    const factor = guestCount / (servingsById.get(recipeId) ?? 4);
+    for (const ing of ingsByRecipe.get(recipeId) ?? []) {
+      scaled.push({
+        name: ing.name,
+        quantity: ing.quantity != null ? Math.round(ing.quantity * factor * 100) / 100 : null,
+        unit: ing.unit,
+      });
+    }
+  }
+
+  return { items: consolidateIngredients(scaled), guestCount };
 }
 
 export async function removeDish(dishId: string): Promise<{ error: string } | { ok: true }> {
