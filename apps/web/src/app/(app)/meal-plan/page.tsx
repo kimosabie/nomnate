@@ -6,6 +6,7 @@ import type { SlotData, VoteData, RecipeData } from "./WeeklyCalendar";
 import { GeneratePlanButton } from "./GeneratePlanButton";
 import { GenerateShoppingListButton } from "./GenerateShoppingListButton";
 import { AISuggestButton } from "./AISuggestButton";
+import { PlanWeekButton } from "./PlanWeekButton";
 import { ResetPlanButton } from "./ResetPlanButton";
 import { getAIUsageThisWeek } from "./actions";
 import { FREE_AI_LIMIT } from "./constants";
@@ -84,7 +85,8 @@ export default async function MealPlanPage() {
           </div>
 
           <div className="max-w-sm mx-auto w-full space-y-3">
-            <AISuggestButton remaining={aiRemaining} variant="primary" />
+            <PlanWeekButton remaining={aiRemaining} />
+            <AISuggestButton remaining={aiRemaining} variant="secondary" />
             {count > 0 && (
               <>
                 <div className="flex items-center gap-3">
@@ -224,10 +226,13 @@ export default async function MealPlanPage() {
           <div className="mb-4">
             <p className="text-sm font-semibold text-charcoal">Suggest with AI</p>
             <p className="text-xs text-slate mt-0.5">
-              Claude will generate new recipes and fill any empty days
+              Plan the whole week in one tap, or top up a few empty slots
             </p>
           </div>
-          <AISuggestButton remaining={aiRemaining} variant="secondary" />
+          <div className="space-y-3">
+            <PlanWeekButton remaining={aiRemaining} />
+            <AISuggestButton remaining={aiRemaining} variant="secondary" />
+          </div>
         </div>
 
         {/* Shopping list */}
