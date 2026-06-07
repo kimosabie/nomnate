@@ -57,7 +57,25 @@ export async function suggestMeals(
     familyMembers = [],
     country,
     familyDietaryRequirements = [],
+    course,
   } = params;
+
+  // What kind of dish to ask for (defaults to dinner mains)
+  const COURSE_NOUNS: Record<string, string> = {
+    starter: "starter / appetiser",
+    main: "dinner main-course",
+    dessert: "dessert",
+    side: "side dish",
+  };
+  const dishNoun = (course && COURSE_NOUNS[course]) || "dinner";
+  const courseInstruction =
+    course === "dessert"
+      ? "Every suggestion must be a dessert (sweet course)."
+      : course === "starter"
+      ? "Every suggestion must be a starter / appetiser, not a main."
+      : course === "side"
+      ? "Every suggestion must be a side dish."
+      : "";
 
   const systemPrompt = country
     ? buildMealSystemPrompt({
@@ -97,7 +115,8 @@ export async function suggestMeals(
     ? ""
     : "- Use ingredients commonly available in the family's region";
 
-  const prompt = `${systemPrompt ? "" : "You are a helpful meal planning assistant.\n\n"}Suggest ${count} dinner recipes for a family of ${familySize}.
+  const prompt = `${systemPrompt ? "" : "You are a helpful meal planning assistant.\n\n"}Suggest ${count} ${dishNoun} recipes for a family of ${familySize}.
+${courseInstruction}
 ${familyContext}
 ${preferences}
 ${dislikes}

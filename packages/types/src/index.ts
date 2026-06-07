@@ -254,6 +254,7 @@ export interface MealSuggestionParams {
   familyMembers?: FamilyMemberContext[];
   country?: string;
   familyDietaryRequirements?: string[];
+  course?: string; // starter|main|dessert|side — biases the suggestion to that course
 }
 
 export interface SuggestedRecipe {

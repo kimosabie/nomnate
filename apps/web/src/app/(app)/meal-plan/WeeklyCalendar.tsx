@@ -45,6 +45,7 @@ export type RecipeData = {
   image_url: string | null;
   prep_time: number | null;
   cuisine: string | null;
+  course: string | null;
 };
 
 export type SlotData = {
@@ -311,8 +312,18 @@ export function WeeklyCalendar({
     ).filter((g) => g.length > 0);
   }, [slots]);
 
-  const filteredRecipes = allRecipes.filter((r) =>
-    r.title.toLowerCase().includes(pickerSearch.toLowerCase())
+  // Only offer recipes that fit the open slot's course (desserts and savoury
+  // courses are kept apart; unclassified recipes are allowed anywhere).
+  const openSlotCourse = openPickerSlotId
+    ? (slots.find((s) => s.id === openPickerSlotId)?.course ?? null)
+    : null;
+  const courseAllowed = (r: RecipeData) => {
+    if (!openSlotCourse) return true;
+    if (openSlotCourse === "dessert") return r.course === "dessert" || r.course == null;
+    return r.course !== "dessert";
+  };
+  const filteredRecipes = allRecipes.filter(
+    (r) => courseAllowed(r) && r.title.toLowerCase().includes(pickerSearch.toLowerCase())
   );
 
   return (

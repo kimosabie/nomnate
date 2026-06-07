@@ -648,7 +648,7 @@ export async function addCourseToDay(
   if (recipeIds.length > 0) {
     const { data: recipeRows } = await supabase
       .from("recipes")
-      .select("id, title, image_url, prep_time, cuisine")
+      .select("id, title, image_url, prep_time, cuisine, course")
       .in("id", recipeIds);
     for (const r of recipeRows ?? []) recipeById.set(r.id, r as SlotRecipe);
   }
@@ -846,7 +846,7 @@ export async function assignRecipeToSlot(
   // Verify recipe is accessible to this family
   const { data: recipe } = await supabase
     .from("recipes")
-    .select("id, is_global, family_id")
+    .select("id, is_global, family_id, course")
     .eq("id", recipeId)
     .maybeSingle();
   if (!recipe) return { error: "Recipe not found" };
@@ -861,6 +861,16 @@ export async function assignRecipeToSlot(
     if (!libEntry) return { error: "Recipe not in your library" };
   } else if (recipe.family_id !== membership.family_id) {
     return { error: "Recipe not found" };
+  }
+
+  // Course enforcement: keep desserts and savoury courses apart (unclassified
+  // recipes are allowed anywhere; starter/main/side are interchangeable).
+  const slotCourse = (slot.course as string) ?? "main";
+  if (recipe.course === "dessert" && slotCourse !== "dessert") {
+    return { error: "That's a dessert — it can't go in a savoury course." };
+  }
+  if (recipe.course && recipe.course !== "dessert" && slotCourse === "dessert") {
+    return { error: "Only a dessert can go in the dessert course." };
   }
 
   const { error } = await supabase
@@ -1004,7 +1014,7 @@ async function reshuffleAfterAssign(
 
   const { data: recipeRows } = await supabase
     .from("recipes")
-    .select("id, title, image_url, prep_time, cuisine")
+    .select("id, title, image_url, prep_time, cuisine, course")
     .in("id", [...new Set(newRecipeBySlot.values())]);
   const recipeById = new Map((recipeRows ?? []).map((r) => [r.id, r as SlotRecipe]));
 
@@ -1020,6 +1030,7 @@ type SlotRecipe = {
   image_url: string | null;
   prep_time: number | null;
   cuisine: string | null;
+  course: string | null;
 };
 
 export async function suggestForSlot(
@@ -1093,9 +1104,10 @@ export async function suggestForSlot(
   // Also exclude meals already assigned to other slots this week
   const { data: thisSlot } = await supabase
     .from("meal_plan_slots")
-    .select("meal_plan_id")
+    .select("meal_plan_id, course")
     .eq("id", slotId)
     .single();
+  const slotCourse = (thisSlot?.course as string) ?? "main";
 
   let assignedTitles: string[] = [];
   if (thisSlot) {
@@ -1125,6 +1137,7 @@ export async function suggestForSlot(
       familyMembers: familyMembersSlot,
       country: slotFamilyCountry,
       familyDietaryRequirements: slotFamilyDietaryRequirements,
+      course: slotCourse,
     });
   } catch {
     return { error: "AI suggestions are temporarily unavailable — please try again later." };
@@ -1145,6 +1158,7 @@ export async function suggestForSlot(
       prep_time: s.prep_time,
       cuisine: s.cuisine,
       image_url: slotImageUrl,
+      course: slotCourse,
       calories_per_serving: s.calories_per_serving ?? null,
       protein_g: s.protein_g ?? null,
       carbs_g: s.carbs_g ?? null,
@@ -1152,7 +1166,7 @@ export async function suggestForSlot(
       is_global: true,
       created_by: user.id,
     })
-    .select("id, title, image_url, prep_time, cuisine")
+    .select("id, title, image_url, prep_time, cuisine, course")
     .single();
 
   if (saveError || !saved) return { error: saveError?.message ?? "Failed to save recipe" };
@@ -1188,6 +1202,7 @@ export async function suggestForSlot(
       image_url: saved.image_url ?? null,
       prep_time: saved.prep_time ?? null,
       cuisine: saved.cuisine ?? null,
+      course: saved.course ?? null,
     },
   };
 }
