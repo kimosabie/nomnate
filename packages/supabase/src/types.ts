@@ -14,6 +14,89 @@ export type Database = {
   }
   public: {
     Tables: {
+      events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          event_date: string | null
+          event_type: string | null
+          family_id: string
+          guest_count: number
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          event_date?: string | null
+          event_type?: string | null
+          family_id: string
+          guest_count?: number
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          event_date?: string | null
+          event_type?: string | null
+          family_id?: string
+          guest_count?: number
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_dishes: {
+        Row: {
+          course: string
+          created_at: string
+          event_id: string
+          id: string
+          label: string
+          recipe_id: string | null
+        }
+        Insert: {
+          course?: string
+          created_at?: string
+          event_id: string
+          id?: string
+          label: string
+          recipe_id?: string | null
+        }
+        Update: {
+          course?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          label?: string
+          recipe_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_dishes_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_dishes_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       families: {
         Row: {
           country: string
