@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/recipes", label: "Recipes" },
   { href: "/meal-plan", label: "Meal plan" },
   { href: "/shopping-list", label: "Shopping" },
+  { href: "/food-log", label: "Diary" },
 ];
 
 export function AppNav({ initials, inviteCode, isAdmin }: { initials: string; inviteCode: string | null; isAdmin?: boolean }) {
