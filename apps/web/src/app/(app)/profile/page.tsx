@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { isAdmin } from "@/lib/admin";
 import { PreferencesForm } from "./PreferencesForm";
 import { DeleteAccountSection } from "./DeleteAccountSection";
 
@@ -35,6 +36,19 @@ export default async function ProfilePage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 pb-8 space-y-4">
+        {isAdmin(user.email) && (
+          <Link
+            href="/admin/dashboard"
+            className="flex items-center gap-3 bg-charcoal text-white rounded-[14px] p-4 hover:bg-charcoal/90 transition-colors"
+          >
+            <span className="text-xl shrink-0">📊</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">Admin dashboard</p>
+              <p className="text-xs text-white/60">System health &amp; metrics</p>
+            </div>
+            <span className="text-white/60 text-sm shrink-0">→</span>
+          </Link>
+        )}
         <PreferencesForm
           name={member.name ?? ""}
           dietaryRestrictions={(member.dietary_restrictions as string[]) ?? []}
