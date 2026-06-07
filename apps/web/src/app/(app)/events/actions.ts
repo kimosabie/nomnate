@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { filterText } from "@/lib/contentFilter";
 import { toCourse } from "@nomnate/types";
+import { suggestEventMenu } from "@nomnate/lib/claude";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export type EventRow = {
   id: string;
@@ -219,6 +221,98 @@ export async function addDishFromRecipe(
 
   revalidatePath(`/events/${eventId}`);
   return { dish: saved as EventDish };
+}
+
+// Generate a themed AI menu for the event: saves each dish as a global recipe
+// (NOT added to family_recipes, so it doesn't count against the meal-plan AI
+// budget) and links it as an event dish. Returns the new dishes.
+export async function generateEventMenu(
+  eventId: string
+): Promise<{ error: string } | { dishes: EventDish[] }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+  const ctx = await resolveFamily(supabase);
+  if (!ctx) return { error: "No family found" };
+
+  const { data: event } = await supabase
+    .from("events")
+    .select("id, family_id, event_type, guest_count")
+    .eq("id", eventId)
+    .maybeSingle();
+  if (!event || event.family_id !== ctx.familyId) return { error: "Event not found" };
+
+  const ok = await checkRateLimit(supabase, user.id, "ai_event_menu", 3, 60);
+  if (!ok) return { error: "Too many menu generations — wait a moment before trying again." };
+
+  const { data: family } = await supabase
+    .from("families")
+    .select("country, cuisine_preferences, dietary_requirements")
+    .eq("id", ctx.familyId)
+    .maybeSingle();
+
+  let menu;
+  try {
+    menu = await suggestEventMenu({
+      eventType: event.event_type ?? "other",
+      guests: event.guest_count,
+      country: (family as { country?: string } | null)?.country,
+      cuisinePreferences: (family as { cuisine_preferences?: string[] } | null)?.cuisine_preferences ?? [],
+      dietaryRequirements: (family as { dietary_requirements?: string[] } | null)?.dietary_requirements ?? [],
+    });
+  } catch {
+    return { error: "AI menu generation is temporarily unavailable — please try again later." };
+  }
+  if (!menu.length) return { error: "No menu returned — try again." };
+
+  const created: EventDish[] = [];
+  for (const dish of menu) {
+    const { data: recipe, error: recErr } = await supabase
+      .from("recipes")
+      .insert({
+        title: dish.title,
+        source: "ai" as const,
+        source_attribution: `AI-generated recipe by Claude (Anthropic). Inspired by traditional ${dish.cuisine} cooking.`,
+        instructions: dish.instructions,
+        prep_time: dish.prep_time ?? null,
+        servings: dish.servings,
+        cuisine: dish.cuisine,
+        course: dish.course,
+        calories_per_serving: dish.calories_per_serving ?? null,
+        protein_g: dish.protein_g ?? null,
+        carbs_g: dish.carbs_g ?? null,
+        fat_g: dish.fat_g ?? null,
+        nutrition_estimated: true,
+        is_global: true,
+        created_by: user.id,
+      })
+      .select("id, title")
+      .single();
+    if (recErr || !recipe) continue;
+
+    if (dish.ingredients?.length) {
+      await supabase.from("recipe_ingredients").insert(
+        dish.ingredients.map((ing) => ({
+          recipe_id: recipe.id,
+          name: ing.name,
+          quantity: ing.quantity ?? null,
+          unit: ing.unit || null,
+        }))
+      );
+    }
+
+    const { data: savedDish } = await supabase
+      .from("event_dishes")
+      .insert({ event_id: eventId, recipe_id: recipe.id, course: dish.course, label: recipe.title })
+      .select("id, recipe_id, course, label")
+      .single();
+    if (savedDish) created.push(savedDish as EventDish);
+  }
+
+  if (created.length === 0) return { error: "Could not save the generated menu — try again." };
+
+  revalidatePath(`/events/${eventId}`);
+  return { dishes: created };
 }
 
 export async function removeDish(dishId: string): Promise<{ error: string } | { ok: true }> {
