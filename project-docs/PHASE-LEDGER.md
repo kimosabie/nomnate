@@ -67,7 +67,7 @@ pending reconciliation.
 | B9 | Auto-refresh daily options after a selection | 🟡 medium | Shipped | P16 (distinct daily options) + P17 (library auto-reshuffle on selection — chosen over AI re-roll to avoid the 5/week cap; votes preserved) |
 | B10 | Preferred grocery-store selection UI (≤5) in Family Settings | 🟡 medium | Shipped | `StorePreferencesForm` on `/family` — admin-gated, country-filtered, keeps ≥1; all countries already ≤5 stores |
 | B11 | Family-name editing for family admins | 🟡 medium | Shipped | P15 — inline rename on `/family` for admins |
-| B12 | Party/braai event-planning section | 🟡 medium | **Scoped** — phased plan (B12.1–B12.4: backend → events UI → AI menu → scaled shopping); B12.1 in progress | [B12-EVENTS-SCOPE.md](./B12-EVENTS-SCOPE.md) |
+| B12 | Party/braai event-planning section | 🟡 medium | **In progress** — B12.1 (backend) done; B12.2 (UI) + B12.3 (AI menu) + B12.4 (scaled shopping) remain | [B12-EVENTS-SCOPE.md](./B12-EVENTS-SCOPE.md) |
 | B13 | Filter/flag test feedback submissions | 🟢 low | Shipped | P16 — triage auto-quarantines test submissions (bulk delete already existed, P10 `10889eb`) |
 | B14 | AI Chef localisation for AU/AE (un-localised stores/guidance) | 🟡 medium | Shipped | P15 — AU/AE store names + guidance added (halal for AE) |
 
