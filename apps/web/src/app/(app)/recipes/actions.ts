@@ -95,6 +95,7 @@ export async function searchRecipesAction(
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return { results: [], externalResults: [], error: "No family found", query, filter };
@@ -249,6 +250,7 @@ export async function addRecipeToLibrary(recipeId: string): Promise<string | nul
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return "No family found";
@@ -276,6 +278,7 @@ export async function saveMealDBRecipe(
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return "No family found";
@@ -551,6 +554,7 @@ export async function seedSARecipes(): Promise<{ seeded: number; skipped: number
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return { seeded: 0, skipped: 0, error: "No family found" };
@@ -624,6 +628,7 @@ export async function deleteRecipe(recipeId: string): Promise<string | null> {
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return "No family found";
@@ -667,6 +672,7 @@ export async function resetRecipeLibrary(): Promise<string | null> {
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return "No family found";
@@ -694,6 +700,7 @@ export async function toggleFavourite(formData: FormData): Promise<void> {
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return;

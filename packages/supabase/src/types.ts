@@ -14,6 +14,111 @@ export type Database = {
   }
   public: {
     Tables: {
+      dinner_drafts: {
+        Row: {
+          id: string
+          family_id: string
+          created_by: string
+          status: "open" | "finalised" | "cancelled"
+          draft_type: "tonight" | "weekly"
+          week_start: string | null
+          expires_at: string | null
+          created_at: string
+          updated_at: string
+          winner_candidate_id: string | null
+          finalised_at: string | null
+          result: Json | null
+        }
+        Insert: {
+          id?: string
+          family_id: string
+          created_by: string
+          status?: "open" | "finalised" | "cancelled"
+          draft_type?: "tonight" | "weekly"
+          week_start?: string | null
+          expires_at?: string | null
+          created_at?: string
+          updated_at?: string
+          winner_candidate_id?: string | null
+          finalised_at?: string | null
+          result?: Json | null
+        }
+        Update: {
+          id?: string
+          family_id?: string
+          created_by?: string
+          status?: "open" | "finalised" | "cancelled"
+          draft_type?: "tonight" | "weekly"
+          week_start?: string | null
+          expires_at?: string | null
+          created_at?: string
+          updated_at?: string
+          winner_candidate_id?: string | null
+          finalised_at?: string | null
+          result?: Json | null
+        }
+        Relationships: []
+      }
+      draft_candidates: {
+        Row: {
+          id: string
+          draft_id: string
+          recipe_id: string
+          target_date: string | null
+          course: "starter" | "main" | "dessert" | "side" | null
+          nomination_source: "planner" | "library" | "ai"
+          display_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          draft_id: string
+          recipe_id: string
+          target_date?: string | null
+          course?: "starter" | "main" | "dessert" | "side" | null
+          nomination_source?: "planner" | "library" | "ai"
+          display_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          draft_id?: string
+          recipe_id?: string
+          target_date?: string | null
+          course?: "starter" | "main" | "dessert" | "side" | null
+          nomination_source?: "planner" | "library" | "ai"
+          display_order?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      draft_votes: {
+        Row: {
+          id: string
+          candidate_id: string
+          family_member_id: string
+          reaction: "love" | "eat" | "whatever" | "nope"
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          candidate_id: string
+          family_member_id: string
+          reaction: "love" | "eat" | "whatever" | "nope"
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          candidate_id?: string
+          family_member_id?: string
+          reaction?: "love" | "eat" | "whatever" | "nope"
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_usage: {
         Row: {
           created_at: string
@@ -128,6 +233,9 @@ export type Database = {
       }
       families: {
         Row: {
+          timezone: string
+          cuisine_preferences: string[]
+          dietary_requirements: string[]
           country: string
           courses: string[]
           created_at: string
@@ -138,6 +246,9 @@ export type Database = {
           preferred_stores: string[]
         }
         Insert: {
+          timezone?: string
+          cuisine_preferences?: string[]
+          dietary_requirements?: string[]
           country?: string
           courses?: string[]
           created_at?: string
@@ -148,6 +259,9 @@ export type Database = {
           preferred_stores?: string[]
         }
         Update: {
+          timezone?: string
+          cuisine_preferences?: string[]
+          dietary_requirements?: string[]
           country?: string
           courses?: string[]
           created_at?: string
@@ -394,6 +508,7 @@ export type Database = {
       }
       meal_plan_slots: {
         Row: {
+          committed_draft_id: string | null
           course: string
           day_of_week: number
           id: string
@@ -403,6 +518,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          committed_draft_id?: string | null
           course?: string
           day_of_week: number
           id?: string
@@ -412,6 +528,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          committed_draft_id?: string | null
           course?: string
           day_of_week?: number
           id?: string
@@ -806,6 +923,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      active_family_id: { Args: Record<string, never>; Returns: string | null }
+      join_family: { Args: { code: string; display_name: string }; Returns: string }
+      finalise_dinner_draft: { Args: { draft_id: string; expected_winner: string }; Returns: Json }
+      cancel_dinner_draft: { Args: { draft_id: string }; Returns: undefined }
+      replace_shopping_list: { Args: { plan_id: string; items: Json }; Returns: string }
+
       get_family_by_invite_code: {
         Args: { code: string }
         Returns: {

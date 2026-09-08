@@ -14,6 +14,7 @@ export default async function PrintPage() {
     .from("family_members")
     .select("family_id, families(country, preferred_stores)")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) redirect("/onboarding");

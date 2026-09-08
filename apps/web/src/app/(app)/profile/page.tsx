@@ -18,6 +18,7 @@ export default async function ProfilePage() {
       "name, dietary_restrictions, cuisine_preferences, ingredient_dislikes, allergies, liked_ingredients, diet_types, daily_calorie_target, track_calories, relationship, date_of_birth"
     )
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
 

@@ -75,31 +75,10 @@ export async function joinFamily(
   if (!dn.value) return "Your name is required";
   const displayName = dn.value;
 
-  const { data: families, error: lookupError } = await supabase
-    .rpc("get_family_by_invite_code", { code: inviteCode });
-
-  const family = families?.[0];
-  if (lookupError || !family)
-    return "Invalid invite code — double-check and try again";
-
-  // Already a member? Just redirect
-  const { data: existing } = await supabase
-    .from("family_members")
-    .select("id")
-    .eq("family_id", family.id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!existing) {
-    const { error: joinError } = await supabase
-      .from("family_members")
-      .insert({ family_id: family.id, user_id: user.id, name: displayName });
-
-    if (joinError) {
-      // 23505 = unique_violation: another request beat us here — already a member, safe to continue
-      if (joinError.code !== "23505") return joinError.message;
-    }
-  }
+  const { error } = await supabase.rpc("join_family", {
+    code: inviteCode, display_name: displayName,
+  });
+  if (error) return error.message;
 
   revalidatePath("/", "layout");
   redirect("/onboarding/welcome");

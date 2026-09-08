@@ -131,6 +131,7 @@ export async function deleteAccount(
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
 
@@ -149,6 +150,7 @@ export async function deleteAccount(
         .select("user_id")
         .eq("family_id", membership.family_id)
         .neq("user_id", user.id)
+        .order("joined_at").order("id")
         .limit(1);
 
       if (otherMembers && otherMembers.length > 0) {

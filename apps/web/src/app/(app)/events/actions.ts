@@ -5,8 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { filterText } from "@/lib/contentFilter";
 import { toCourse } from "@nomnate/types";
 import { suggestEventMenu } from "@nomnate/lib/claude";
+import { scaleShoppingIngredients } from "@/lib/mealShopping";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { consolidateIngredients, type RawIng, type ConsolidatedItem } from "@/lib/ingredients";
+import { consolidateIngredients, type ConsolidatedItem } from "@/lib/ingredients";
 
 export type EventRow = {
   id: string;
@@ -48,6 +49,7 @@ async function resolveFamily(supabase: Awaited<ReturnType<typeof createClient>>)
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   return member ? { userId: user.id, familyId: member.family_id } : null;
@@ -347,27 +349,7 @@ export async function getEventShoppingList(
     supabase.from("recipe_ingredients").select("recipe_id, name, quantity, unit").in("recipe_id", uniqueIds),
   ]);
 
-  const servingsById = new Map((recipes ?? []).map((r) => [r.id, r.servings && r.servings > 0 ? r.servings : 4]));
-  const ingsByRecipe = new Map<string, RawIng[]>();
-  for (const ing of ingredients ?? []) {
-    const arr = ingsByRecipe.get(ing.recipe_id) ?? [];
-    arr.push({ name: ing.name, quantity: ing.quantity, unit: ing.unit });
-    ingsByRecipe.set(ing.recipe_id, arr);
-  }
-
-  // One dish at a time (so the same recipe added twice is counted twice), scaling
-  // each recipe's quantities by guests / its own servings.
-  const scaled: RawIng[] = [];
-  for (const recipeId of dishRecipeIds) {
-    const factor = guestCount / (servingsById.get(recipeId) ?? 4);
-    for (const ing of ingsByRecipe.get(recipeId) ?? []) {
-      scaled.push({
-        name: ing.name,
-        quantity: ing.quantity != null ? Math.round(ing.quantity * factor * 100) / 100 : null,
-        unit: ing.unit,
-      });
-    }
-  }
+  const scaled = scaleShoppingIngredients(dishRecipeIds, recipes ?? [], ingredients ?? [], guestCount);
 
   return { items: consolidateIngredients(scaled), guestCount };
 }

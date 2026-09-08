@@ -149,6 +149,7 @@ export async function chatWithChef(messages: ChatMessage[]): Promise<ChefRespons
       .from("family_members")
       .select("families(country)")
       .eq("user_id", user.id)
+      .order("joined_at").order("id")
       .limit(1)
       .maybeSingle();
     country = (m?.families as { country?: string } | null)?.country ?? "ZA";
@@ -219,6 +220,7 @@ export async function saveChefRecipe(recipe: GeneratedRecipe): Promise<{ id: str
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return { id: null, error: "No family found" };

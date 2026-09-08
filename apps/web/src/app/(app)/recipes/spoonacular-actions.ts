@@ -97,6 +97,7 @@ export async function saveSpoonacularRecipe(
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return "No family found";

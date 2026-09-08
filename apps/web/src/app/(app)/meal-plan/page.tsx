@@ -23,6 +23,7 @@ export default async function MealPlanPage() {
     .from("family_members")
     .select("id, family_id, role")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) redirect("/onboarding");

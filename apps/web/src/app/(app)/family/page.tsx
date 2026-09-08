@@ -17,6 +17,7 @@ export default async function FamilySettingsPage() {
     .from("family_members")
     .select("family_id, role, name, families(name, invite_code, country, created_at, preferred_stores, courses)")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) redirect("/onboarding");
