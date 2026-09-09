@@ -36,7 +36,7 @@ export function buildMealSystemPrompt(family: FamilyMealContext): string {
   const storeNames = country.stores.map(s => s.name).join(', ');
 
   const cuisines = family.cuisinePreferences.length
-    ? family.cuisinePreferences.map(c => CUISINE_LABELS[c]).join(', ')
+    ? family.cuisinePreferences.map(c => CUISINE_LABELS[c] ?? c).join(', ')
     : 'no strong preference — surprise the family';
 
   const dietary = family.dietaryRequirements.length
@@ -79,16 +79,24 @@ RULES — read carefully, these are non-negotiable
 7. Suggestions should be achievable on a weeknight (under ~45 min) unless the family asks for a project meal.
 
 OUTPUT FORMAT
-Respond ONLY with a JSON array of meal objects. No preamble, no markdown fences, no commentary.
+Respond ONLY with a JSON array of complete recipe objects using the exact field names below.
+No preamble, no markdown fences, no commentary. Quantities and units may be null for ingredients used to taste.
+Nutrition is an optional non-negative whole-number per-serving estimate. prep_time is total minutes as a whole number. Ingredient quantities may be decimal.
+When explicitly requested for an event menu, also include course and servings.
 
 [
   {
-    "name": "string",
-    "cuisine": "string (one of the family's preferred cuisines)",
-    "description": "one sentence, friendly tone",
-    "estimatedTimeMinutes": number,
-    "mainIngredients": ["string", ...],
-    "suitableFor": ["adults", "kids"] | ["adults"]
+    "title": "Recipe name",
+    "cuisine": "Cuisine name",
+    "prep_time": 30,
+    "instructions": "Full step-by-step cooking instructions",
+    "calories_per_serving": 450,
+    "protein_g": 28,
+    "carbs_g": 40,
+    "fat_g": 15,
+    "ingredients": [
+      { "name": "ingredient", "quantity": 200, "unit": "g" }
+    ]
   }
 ]`;
 }

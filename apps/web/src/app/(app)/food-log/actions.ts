@@ -44,6 +44,7 @@ async function resolveMember(supabase: Awaited<ReturnType<typeof createClient>>)
     .from("family_members")
     .select("id, family_id, daily_calorie_target, track_calories")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   return member ?? null;

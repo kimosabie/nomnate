@@ -95,6 +95,7 @@ export async function searchRecipesAction(
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return { results: [], externalResults: [], error: "No family found", query, filter };
@@ -249,6 +250,7 @@ export async function addRecipeToLibrary(recipeId: string): Promise<string | nul
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return "No family found";
@@ -276,6 +278,7 @@ export async function saveMealDBRecipe(
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return "No family found";
@@ -551,6 +554,7 @@ export async function seedSARecipes(): Promise<{ seeded: number; skipped: number
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return { seeded: 0, skipped: 0, error: "No family found" };
@@ -624,6 +628,7 @@ export async function deleteRecipe(recipeId: string): Promise<string | null> {
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return "No family found";
@@ -645,12 +650,13 @@ export async function deleteRecipe(recipeId: string): Promise<string | null> {
     if (error) return error.message;
   } else {
     // Delete the manual recipe row entirely
-    const { error } = await supabase
+    const { data: deleted, error } = await supabase
       .from("recipes")
       .delete()
       .eq("id", recipeId)
-      .eq("created_by", user.id);
+      .eq("created_by", user.id).select("id").maybeSingle();
     if (error) return error.message;
+    if (!deleted) return "Recipe was not deleted. Refresh and check ownership.";
   }
 
   revalidatePath("/recipes");
@@ -667,18 +673,24 @@ export async function resetRecipeLibrary(): Promise<string | null> {
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return "No family found";
 
   // Remove all global recipes from library + delete manual recipes created by this user
-  await Promise.all([
+  const results = await Promise.allSettled([
     supabase.from("family_recipes").delete().eq("family_id", membership.family_id),
     supabase.from("recipes").delete().eq("family_id", membership.family_id).eq("is_global", false).eq("created_by", user.id),
   ]);
 
   revalidatePath("/recipes");
   revalidatePath("/meal-plan");
+  const errors = results.flatMap((result) => {
+    if (result.status === "rejected") return [result.reason instanceof Error ? result.reason.message : "Deletion request failed"];
+    return result.value.error ? [result.value.error.message] : [];
+  });
+  if (errors.length) return "Library reset incomplete; some recipes may have been removed. " + errors.join("; ");
   return null;
 }
 
@@ -694,6 +706,7 @@ export async function toggleFavourite(formData: FormData): Promise<void> {
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return;

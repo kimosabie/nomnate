@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { currentWeekStart } from "../meal-plan/utils";
-import { pickWildcardMeal } from "../meal-plan/actions";
+import { WildcardButton } from "../meal-plan/WildcardButton";
 import { CopyCode } from "./CopyCode";
 import { InviteBanner } from "@/components/InviteBanner";
 import { InviteModal } from "@/components/InviteModal";
@@ -41,6 +41,7 @@ export default async function DashboardPage() {
     .from("family_members")
     .select("id, family_id, role, name")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) redirect("/onboarding");
@@ -191,16 +192,7 @@ export default async function DashboardPage() {
             <p className="text-[10px] uppercase text-white/80 tracking-wide font-medium mt-0.5">top voter</p>
           </div>
           {isWednesday ? (
-            <form action={pickWildcardMeal} className="contents">
-              <button
-                type="submit"
-                className="bg-turmeric rounded-[12px] p-3 text-center w-full hover:brightness-110 active:scale-95 transition-all cursor-pointer"
-              >
-                <p className="text-2xl mb-1">🎲</p>
-                <p className="text-sm font-display font-medium text-white leading-tight">Spin!</p>
-                <p className="text-[10px] uppercase text-white/80 tracking-wide font-medium mt-0.5">wildcard day</p>
-              </button>
-            </form>
+            <WildcardButton />
           ) : (
             <div className="bg-turmeric rounded-[12px] p-3 text-center">
               <p className="text-2xl mb-1">🎲</p>

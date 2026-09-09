@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
+  Alert,
   View,
   Text,
   ScrollView,
@@ -45,6 +46,7 @@ export default function MealPlanScreen() {
       .from("family_members")
       .select("id, family_id")
       .eq("user_id", user.id)
+      .order("joined_at").order("id")
       .limit(1)
       .maybeSingle();
     if (!member) return;
@@ -105,20 +107,22 @@ export default function MealPlanScreen() {
 
     if (existing?.value === value) {
       // Undo vote
-      await supabase
+      const { error } = await supabase
         .from("votes")
         .delete()
         .eq("meal_plan_slot_id", slotId)
         .eq("member_id", memberId);
+      if (error) { Alert.alert("Vote not saved", error.message); setVoting(null); return; }
       setVotes((prev) =>
         prev.filter((v) => !(v.meal_plan_slot_id === slotId && v.member_id === memberId))
       );
     } else {
       // Upsert vote
-      await supabase.from("votes").upsert(
+      const { error } = await supabase.from("votes").upsert(
         { meal_plan_slot_id: slotId, member_id: memberId, value },
         { onConflict: "meal_plan_slot_id,member_id" }
       );
+      if (error) { Alert.alert("Vote not saved", error.message); setVoting(null); return; }
       setVotes((prev) => [
         ...prev.filter((v) => !(v.meal_plan_slot_id === slotId && v.member_id === memberId)),
         { meal_plan_slot_id: slotId, member_id: memberId, value },

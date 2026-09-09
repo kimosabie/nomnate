@@ -17,6 +17,7 @@ export default function AppLayout() {
         .from("family_members")
         .select("id")
         .eq("user_id", user.id)
+        .order("joined_at").order("id")
         .limit(1)
         .maybeSingle();
 

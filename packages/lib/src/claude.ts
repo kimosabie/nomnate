@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { buildMealSystemPrompt, type CountryCode, type Cuisine, type DietaryRequirement } from "@nomnate/shared";
+import { parseGeneratedRecipes, validateGeneratedRecipes, buildMealSystemPrompt, type CountryCode, type Cuisine, type DietaryRequirement } from "@nomnate/shared";
 import type { FamilyMemberContext, MealSuggestionParams, SuggestedRecipe } from "@nomnate/types";
 import { DIET_TYPE_LABELS } from "@nomnate/types";
 
@@ -87,7 +87,13 @@ Rules:
   const jsonMatch = text.match(/\[[\s\S]*\]/);
   if (!jsonMatch) throw new Error("AI returned an unexpected response — try again");
 
-  const parsed = JSON.parse(jsonMatch[0]) as EventMenuDish[];
+  const raw: unknown = JSON.parse(jsonMatch[0]);
+  const validated = validateGeneratedRecipes(raw, 8);
+  const parsed = validated.map((recipe, index) => ({
+    ...recipe,
+    course: (raw as Record<string, unknown>[])[index].course,
+    servings: (raw as Record<string, unknown>[])[index].servings,
+  })) as EventMenuDish[];
   const validCourses = new Set(["side", "starter", "main", "dessert"]);
   return parsed
     .filter((d) => d && typeof d.title === "string" && validCourses.has(d.course))
@@ -242,6 +248,7 @@ Return ONLY a valid JSON array with this exact structure, no other text:
 ]
 
 Rules:
+- Ingredient quantities must serve exactly ${familySize} people; the planner stores this serving count
 - prep_time is total time in minutes
 - quantity can be null if it's e.g. "salt to taste"
 - unit can be null for countable items like "eggs"
@@ -262,18 +269,5 @@ ${locationFallback}`.trimEnd();
   const text =
     message.content[0].type === "text" ? message.content[0].text : "";
 
-  const jsonMatch = text.match(/\[[\s\S]*\]/);
-  if (!jsonMatch) throw new Error("AI returned an unexpected response — try again");
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(jsonMatch[0]);
-  } catch {
-    throw new Error("AI returned malformed JSON — try again");
-  }
-  if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new Error("AI returned no recipes — try again");
-  }
-
-  return parsed as SuggestedRecipe[];
+  return parseGeneratedRecipes(text, count);
 }

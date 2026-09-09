@@ -14,6 +14,159 @@ export type Database = {
   }
   public: {
     Tables: {
+      dinner_drafts: {
+        Row: {
+          id: string
+          family_id: string
+          created_by: string | null
+          status: "open" | "finalised" | "cancelled"
+          draft_type: "tonight" | "weekly"
+          week_start: string | null
+          expires_at: string | null
+          created_at: string
+          updated_at: string
+          winner_candidate_id: string | null
+          finalised_at: string | null
+          result: Json | null
+        }
+        Insert: {
+          id?: string
+          family_id: string
+          created_by?: string | null
+          status?: "open" | "finalised" | "cancelled"
+          draft_type?: "tonight" | "weekly"
+          week_start?: string | null
+          expires_at?: string | null
+          created_at?: string
+          updated_at?: string
+          winner_candidate_id?: string | null
+          finalised_at?: string | null
+          result?: Json | null
+        }
+        Update: {
+          id?: string
+          family_id?: string
+          created_by?: string | null
+          status?: "open" | "finalised" | "cancelled"
+          draft_type?: "tonight" | "weekly"
+          week_start?: string | null
+          expires_at?: string | null
+          created_at?: string
+          updated_at?: string
+          winner_candidate_id?: string | null
+          finalised_at?: string | null
+          result?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dinner_draft_winner_belongs_to_draft"
+            columns: ["id", "winner_candidate_id"]
+            isOneToOne: false
+            referencedRelation: "draft_candidates"
+            referencedColumns: ["draft_id", "id"]
+          },
+          {
+            foreignKeyName: "dinner_drafts_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      draft_candidates: {
+        Row: {
+          id: string
+          draft_id: string
+          recipe_id: string | null
+          recipe_snapshot: Json
+          target_date: string | null
+          course: "starter" | "main" | "dessert" | "side" | null
+          nomination_source: "planner" | "library" | "ai"
+          display_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          draft_id: string
+          recipe_id?: string | null
+          recipe_snapshot?: Json
+          target_date?: string | null
+          course?: "starter" | "main" | "dessert" | "side" | null
+          nomination_source?: "planner" | "library" | "ai"
+          display_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          draft_id?: string
+          recipe_id?: string | null
+          recipe_snapshot?: Json
+          target_date?: string | null
+          course?: "starter" | "main" | "dessert" | "side" | null
+          nomination_source?: "planner" | "library" | "ai"
+          display_order?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_candidates_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "dinner_drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_candidates_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      draft_votes: {
+        Row: {
+          id: string
+          candidate_id: string
+          family_member_id: string
+          reaction: "love" | "eat" | "whatever" | "nope"
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          candidate_id: string
+          family_member_id: string
+          reaction: "love" | "eat" | "whatever" | "nope"
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          candidate_id?: string
+          family_member_id?: string
+          reaction?: "love" | "eat" | "whatever" | "nope"
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_votes_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "draft_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_votes_family_member_id_fkey"
+            columns: ["family_member_id"]
+            isOneToOne: false
+            referencedRelation: "family_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_usage: {
         Row: {
           created_at: string
@@ -128,6 +281,9 @@ export type Database = {
       }
       families: {
         Row: {
+          timezone: string
+          cuisine_preferences: string[]
+          dietary_requirements: string[]
           country: string
           courses: string[]
           created_at: string
@@ -138,6 +294,9 @@ export type Database = {
           preferred_stores: string[]
         }
         Insert: {
+          timezone?: string
+          cuisine_preferences?: string[]
+          dietary_requirements?: string[]
           country?: string
           courses?: string[]
           created_at?: string
@@ -148,6 +307,9 @@ export type Database = {
           preferred_stores?: string[]
         }
         Update: {
+          timezone?: string
+          cuisine_preferences?: string[]
+          dietary_requirements?: string[]
           country?: string
           courses?: string[]
           created_at?: string
@@ -394,6 +556,7 @@ export type Database = {
       }
       meal_plan_slots: {
         Row: {
+          committed_draft_id: string | null
           course: string
           day_of_week: number
           id: string
@@ -403,6 +566,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          committed_draft_id?: string | null
           course?: string
           day_of_week: number
           id?: string
@@ -412,6 +576,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          committed_draft_id?: string | null
           course?: string
           day_of_week?: number
           id?: string
@@ -421,6 +586,13 @@ export type Database = {
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "meal_plan_slots_committed_draft_id_fkey"
+            columns: ["committed_draft_id"]
+            isOneToOne: false
+            referencedRelation: "dinner_drafts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "meal_plan_slots_meal_plan_id_fkey"
             columns: ["meal_plan_id"]
@@ -806,6 +978,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      active_family_id: { Args: Record<string, never>; Returns: string | null }
+      join_family: { Args: { code: string; display_name: string }; Returns: string }
+      finalise_dinner_draft: { Args: { draft_id: string; expected_winner: string }; Returns: Json }
+      cancel_dinner_draft: { Args: { draft_id: string }; Returns: undefined }
+      replace_shopping_list: { Args: { plan_id: string; items: Json }; Returns: string }
+
       get_family_by_invite_code: {
         Args: { code: string }
         Returns: {

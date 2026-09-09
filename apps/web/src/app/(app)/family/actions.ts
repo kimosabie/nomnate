@@ -25,6 +25,7 @@ export async function updateFamilyCourses(
     .from("family_members")
     .select("family_id, role")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return "No family found";
@@ -56,6 +57,7 @@ export async function updateFamilyName(
     .from("family_members")
     .select("family_id, role")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return "No family found";
@@ -83,6 +85,7 @@ export async function updatePreferredStores(
     .from("family_members")
     .select("family_id, role, families(country)")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return "No family found";
@@ -117,6 +120,7 @@ export async function updateFamilyCountry(
     .from("family_members")
     .select("family_id, role")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return "No family found";

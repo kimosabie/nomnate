@@ -1,5 +1,6 @@
 "use server";
 
+import { validateGeneratedRecipes } from "@nomnate/shared";
 import Anthropic from "@anthropic-ai/sdk";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -149,6 +150,7 @@ export async function chatWithChef(messages: ChatMessage[]): Promise<ChefRespons
       .from("family_members")
       .select("families(country)")
       .eq("user_id", user.id)
+      .order("joined_at").order("id")
       .limit(1)
       .maybeSingle();
     country = (m?.families as { country?: string } | null)?.country ?? "ZA";
@@ -211,6 +213,11 @@ export async function chatWithChef(messages: ChatMessage[]): Promise<ChefRespons
 }
 
 export async function saveChefRecipe(recipe: GeneratedRecipe): Promise<{ id: string | null; error: string | null }> {
+  try {
+    validateGeneratedRecipes([{ ...recipe, cuisine: recipe.cuisine ?? "Other", instructions: recipe.instructions.join("\n") }]);
+  } catch (error) {
+    return { id: null, error: error instanceof Error ? error.message : "Invalid recipe" };
+  }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { id: null, error: "Not authenticated" };
@@ -219,6 +226,7 @@ export async function saveChefRecipe(recipe: GeneratedRecipe): Promise<{ id: str
     .from("family_members")
     .select("family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) return { id: null, error: "No family found" };

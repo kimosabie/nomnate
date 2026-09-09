@@ -11,6 +11,7 @@ export default async function WelcomePage() {
     .from("family_members")
     .select("name, family_id")
     .eq("user_id", user.id)
+    .order("joined_at").order("id")
     .limit(1)
     .maybeSingle();
   if (!membership) redirect("/onboarding");

@@ -38,7 +38,7 @@ export default function OnboardingScreen() {
 
     const { data: family, error: familyErr } = await supabase
       .from("families")
-      .insert({ name: familyName.trim(), created_by: user.id })
+      .insert({ name: familyName.trim(), created_by: user.id, country: "ZA" })
       .select()
       .single();
 
@@ -68,20 +68,10 @@ export default function OnboardingScreen() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data: family, error: lookupErr } = await supabase
-      .from("families")
-      .select("id")
-      .eq("invite_code", inviteCode.trim().toUpperCase())
-      .single();
-
-    if (lookupErr || !family) {
-      setLoading(false);
-      return setError("Invalid invite code — double-check and try again");
-    }
-
-    const { error: joinErr } = await supabase
-      .from("family_members")
-      .insert({ family_id: family.id, user_id: user.id, name: displayName.trim() });
+    const { error: joinErr } = await supabase.rpc("join_family", {
+      code: inviteCode.trim().toUpperCase(),
+      display_name: displayName.trim(),
+    });
 
     setLoading(false);
     if (joinErr) return setError(joinErr.message);
