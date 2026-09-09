@@ -166,10 +166,10 @@ Before any production application:
 - Inventory affected columns, types, constraints, RLS policies, trigger definitions, function owners, grants, and `search_path`. Reconcile deployment-specific policy differences explicitly. Check historical recipe/member columns against the real schema; `IF NOT EXISTS` does not verify compatibility.
 - Audit multiple memberships, admin availability, legacy cross-family votes, and multiple legacy votes per member/day/course. New guards do not delete or repair historical invalid data. Existing votes need deliberate review, not automatic cleanup.
 - Confirm vote/list-item cascade FKs, course/option uniqueness, family/week uniqueness, and trusted function ownership. Check any existing `confirmed` rows; they become protected and cannot be edited/reset by clients.
-- Test all four migrations on an isolated database representative of deployment. Exercise direct authenticated and anonymous SQL/API access: arbitrary family joins, self-promotion, cross-family votes, forged commitments, creator/admin finalisation, stale winners, ties, missing target slots/plans, rollback and concurrent finalisation/reaction writes. Compare SQL and pure scoring results.
+- Test all five migrations on an isolated database representative of deployment. Exercise direct authenticated and anonymous SQL/API access: arbitrary family joins, self-promotion, cross-family votes, forged commitments, creator/admin finalisation, stale winners, ties, missing target slots/plans, rollback and concurrent finalisation/reaction writes. Compare SQL and pure scoring results.
 - Verify onboarding and mobile compatibility. Older clients that directly insert memberships must be updated to use `join_family`. Service/admin tooling that creates families without an authenticated creator context must be adapted deliberately.
 - Plan an appropriate lock window and database backup. ALTER TABLE, trigger/policy changes, and non-concurrent unique-index creation can lock tables. Migrations use transactions; do not use partial manual application as a rollout strategy.
-- Deploy compatible database changes before app code depending on the new columns/RPCs. Verify all four changes as one rollout before exposing draft operations. No deployment or production migration is authorized by completion of this local task.
+- Deploy compatible database changes before app code depending on the new columns/RPCs. Verify all five changes as one rollout before exposing draft operations. No deployment or production migration is authorized by completion of this local task.
 
 ## 16. Remaining Phase 2 scope
 
@@ -185,6 +185,6 @@ Existing dashboard presentation was retained; only its wildcard failure handling
 
 ## Files changed
 
-Core additions: `packages/shared/src/dinnerDraft.ts`, `packages/shared/src/recipeValidation.ts`, `apps/web/src/lib/mealShopping.ts`, `apps/web/src/app/(app)/dinner-draft/actions.ts`, the seven meal-plan action/helper/guard modules, `meal-plan/WildcardButton.tsx`, four migrations listed above, this document, and `tests/foundation.test.cjs` / `tests/load-typescript.cjs`.
+Core additions: `packages/shared/src/dinnerDraft.ts`, `packages/shared/src/recipeValidation.ts`, `apps/web/src/lib/mealShopping.ts`, `apps/web/src/app/(app)/dinner-draft/actions.ts`, the seven meal-plan action/helper/guard modules, `meal-plan/WildcardButton.tsx`, five migrations listed above, this document, and `tests/foundation.test.cjs` / `tests/load-typescript.cjs`.
 
 Core updates: meal-plan compatibility barrel, dashboard wildcard caller, event shopping scaler, Claude parser and serving prompt, shared prompt/exports, Supabase types, and root `package.json` test script. Recovered onboarding updates use the join RPC; recovered family-membership ordering changes span web dashboard/events/family/food-log/layout/meal-plan/onboarding/profile/recipes/shopping and mobile index/profile/shopping/layout. Mobile voting reports database failures. The review handoff includes the complete git status and tracked diff statistics.
