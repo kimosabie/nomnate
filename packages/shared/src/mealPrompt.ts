@@ -81,7 +81,7 @@ RULES — read carefully, these are non-negotiable
 OUTPUT FORMAT
 Respond ONLY with a JSON array of complete recipe objects using the exact field names below.
 No preamble, no markdown fences, no commentary. Quantities and units may be null for ingredients used to taste.
-Nutrition is an optional non-negative per-serving estimate. prep_time is total minutes.
+Nutrition is an optional non-negative whole-number per-serving estimate. prep_time is total minutes as a whole number. Ingredient quantities may be decimal.
 When explicitly requested for an event menu, also include course and servings.
 
 [

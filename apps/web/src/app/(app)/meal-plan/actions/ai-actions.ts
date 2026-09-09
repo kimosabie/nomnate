@@ -392,46 +392,59 @@ export async function planWeekWithAI(): Promise<string | null> {
   // Save each as a global AI recipe (NOT in family_recipes → the plan stays one
   // use) and assign to an empty main slot.
   let assigned = 0;
-  for (let i = 0; i < generated.length && i < targets.length; i++) {
-    const g = generated[i];
-    const { data: saved, error: saveError } = await supabase
-      .from("recipes")
-      .insert({
-        title: g.title,
-        source: "ai" as const,
-        source_attribution: `AI-generated recipe by Claude (Anthropic). Inspired by traditional ${g.cuisine} cooking.`,
-        instructions: g.instructions,
-        prep_time: g.prep_time,
-        servings: familySize,
-        cuisine: g.cuisine,
-        course: "main",
-        calories_per_serving: g.calories_per_serving ?? null,
-        protein_g: g.protein_g ?? null,
-        carbs_g: g.carbs_g ?? null,
-        fat_g: g.fat_g ?? null,
-        nutrition_estimated: true,
-        is_global: true,
-        created_by: user.id,
-      })
-      .select("id")
-      .single();
-    if (saveError || !saved) return saveError?.message ?? "Failed to save AI recipe";
-    if (g.ingredients.length > 0) {
-      const { error: ingredientError } = await supabase.from("recipe_ingredients").insert(
-        g.ingredients.map((ing) => ({ recipe_id: saved.id, name: ing.name, quantity: ing.quantity ?? null, unit: ing.unit || null }))
-      );
-      if (ingredientError) return ingredientError.message;
+  let persistenceError: string | null = null;
+  try {
+    for (let i = 0; i < generated.length && i < targets.length; i++) {
+      const g = generated[i];
+      const { data: saved, error: saveError } = await supabase
+        .from("recipes")
+        .insert({
+          title: g.title,
+          source: "ai" as const,
+          source_attribution: `AI-generated recipe by Claude (Anthropic). Inspired by traditional ${g.cuisine} cooking.`,
+          instructions: g.instructions,
+          prep_time: g.prep_time,
+          servings: familySize,
+          cuisine: g.cuisine,
+          course: "main",
+          calories_per_serving: g.calories_per_serving ?? null,
+          protein_g: g.protein_g ?? null,
+          carbs_g: g.carbs_g ?? null,
+          fat_g: g.fat_g ?? null,
+          nutrition_estimated: true,
+          is_global: true,
+          created_by: user.id,
+        })
+        .select("id")
+        .single();
+      if (saveError || !saved) { persistenceError = saveError?.message ?? "Failed to save AI recipe"; break; }
+      if (g.ingredients.length > 0) {
+        const { error: ingredientError } = await supabase.from("recipe_ingredients").insert(
+          g.ingredients.map((ing) => ({ recipe_id: saved.id, name: ing.name, quantity: ing.quantity ?? null, unit: ing.unit || null }))
+        );
+        if (ingredientError) { persistenceError = ingredientError.message; break; }
+      }
+      const assignmentError = await updateMutableSlot(supabase, targets[i].id, saved.id, true);
+      if (assignmentError) { persistenceError = assignmentError; break; }
+      assigned++;
     }
-    const assignmentError = await updateMutableSlot(supabase, targets[i].id, saved.id, true);
-    if (assignmentError) return assignmentError;
-    assigned++;
+  } catch (error) {
+    persistenceError = actionError(error);
   }
-  if (assigned === 0) return "Failed to save the AI plan — please try again.";
-
-  const usageError = await logAiUsage(supabase, membership.family_id, "week_plan");
-  if (usageError) return "Recipes saved, but usage recording failed: " + usageError;
-  revalidatePath("/meal-plan");
-  if (assigned < targets.length) return `Saved ${assigned} of ${targets.length} meals. AI generation stopped early; review the remaining slots.`;
+  // Charge one weekly use whenever at least one meal was assigned, including
+  // partial completion. Always invalidate persisted changes, even if logging fails.
+  let usageError: string | null = null;
+  try {
+    if (assigned > 0) usageError = await logAiUsage(supabase, membership.family_id, "week_plan");
+  } catch (error) {
+    usageError = actionError(error);
+  } finally {
+    revalidatePath("/meal-plan");
+  }
+  const summary = `Saved ${assigned} of ${targets.length} meals.`;
+  const errors = [persistenceError, usageError ? "Usage recording failed: " + usageError : null].filter(Boolean);
+  if (errors.length) return `${summary} ${errors.join("; ")} Review the plan before retrying.`;
+  if (assigned < targets.length) return `${summary} AI generation stopped early; review the remaining slots.`;
   return null;
 }
 

@@ -58,7 +58,7 @@ export function scoreDraft(candidates: readonly ScoringCandidate[], votes: reado
 export interface FinalisationDraft {
   id: string;
   familyId: string;
-  createdBy: string;
+  createdBy: string | null;
   status: DraftStatus;
 }
 export interface FinalisationMember { userId: string; familyId: string; role: string }

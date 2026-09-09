@@ -126,45 +126,8 @@ export async function deleteAccount(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return "Not authenticated";
 
-  // Find the user's family membership
-  const { data: membership } = await supabase
-    .from("family_members")
-    .select("family_id")
-    .eq("user_id", user.id)
-    .order("joined_at").order("id")
-    .limit(1)
-    .maybeSingle();
-
-  if (membership) {
-    // Check if this user created the family
-    const { data: family } = await supabase
-      .from("families")
-      .select("id, created_by")
-      .eq("id", membership.family_id)
-      .maybeSingle();
-
-    if (family?.created_by === user.id) {
-      // Find another member to transfer ownership to (so the family survives)
-      const { data: otherMembers } = await supabase
-        .from("family_members")
-        .select("user_id")
-        .eq("family_id", membership.family_id)
-        .neq("user_id", user.id)
-        .order("joined_at").order("id")
-        .limit(1);
-
-      if (otherMembers && otherMembers.length > 0) {
-        // Transfer family ownership before deleting
-        await supabase
-          .from("families")
-          .update({ created_by: otherMembers[0].user_id })
-          .eq("id", membership.family_id);
-      }
-      // If no other members, the family will cascade-delete when auth user is deleted — that's correct
-    }
-  }
-
-  // Delete the auth user — cascades family_members (and family if still created_by)
+  // Ownership succession runs inside the auth.users DELETE transaction. Do not
+  // transfer ownership in a separate request: a failed deletion must leave it intact.
   const admin = createAdminClient();
   const { error } = await admin.auth.admin.deleteUser(user.id);
   if (error) return error.message;

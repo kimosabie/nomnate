@@ -2,6 +2,8 @@ export interface ValidatedRecipe {
   title: string;
   cuisine: string;
   prep_time: number;
+  cook_time?: number;
+  servings?: number;
   instructions: string;
   calories_per_serving?: number;
   protein_g?: number;
@@ -23,6 +25,12 @@ function number(value: unknown, field: string, max: number): number {
   return value;
 }
 
+function integer(value: unknown, field: string, max: number): number {
+  const result = number(value, field, max);
+  if (!Number.isInteger(result)) throw new Error("Invalid AI recipe " + field + ": expected a whole number");
+  return result;
+}
+
 /** Reject malformed model output before any recipe/ingredient writes occur. */
 export function validateGeneratedRecipes(value: unknown, maxCount = 7): ValidatedRecipe[] {
   if (!Array.isArray(value) || !value.length || value.length > maxCount) throw new Error("Invalid AI recipe count");
@@ -36,7 +44,7 @@ export function validateGeneratedRecipes(value: unknown, maxCount = 7): Validate
     const recipe: ValidatedRecipe = {
       title,
       cuisine: text(r.cuisine, "cuisine", 100),
-      prep_time: number(r.prep_time, "prep_time", 1440),
+      prep_time: integer(r.prep_time, "prep_time", 1440),
       instructions: text(r.instructions, "instructions", 20000),
       ingredients: r.ingredients.map((rawIngredient) => {
         const i = object(rawIngredient);
@@ -48,7 +56,12 @@ export function validateGeneratedRecipes(value: unknown, maxCount = 7): Validate
       }),
     };
     for (const field of ["calories_per_serving", "protein_g", "carbs_g", "fat_g"] as const) {
-      if (r[field] != null) recipe[field] = number(r[field], field, 100000);
+      if (r[field] != null) recipe[field] = integer(r[field], field, 100000);
+    }
+    if (r.cook_time != null) recipe.cook_time = integer(r.cook_time, "cook_time", 1440);
+    if (r.servings != null) {
+      recipe.servings = integer(r.servings, "servings", 1000);
+      if (recipe.servings === 0) throw new Error("Invalid AI recipe servings");
     }
     return recipe;
   });

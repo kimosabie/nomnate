@@ -234,3 +234,106 @@ for (const actionName of ['suggestWithAI', 'planWeekWithAI', 'suggestForSlot']) 
     });
   }
 }
+
+for (const field of ['prep_time', 'cook_time', 'servings', 'calories_per_serving', 'protein_g', 'carbs_g', 'fat_g']) {
+  test(`AI validation rejects fractional integer column ${field}`, () => {
+    assert.throws(() => ai.validateGeneratedRecipes([{ ...recipe, [field]: 1.5 }]), new RegExp(field));
+    assert.equal(ai.validateGeneratedRecipes([{ ...recipe, [field]: 2 }])[0][field], 2);
+  });
+}
+test('AI ingredient quantities retain decimals', () => {
+  assert.equal(ai.validateGeneratedRecipes([{ ...recipe, ingredients: [{ name: 'rice', quantity: 0.25, unit: 'cup' }] }])[0].ingredients[0].quantity, 0.25);
+});
+test('anonymised creator requires an admin to finalise', () => {
+  const args = { ...input(), draft: { ...draft, createdBy: null } };
+  assert.throws(() => domain.assertCanFinalise(args.userId, args.activeFamilyId, args.member, args.draft), /planner|admin/);
+  assert.doesNotThrow(() => domain.assertCanFinalise(args.userId, args.activeFamilyId, { ...args.member, role: "admin" }, args.draft));
+});
+for (const fails of [true, false]) {
+  test(`account deletion ${fails ? 'failure leaves ownership untouched' : 'delegates succession to database deletion'}`, async () => {
+    const db = client({});
+    const deleted = [];
+    const actions = load('apps/web/src/app/(app)/profile/actions.ts', {
+      ...actionMocks(db, []),
+      '@/lib/supabase/admin': { createAdminClient: () => ({ auth: { admin: { deleteUser: async (id) => {
+        deleted.push(id); return { error: fails ? { message: 'Auth deletion failed' } : null };
+      } } } }) },
+    });
+    const form = new FormData(); form.set('confirmation', 'DELETE');
+    if (fails) assert.equal(await actions.deleteAccount(null, form), 'Auth deletion failed');
+    else await assert.rejects(actions.deleteAccount(null, form), /redirect:.*account_deleted/);
+    assert.deepEqual(deleted, ['user']);
+    assert.deepEqual(db.calls, []); // No transfer can precede a failed external call.
+  });
+}
+for (const failure of ['recipes', 'family_recipes', 'both', 'none']) {
+  test(`library reset reports ${failure} deletion outcome and invalidates partial changes`, async () => {
+    const fail = (table) => failure === table || failure === 'both' ? { data: null, error: { message: table + ' delete failed' } } : ok(null);
+    const db = client({ family_members: [ok({ family_id: 'family' })], recipes: [fail('recipes')], family_recipes: [fail('family_recipes')] });
+    const paths = [];
+    const actions = load('apps/web/src/app/(app)/recipes/actions.ts', {
+      ...actionMocks(db, []), 'next/cache': { revalidatePath: (path) => paths.push(path) },
+      '@/lib/nutrition': {}, '@nomnate/lib/themealdb': {},
+    });
+    const result = await actions.resetRecipeLibrary();
+    if (failure === 'none') assert.equal(result, null);
+    else {
+      assert.match(result, /reset incomplete/);
+      if (failure === 'both') { assert.match(result, /recipes delete failed/); assert.match(result, /family_recipes delete failed/); }
+      else assert.ok(result.includes(failure + ' delete failed'));
+    }
+    assert.deepEqual(paths, ['/recipes', '/meal-plan']);
+  });
+}
+for (const failure of ['recipe', 'ingredients', 'assignment', 'throw', 'usage', 'none', 'first']) {
+  test(`weekly AI handles ${failure} persistence outcome with consistent usage and cache`, async () => {
+    const err = { data: null, error: { message: 'injected failure' } };
+    const db = client({
+      family_members: [ok({ family_id: 'family' }), ok([{}])],
+      ai_usage: [{ count: 0, error: null }, failure === 'usage' ? err : ok(null)],
+      meal_plans: [ok({ id: 'plan' })],
+      meal_plan_slots: [ok([{ id: 's1', day_of_week: 0, option_number: 1 }, { id: 's2', day_of_week: 1, option_number: 1 }]), ok([])],
+      recipes: [ok([]), failure === 'first' ? err : ok({ id: 'r1' }), failure === 'recipe' ? err : ok({ id: 'r2' })],
+      recipe_ingredients: [ok(null), failure === 'ingredients' ? err : ok(null)],
+      family_recipes: [ok([])],
+    });
+    const paths = []; let assignments = 0;
+    const actions = load('apps/web/src/app/(app)/meal-plan/actions/ai-actions.ts', {
+      ...actionMocks(db, []), 'next/cache': { revalidatePath: (path) => paths.push(path) },
+      '@nomnate/lib/claude': { suggestMeals: async () => [recipe, { ...recipe, title: 'Second meal' }] },
+      './guards': { actionError: (e) => e.message, updateMutableSlot: async () => {
+        assignments++;
+        if (assignments === 2 && failure === 'throw') throw new Error('injected failure');
+        return assignments === 2 && failure === 'assignment' ? 'injected failure' : null;
+      } },
+    });
+    const result = await actions.planWeekWithAI();
+    if (failure === 'none') assert.equal(result, null);
+    else {
+      assert.match(result, new RegExp(`Saved ${failure === 'first' ? 0 : failure === 'usage' ? 2 : 1} of 2 meals`));
+      assert.match(result, /injected failure/);
+    }
+    assert.deepEqual(paths, ['/meal-plan']);
+    const usage = db.calls.filter((c) => c.table === 'ai_usage' && c.methods.some(([m]) => m === 'insert'));
+    assert.equal(usage.length, failure === 'first' ? 0 : 1);
+    if (usage.length) assert.equal(usage[0].methods.find(([m]) => m === 'insert')[1][0].kind, 'week_plan');
+  });
+}
+
+for (const fractional of [true, false]) {
+  test(`AI Chef ${fractional ? 'rejects fractional cook time before writes' : 'accepts integers and decimal ingredients'}`, async () => {
+    const db = client({ family_members: [ok({ family_id: 'family' })], recipes: [ok({ id: 'r' })], recipe_ingredients: [ok(null)] });
+    const actions = load('apps/web/src/app/(app)/recipes/ai-chef-actions.ts', actionMocks(db, []));
+    const result = await actions.saveChefRecipe({ ...recipe, servings: 2, cook_time: fractional ? 2.5 : 2,
+      instructions: ['Boil rice.'], ingredients: [{ name: 'rice', quantity: 0.25, unit: 'cup' }] });
+    if (fractional) { assert.match(result.error, /cook_time/); assert.deepEqual(db.calls, []); }
+    else { assert.equal(result.error, null); assert.equal(result.id, 'r'); }
+  });
+}
+test('manual recipe deletion cannot report success for a filtered or missing row', async () => {
+  const db = client({ family_members: [ok({ family_id: 'family' })], recipes: [ok({ id: 'r', is_global: false }), ok(null)] });
+  const actions = load('apps/web/src/app/(app)/recipes/actions.ts', {
+    ...actionMocks(db, []), '@/lib/nutrition': {}, '@nomnate/lib/themealdb': {},
+  });
+  assert.match(await actions.deleteRecipe('r'), /not deleted/);
+});

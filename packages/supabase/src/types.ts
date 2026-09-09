@@ -18,7 +18,7 @@ export type Database = {
         Row: {
           id: string
           family_id: string
-          created_by: string
+          created_by: string | null
           status: "open" | "finalised" | "cancelled"
           draft_type: "tonight" | "weekly"
           week_start: string | null
@@ -32,7 +32,7 @@ export type Database = {
         Insert: {
           id?: string
           family_id: string
-          created_by: string
+          created_by?: string | null
           status?: "open" | "finalised" | "cancelled"
           draft_type?: "tonight" | "weekly"
           week_start?: string | null
@@ -46,7 +46,7 @@ export type Database = {
         Update: {
           id?: string
           family_id?: string
-          created_by?: string
+          created_by?: string | null
           status?: "open" | "finalised" | "cancelled"
           draft_type?: "tonight" | "weekly"
           week_start?: string | null
@@ -57,13 +57,29 @@ export type Database = {
           finalised_at?: string | null
           result?: Json | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dinner_draft_winner_belongs_to_draft"
+            columns: ["id", "winner_candidate_id"]
+            isOneToOne: false
+            referencedRelation: "draft_candidates"
+            referencedColumns: ["draft_id", "id"]
+          },
+          {
+            foreignKeyName: "dinner_drafts_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       draft_candidates: {
         Row: {
           id: string
           draft_id: string
-          recipe_id: string
+          recipe_id: string | null
+          recipe_snapshot: Json
           target_date: string | null
           course: "starter" | "main" | "dessert" | "side" | null
           nomination_source: "planner" | "library" | "ai"
@@ -73,7 +89,8 @@ export type Database = {
         Insert: {
           id?: string
           draft_id: string
-          recipe_id: string
+          recipe_id?: string | null
+          recipe_snapshot?: Json
           target_date?: string | null
           course?: "starter" | "main" | "dessert" | "side" | null
           nomination_source?: "planner" | "library" | "ai"
@@ -83,14 +100,30 @@ export type Database = {
         Update: {
           id?: string
           draft_id?: string
-          recipe_id?: string
+          recipe_id?: string | null
+          recipe_snapshot?: Json
           target_date?: string | null
           course?: "starter" | "main" | "dessert" | "side" | null
           nomination_source?: "planner" | "library" | "ai"
           display_order?: number
           created_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "draft_candidates_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "dinner_drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_candidates_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       draft_votes: {
         Row: {
@@ -117,7 +150,22 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "draft_votes_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "draft_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_votes_family_member_id_fkey"
+            columns: ["family_member_id"]
+            isOneToOne: false
+            referencedRelation: "family_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_usage: {
         Row: {
@@ -538,6 +586,13 @@ export type Database = {
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "meal_plan_slots_committed_draft_id_fkey"
+            columns: ["committed_draft_id"]
+            isOneToOne: false
+            referencedRelation: "dinner_drafts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "meal_plan_slots_meal_plan_id_fkey"
             columns: ["meal_plan_id"]
