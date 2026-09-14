@@ -978,6 +978,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      start_dinner_draft: {
+        Args: { dinner_date: string }
+        Returns: string
+      }
       active_family_id: { Args: Record<string, never>; Returns: string | null }
       join_family: { Args: { code: string; display_name: string }; Returns: string }
       finalise_dinner_draft: { Args: { draft_id: string; expected_winner: string }; Returns: Json }

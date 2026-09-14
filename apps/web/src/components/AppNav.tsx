@@ -6,7 +6,7 @@ import { useRef, useState } from "react";
 import { signOut } from "@/app/(auth)/actions";
 
 const LINKS = [
-  { href: "/dashboard", label: "Home" },
+  { href: "/tonight", label: "Home" },
   { href: "/recipes", label: "Recipes" },
   { href: "/meal-plan", label: "Meal plan" },
   { href: "/shopping-list", label: "Shopping" },
@@ -30,7 +30,7 @@ export function AppNav({ initials, inviteCode, isAdmin }: { initials: string; in
   return (
     <header className="bg-white border-b border-cream-border sticky top-0 z-40 print:hidden">
       <div className="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
-        <Link href="/dashboard" className="shrink-0 mr-1">
+        <Link href="/tonight" className="shrink-0 mr-1">
           <span className="font-display text-[22px] font-medium leading-none tracking-tight">
             <span className="text-flame">Nom</span>
             <span className="text-herb">Nate</span>
@@ -42,7 +42,7 @@ export function AppNav({ initials, inviteCode, isAdmin }: { initials: string; in
           {LINKS.map(({ href, label }) => {
             const isActive =
               pathname === href ||
-              (href !== "/dashboard" && pathname.startsWith(href));
+              (href !== "/tonight" && pathname.startsWith(href));
             return (
               <Link
                 key={href}
